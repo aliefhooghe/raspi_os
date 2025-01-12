@@ -53,7 +53,14 @@ static inline uint32_t mmio_read(uint32_t reg)
 	return *(volatile uint32_t*)(MMIO_BASE + reg);
 }
 
-void delay(int32_t count);
+// Loop <delay> times in a way that the compiler won't optimize away
+static inline void delay(int32_t count)
+{
+	asm volatile("__delay_%=: subs %[count], %[count], #1\n"
+		   " bne __delay_%=\n"
+		 : "=r"(count): [count]"0"(count) : "cc");
+}
+
 
 // A Mailbox message with set clock rate of PL011 to 3MHz tag
 volatile unsigned int  __attribute__((aligned(16))) mbox[9] = {
@@ -134,11 +141,4 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 		uart_putc(car);
 		uart_putc(car);
 	}
-}
-
-// Loop <delay> times in a way that the compiler won't optimize away
-void delay(int32_t count)
-{
-	asm volatile("__delay_%=: subs %[count], %[count], #1; bne __delay_%=\n"
-		 : "=r"(count): [count]"0"(count) : "cc");
 }

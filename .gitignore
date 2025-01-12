@@ -1,2 +1,4 @@
+.cache
 build/
 linux_image/
+compile_commands.json
