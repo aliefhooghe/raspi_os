@@ -1,18 +1,45 @@
 #include <stddef.h>
 #include <stdint.h>
 
-static uint32_t MMIO_BASE;
+// The offsets for reach register.
+#define GPIO_BASE 0x200000
 
-// The MMIO area base address, depends on board type
-static inline void mmio_init(int raspi)
-{
-    switch (raspi) {
-        case 2:
-        case 3:  MMIO_BASE = 0x3F000000; break; // for raspi2 & 3
-        case 4:  MMIO_BASE = 0xFE000000; break; // for raspi4
-        default: MMIO_BASE = 0x20000000; break; // for raspi1, raspi zero etc.
-    }
-}
+// Controls actuation of pull up/down to ALL GPIO pins.
+#define GPPUD (GPIO_BASE + 0x94)
+
+// Controls actuation of pull up/down for specific GPIO pin.
+#define GPPUDCLK0 (GPIO_BASE + 0x98)
+
+// The base address for UART.
+#define UART0_BASE (GPIO_BASE + 0x1000) // for raspi4 0xFE201000, raspi2 & 3 0x3F201000, and 0x20201000 for raspi1
+
+// The offsets for reach register for the UART.
+#define UART0_DR     (UART0_BASE + 0x00)
+#define UART0_RSRECR (UART0_BASE + 0x04)
+#define UART0_FR     (UART0_BASE + 0x18)
+#define UART0_ILPR   (UART0_BASE + 0x20)
+#define UART0_IBRD   (UART0_BASE + 0x24)
+#define UART0_FBRD   (UART0_BASE + 0x28)
+#define UART0_LCRH   (UART0_BASE + 0x2C)
+#define UART0_CR     (UART0_BASE + 0x30)
+#define UART0_IFLS   (UART0_BASE + 0x34)
+#define UART0_IMSC   (UART0_BASE + 0x38)
+#define UART0_RIS    (UART0_BASE + 0x3C)
+#define UART0_MIS    (UART0_BASE + 0x40)
+#define UART0_ICR    (UART0_BASE + 0x44)
+#define UART0_DMACR  (UART0_BASE + 0x48)
+#define UART0_ITCR   (UART0_BASE + 0x80)
+#define UART0_ITIP   (UART0_BASE + 0x84)
+#define UART0_ITOP   (UART0_BASE + 0x88)
+#define UART0_TDR    (UART0_BASE + 0x8C)
+
+// The offsets for Mailbox registers
+#define MBOX_BASE    0xB880
+#define MBOX_READ    (MBOX_BASE + 0x00)
+#define MBOX_STATUS  (MBOX_BASE + 0x18)
+#define MBOX_WRITE   (MBOX_BASE + 0x20)
+
+#define MMIO_BASE 0x20000000
 
 // Memory-Mapped I/O output
 static inline void mmio_write(uint32_t reg, uint32_t data)
@@ -26,63 +53,15 @@ static inline uint32_t mmio_read(uint32_t reg)
 	return *(volatile uint32_t*)(MMIO_BASE + reg);
 }
 
-// Loop <delay> times in a way that the compiler won't optimize away
-static inline void delay(int32_t count)
-{
-	asm volatile("__delay_%=: subs %[count], %[count], #1; bne __delay_%=\n"
-		 : "=r"(count): [count]"0"(count) : "cc");
-}
-
-enum
-{
-    // The offsets for reach register.
-    GPIO_BASE = 0x200000,
-
-    // Controls actuation of pull up/down to ALL GPIO pins.
-    GPPUD = (GPIO_BASE + 0x94),
-
-    // Controls actuation of pull up/down for specific GPIO pin.
-    GPPUDCLK0 = (GPIO_BASE + 0x98),
-
-    // The base address for UART.
-    UART0_BASE = (GPIO_BASE + 0x1000), // for raspi4 0xFE201000, raspi2 & 3 0x3F201000, and 0x20201000 for raspi1
-
-    // The offsets for reach register for the UART.
-    UART0_DR     = (UART0_BASE + 0x00),
-    UART0_RSRECR = (UART0_BASE + 0x04),
-    UART0_FR     = (UART0_BASE + 0x18),
-    UART0_ILPR   = (UART0_BASE + 0x20),
-    UART0_IBRD   = (UART0_BASE + 0x24),
-    UART0_FBRD   = (UART0_BASE + 0x28),
-    UART0_LCRH   = (UART0_BASE + 0x2C),
-    UART0_CR     = (UART0_BASE + 0x30),
-    UART0_IFLS   = (UART0_BASE + 0x34),
-    UART0_IMSC   = (UART0_BASE + 0x38),
-    UART0_RIS    = (UART0_BASE + 0x3C),
-    UART0_MIS    = (UART0_BASE + 0x40),
-    UART0_ICR    = (UART0_BASE + 0x44),
-    UART0_DMACR  = (UART0_BASE + 0x48),
-    UART0_ITCR   = (UART0_BASE + 0x80),
-    UART0_ITIP   = (UART0_BASE + 0x84),
-    UART0_ITOP   = (UART0_BASE + 0x88),
-    UART0_TDR    = (UART0_BASE + 0x8C),
-
-    // The offsets for Mailbox registers
-    MBOX_BASE    = 0xB880,
-    MBOX_READ    = (MBOX_BASE + 0x00),
-    MBOX_STATUS  = (MBOX_BASE + 0x18),
-    MBOX_WRITE   = (MBOX_BASE + 0x20)
-};
+void delay(int32_t count);
 
 // A Mailbox message with set clock rate of PL011 to 3MHz tag
 volatile unsigned int  __attribute__((aligned(16))) mbox[9] = {
     9*4, 0, 0x38002, 12, 8, 2, 3000000, 0 ,0
 };
 
-void uart_init(int raspi)
+void uart_init()
 {
-	mmio_init(raspi);
-
 	// Disable UART0.
 	mmio_write(UART0_CR, 0x00000000);
 	// Setup the GPIO pin 14 && 15.
@@ -105,18 +84,6 @@ void uart_init(int raspi)
 	// Divider = UART_CLOCK/(16 * Baud)
 	// Fraction part register = (Fractional part * 64) + 0.5
 	// Baud = 115200.
-
-	// For Raspi3 and 4 the UART_CLOCK is system-clock dependent by default.
-	// Set it to 3Mhz so that we can consistently set the baud rate
-	if (raspi >= 3) {
-		// UART_CLOCK = 30000000;
-		unsigned int r = (((unsigned int)(&mbox) & ~0xF) | 8);
-		// wait until we can talk to the VC
-		while ( mmio_read(MBOX_STATUS) & 0x80000000 ) { }
-		// send our message to property channel and wait for the response
-		mmio_write(MBOX_WRITE, r);
-		while ( (mmio_read(MBOX_STATUS) & 0x40000000) || mmio_read(MBOX_READ) != r ) { }
-	}
 
 	// Divider = 3000000 / (16 * 115200) = 1.627 = ~1.
 	mmio_write(UART0_IBRD, 1);
@@ -154,22 +121,24 @@ void uart_puts(const char* str)
 		uart_putc((unsigned char)str[i]);
 }
 
-#if defined(__cplusplus)
-extern "C" /* Use C linkage for kernel_main. */
-#endif
 
-#ifdef AARCH64
-// arguments for AArch64
-void kernel_main(uint64_t dtb_ptr32, uint64_t x1, uint64_t x2, uint64_t x3)
-#else
 // arguments for AArch32
 void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
-#endif
 {
 	// initialize UART for Raspi0
-	uart_init(0);
+	uart_init();
 	uart_puts("Hello, kernel World!\r\n");
 
-	while (1)
-		uart_putc(uart_getc());
+	while (1) {
+		const char car = uart_getc();
+		uart_putc(car);
+		uart_putc(car);
+	}
+}
+
+// Loop <delay> times in a way that the compiler won't optimize away
+void delay(int32_t count)
+{
+	asm volatile("__delay_%=: subs %[count], %[count], #1; bne __delay_%=\n"
+		 : "=r"(count): [count]"0"(count) : "cc");
 }
