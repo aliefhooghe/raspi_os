@@ -17,7 +17,7 @@ build/build/compile_commands.json: Makefile
 	python tools/generate_clangd_db.py --makefile Makefile --commands build/compile_commands.json
 
 run: build/kernel.elf
-	qemu-system-arm -m 512 -M raspi0 -serial mon:stdio -kernel build/kernel.elf
+	qemu-system-arm -m 512 -M raspi0 -serial mon:stdio -kernel build/kernel.elf -d int,cpu_reset,guest_errors
 
 clean:
 	rm build/*
