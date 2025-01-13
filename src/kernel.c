@@ -1,45 +1,32 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// The offsets for reach register.
-#define GPIO_BASE 0x200000
+#define GPFSEL1 0x20200004  // GPIO Function Select Register (for GPIO14 and GPIO15)
+#define GPSET0  0x2020001C  // GPIO Pin Output Set Register
+#define GPCLR0  0x20200028  // GPIO Pin Output Clear Register
+#define GPPUD       0x20200094  // GPIO Pull-up/down Register
+#define GPPUDCLK0   0x20200098  // GPIO Pull-up/down Clock Register
 
-// Controls actuation of pull up/down to ALL GPIO pins.
-#define GPPUD (GPIO_BASE + 0x94)
+// Registers for the mini UART (AUX_MU)
+#define AUX_ENABLES     0x20215004  // Enables auxiliary peripherals (SPI1, SPI2, mini UART)
+#define AUX_MU_IO_REG   0x20215040  // Data register (read/write for mini UART)
+#define AUX_MU_IER_REG  0x20215044  // Interrupt enable register
+#define AUX_MU_IIR_REG  0x20215048  // Interrupt identify register
+#define AUX_MU_LCR_REG  0x2021504C  // Line control register (data format settings)
+#define AUX_MU_MCR_REG  0x20215050  // Modem control register (not used here)
+#define AUX_MU_LSR_REG  0x20215054  // Line status register (transmit/receive state)
+#define AUX_MU_MSR_REG  0x20215058  // Modem status register (not used here)
+#define AUX_MU_SCRATCH  0x2021505C  // Scratch register (general-purpose storage, unused)
+#define AUX_MU_CNTL_REG 0x20215060  // Mini UART control register (enables TX/RX)
+#define AUX_MU_STAT_REG 0x20215064  // Mini UART status register
+#define AUX_MU_BAUD_REG 0x20215068  // Baud rate register
 
-// Controls actuation of pull up/down for specific GPIO pin.
-#define GPPUDCLK0 (GPIO_BASE + 0x98)
+// GPIO14  TXD0 and TXD1
+// GPIO15  RXD0 and RXD1
+// ALT function 5 for UART1
+// ALT function 0 for UART0
 
-// The base address for UART.
-#define UART0_BASE (GPIO_BASE + 0x1000) // for raspi4 0xFE201000, raspi2 & 3 0x3F201000, and 0x20201000 for raspi1
-
-// The offsets for reach register for the UART.
-#define UART0_DR     (UART0_BASE + 0x00)
-#define UART0_RSRECR (UART0_BASE + 0x04)
-#define UART0_FR     (UART0_BASE + 0x18)
-#define UART0_ILPR   (UART0_BASE + 0x20)
-#define UART0_IBRD   (UART0_BASE + 0x24)
-#define UART0_FBRD   (UART0_BASE + 0x28)
-#define UART0_LCRH   (UART0_BASE + 0x2C)
-#define UART0_CR     (UART0_BASE + 0x30)
-#define UART0_IFLS   (UART0_BASE + 0x34)
-#define UART0_IMSC   (UART0_BASE + 0x38)
-#define UART0_RIS    (UART0_BASE + 0x3C)
-#define UART0_MIS    (UART0_BASE + 0x40)
-#define UART0_ICR    (UART0_BASE + 0x44)
-#define UART0_DMACR  (UART0_BASE + 0x48)
-#define UART0_ITCR   (UART0_BASE + 0x80)
-#define UART0_ITIP   (UART0_BASE + 0x84)
-#define UART0_ITOP   (UART0_BASE + 0x88)
-#define UART0_TDR    (UART0_BASE + 0x8C)
-
-// The offsets for Mailbox registers
-#define MBOX_BASE    0xB880
-#define MBOX_READ    (MBOX_BASE + 0x00)
-#define MBOX_STATUS  (MBOX_BASE + 0x18)
-#define MBOX_WRITE   (MBOX_BASE + 0x20)
-
-#define MMIO_BASE 0x20000000
+// Baud rate calculation: ((250,000,000 / 115200) / 8) - 1 = 270
 
 static const char *welcome_message =
 "  ________        __       ___________        __       _____  ___           ______      ________\n"
@@ -51,19 +38,14 @@ static const char *welcome_message =
 "(_______/   (___/    \\___)     \\__|     (___/    \\___) \\___|\\____\\)       \\\"_____/    (_______/\n"
 ;
 
-
-
-
-// Memory-Mapped I/O output
-static inline void mmio_write(uint32_t reg, uint32_t data)
+static inline void mmio_write(uint32_t addr, uint32_t value)
 {
-    *(volatile uint32_t*)(MMIO_BASE + reg) = data;
+    *(volatile uint32_t*)addr = value;
 }
 
-// Memory-Mapped I/O input
-static inline uint32_t mmio_read(uint32_t reg)
+static inline uint32_t mmio_read(uint32_t addr)
 {
-    return *(volatile uint32_t*)(MMIO_BASE + reg);
+    return *((volatile uint32_t*)addr);
 }
 
 // Loop <delay> times in a way that the compiler won't optimize away
@@ -74,66 +56,70 @@ static inline void delay(int32_t count)
          : "=r"(count): [count]"0"(count) : "cc");
 }
 
-
-// A Mailbox message with set clock rate of PL011 to 3MHz tag
-volatile unsigned int  __attribute__((aligned(16))) mbox[9] = {
-    9*4, 0, 0x38002, 12, 8, 2, 3000000, 0 ,0
-};
-
-void uart_init()
+static void uart_init()
 {
-    // Disable UART0.
-    mmio_write(UART0_CR, 0x00000000);
-    // Setup the GPIO pin 14 && 15.
+    unsigned int ra;
 
-    // Disable pull up/down for all GPIO pins & delay for 150 cycles.
-    mmio_write(GPPUD, 0x00000000);
+    // Enable the mini UART
+    mmio_write(AUX_ENABLES, 1);
+
+    // Disable interrupts for the mini UART
+    mmio_write(AUX_MU_IER_REG, 0);
+
+    // Disable the transmitter and receiver
+    mmio_write(AUX_MU_CNTL_REG, 0);
+
+    // Configure the mini UART to 8-bit mode
+    mmio_write(AUX_MU_LCR_REG, 3);
+
+    // Clear the FIFO queues and set interrupt modes
+    mmio_write(AUX_MU_IIR_REG, 0xC6);
+
+    // Set baud rate to 115200
+    mmio_write(AUX_MU_BAUD_REG, 270);
+
+    // Configure GPIO14 as TXD and GPIO15 as RXD (ALT5 function)
+    ra = mmio_read(GPFSEL1);
+    ra &= ~((7 << 12) | (7 << 15));  // Clear bits 12-14 (GPIO14) and 15-17 (GPIO15)
+    ra |= (2 << 12) | (2 << 15);     // Set ALT5 function for GPIO14 (TXD) and GPIO15 (RXD)
+    mmio_write(GPFSEL1, ra);
+
+    // Optional: Disable pull-up/down resistors for GPIO14 and GPIO15
+    mmio_write(GPPUD, 0);
     delay(150);
-
-    // Disable pull up/down for pin 14,15 & delay for 150 cycles.
     mmio_write(GPPUDCLK0, (1 << 14) | (1 << 15));
     delay(150);
+    mmio_write(GPPUDCLK0, 0);
 
-    // Write 0 to GPPUDCLK0 to make it take effect.
-    mmio_write(GPPUDCLK0, 0x00000000);
-
-    // Clear pending interrupts.
-    mmio_write(UART0_ICR, 0x7FF);
-
-    // Set integer & fractional part of baud rate.
-    // Divider = UART_CLOCK/(16 * Baud)
-    // Fraction part register = (Fractional part * 64) + 0.5
-    // Baud = 115200.
-
-    // Divider = 3000000 / (16 * 115200) = 1.627 = ~1.
-    mmio_write(UART0_IBRD, 1);
-    // Fractional part register = (.627 * 64) + 0.5 = 40.6 = ~40.
-    mmio_write(UART0_FBRD, 40);
-
-    // Enable FIFO & 8 bit data transmission (1 stop bit, no parity).
-    mmio_write(UART0_LCRH, (1 << 4) | (1 << 5) | (1 << 6));
-
-    // Mask all interrupts.
-    mmio_write(UART0_IMSC, (1 << 1) | (1 << 4) | (1 << 5) | (1 << 6) |
-                           (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10));
-
-    // Enable UART0, receive & transfer part of UART.
-    mmio_write(UART0_CR, (1 << 0) | (1 << 8) | (1 << 9));
+    // Enable the transmitter (TX) and receiver (RX)
+    mmio_write(AUX_MU_CNTL_REG, 3);
 }
 
 void uart_putc(unsigned char c)
 {
-    // Wait for UART to become ready to transmit.
-    while ( mmio_read(UART0_FR) & (1 << 5) ) { }
-    mmio_write(UART0_DR, c);
+    // Wait until the transmitter is ready
+    while(1)
+    {
+        if(mmio_read(AUX_MU_LSR_REG) & 0x20) break;
+    }
+
+    // Write the character to the data register
+    mmio_write(AUX_MU_IO_REG, c);
 }
 
-unsigned char uart_getc()
+unsigned char uart_getc(void)
 {
-    // Wait for UART to have received something.
-    while ( mmio_read(UART0_FR) & (1 << 4) ) { }
-    return mmio_read(UART0_DR);
+    // Wait until data is available to read
+    while (1)
+    {
+        if ((mmio_read(AUX_MU_LSR_REG) & 0x01) != 0)
+            break; // Bit 0: Data ready
+    }
+
+    // Read the character from the data register
+    return (unsigned char)(mmio_read(AUX_MU_IO_REG) & 0xFF);
 }
+
 
 void uart_puts(const char* str)
 {
@@ -157,6 +143,10 @@ void uart_put_int(uint32_t x)
 // arguments for AArch32
 void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 {
+    (void)r0,
+    (void)r1,
+    (void)atags;
+
     // initialize UART for Raspi0
     uart_init();
 
@@ -172,7 +162,6 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
         else {
             uart_putc(car == '\r' ? '\n' : car);
         }
-
         car = uart_getc();
     } while (1);
 }
