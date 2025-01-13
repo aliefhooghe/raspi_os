@@ -18,7 +18,9 @@ build/build/compile_commands.json: Makefile
 
 run: build/kernel.elf
 	# enable aux uart on stdio
-	qemu-system-arm -m 512 -M raspi0 -kernel build/kernel.elf -d guest_errors -serial null -serial mon:stdio
+	@echo "Press ctrl+A X to quit emulation"
+	qemu-system-arm -display none -m 512 -M raspi0 -kernel build/kernel.elf -d guest_errors -serial null -serial mon:stdio
+
 
 clean:
 	rm build/*
