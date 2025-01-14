@@ -38,15 +38,8 @@ static const char *welcome_message =
 "(_______/   (___/    \\___)     \\__|     (___/    \\___) \\___|\\____\\)       \\\"_____/    (_______/\r\n"
 ;
 
-static inline void mmio_write(uint32_t addr, uint32_t value)
-{
-    *(volatile uint32_t*)addr = value;
-}
-
-static inline uint32_t mmio_read(uint32_t addr)
-{
-    return *((volatile uint32_t*)addr);
-}
+extern void mmio_write(uint32_t addr, uint32_t value);
+extern uint32_t mmio_read(uint32_t addr);
 
 // Loop <delay> times in a way that the compiler won't optimize away
 static inline void delay(int32_t count)
