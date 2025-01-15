@@ -1,6 +1,6 @@
 # Définir les variables
 build_dir := "build"
-cross_file := "cross_file.txt"
+cross_file := "raspi0.ini"
 kernel_elf := build_dir + "/kernel.elf"
 
 default:
