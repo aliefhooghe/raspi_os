@@ -40,16 +40,9 @@ static const char *welcome_message =
 
 extern void mmio_write(uint32_t addr, uint32_t value);
 extern uint32_t mmio_read(uint32_t addr);
+extern void cpu_delay(uint32_t count);
 
-// Loop <delay> times in a way that the compiler won't optimize away
-static inline void delay(int32_t count)
-{
-    asm volatile("__delay_%=: subs %[count], %[count], #1\n"
-           " bne __delay_%=\n"
-         : "=r"(count): [count]"0"(count) : "cc");
-}
-
-static void uart_init()
+static void uart_init(void)
 {
     unsigned int ra;
 
@@ -79,9 +72,9 @@ static void uart_init()
 
     // Optional: Disable pull-up/down resistors for GPIO14 and GPIO15
     mmio_write(GPPUD, 0);
-    delay(150);
+    cpu_delay(150);
     mmio_write(GPPUDCLK0, (1 << 14) | (1 << 15));
-    delay(150);
+    cpu_delay(150);
     mmio_write(GPPUDCLK0, 0);
 
     // Enable the transmitter (TX) and receiver (RX)
@@ -144,20 +137,18 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     uart_init();
 
     // print a welcome message ;)
-    // uart_puts(welcome_message);
+    uart_puts(welcome_message);
 
     char car = '\r';
     do {
-        // if (car == '\r')
-        // {
-        //     uart_puts("\r\nsatan ~ ");
-        // }
-        // else {
-        //     uart_putc(car);
-        // }
+        if (car == '\r')
+        {
+            uart_puts("\r\nsatan ~ ");
+        }
+        else {
+            uart_putc(car);
+        }
 
         car = uart_getc();
-        uart_putc(car);
-
     } while (1);
 }

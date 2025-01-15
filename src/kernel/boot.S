@@ -54,3 +54,9 @@ mmio_write:
 mmio_read:
     ldr r0,[r0]
     bx lr
+
+.globl cpu_delay
+cpu_delay:
+	subs r0, r0, #1
+	bne cpu_delay
+	bx lr
