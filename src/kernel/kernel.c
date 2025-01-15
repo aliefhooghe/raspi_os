@@ -144,17 +144,20 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     uart_init();
 
     // print a welcome message ;)
-    uart_puts(welcome_message);
+    // uart_puts(welcome_message);
 
     char car = '\r';
     do {
-        if (car == '\r')
-        {
-            uart_puts("\r\nsatan ~ ");
-        }
-        else {
-            uart_putc(car);
-        }
+        // if (car == '\r')
+        // {
+        //     uart_puts("\r\nsatan ~ ");
+        // }
+        // else {
+        //     uart_putc(car);
+        // }
+
         car = uart_getc();
+        uart_putc(car);
+
     } while (1);
 }

@@ -1,0 +1,15 @@
+[binaries]
+c = 'clang'
+ar = 'llvm-ar'
+objcopy = 'llvm-objcopy'
+strip = 'llvm-strip'
+
+[built-in options]
+c_args = ['--target=armv6m-none-eabi', '-mcpu=arm1176jzf-s', '-fpic', '-ffreestanding', '-nostdlib', '-Wall', '-Wextra']
+c_link_args = ['--target=armv6m-none-eabi', '-mcpu=arm1176jzf-s', '-nostdlib']
+
+[host_machine]
+system = 'none'
+cpu_family = 'arm'
+cpu = 'arm1176jzf-s'
+endian = 'little'
