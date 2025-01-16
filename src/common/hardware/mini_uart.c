@@ -77,6 +77,13 @@ uint8_t mini_uart_getc(void)
     return (unsigned char)(mmio_read(AUX_MU_IO_REG) & 0xFF);
 }
 
+uint32_t mini_uart_recv(uint8_t *data, uint32_t size)
+{
+    for (uint32_t i = 0; i < size; i++) {
+        data[i] = mini_uart_getc();
+    }
+    return size;
+}
 
 void mini_uart_puts(const char* str)
 {
