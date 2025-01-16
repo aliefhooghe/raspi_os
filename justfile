@@ -18,6 +18,9 @@ run_kernel: build
 run_kernel_pty: build
     qemu-system-arm -display none -m 512 -M raspi0 -kernel {{build_dir}}/kernel.elf -d guest_errors -serial null -serial pty
 
+run_serial_loader: build
+    qemu-system-arm -display none -m 512 -M raspi0 -kernel {{build_dir}}/serial_loader.elf -d guest_errors -serial null -serial mon:stdio
+
 run_serial_loader_pty: build
     qemu-system-arm -display none -m 512 -M raspi0 -kernel {{build_dir}}/serial_loader.elf -d guest_errors -serial null -serial pty
 

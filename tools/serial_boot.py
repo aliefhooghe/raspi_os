@@ -1,3 +1,4 @@
+import time
 import serial
 import argparse
 
@@ -23,7 +24,10 @@ def serial_send(port: serial.Serial, data: bytes):
     for idx, byte in enumerate(data):
         progression = int(100.0 * float(idx)/float(datasize))
 
-        print('\r⏳ [' + progression * '=', end=f'] ({idx+1}/{datasize})', )
+        print(
+            '\r⏳ [' + progression * '=',
+            end=' ' * (100 - progression) + f'] ({idx+1}/{datasize})',
+            flush=True)
 
         port.write(bytes([byte]))
         ack = port.read(1)

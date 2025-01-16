@@ -6,26 +6,13 @@ project(
 
 fs = import('fs')
 
-# Common sources
-
-common_sources = files(
-  'src/common/hardware/cpu.h',
-  'src/common/hardware/cpu.S',
-  'src/common/hardware/gpio.h',
-  'src/common/hardware/mini_uart.c',
-  'src/common/hardware/mini_uart.h',
-  'src/common/hardware/mmio.h',
-  'src/common/hardware/mmio.S'
-)
-common_include_dir = include_directories(
-  'src/common/'
-)
 
 # Serial Loader
 
 serial_loader_sources = files(
   'src/serial_loader/boot.S',
-  'src/serial_loader/loader.c'
+  'src/serial_loader/loader.c',
+  'src/serial_loader/loader.S'
 )
 serial_loader_linker_script = files(
   'src/serial_loader/linker.ld'
@@ -33,10 +20,9 @@ serial_loader_linker_script = files(
 
 serial_loader_elf = executable(
   'serial_loader.elf',
-  sources: serial_loader_sources + common_sources,
+  sources: serial_loader_sources,
   link_args: ['-T', serial_loader_linker_script[0].full_path()],
-  install: false,
-  include_directories: common_include_dir
+  install: false
 )
 
 serial_loader_img = custom_target(
@@ -51,7 +37,14 @@ serial_loader_img = custom_target(
 
 kernel_sources = files(
   'src/kernel/boot.S',
-  'src/kernel/kernel.c'
+  'src/kernel/kernel.c',
+  'src/kernel/hardware/cpu.h',
+  'src/kernel/hardware/cpu.S',
+  'src/kernel/hardware/gpio.h',
+  'src/kernel/hardware/mini_uart.c',
+  'src/kernel/hardware/mini_uart.h',
+  'src/kernel/hardware/mmio.h',
+  'src/kernel/hardware/mmio.S'
 )
 kernel_linker_script = files(
   'src/kernel/linker.ld'
@@ -59,10 +52,10 @@ kernel_linker_script = files(
 
 kernel_elf = executable(
   'kernel.elf',
-  sources: kernel_sources + common_sources,
+  sources: kernel_sources,
   link_args: ['-T', kernel_linker_script[0].full_path()],
   install: false,
-  include_directories: common_include_dir
+  include_directories: include_directories('src/kernel')
 )
 
 kernel_img = custom_target(

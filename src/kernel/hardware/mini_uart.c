@@ -52,7 +52,7 @@ void mini_uart_init(void)
 }
 
 
-void mini_uart_putc(unsigned char c)
+void __attribute__((section(".text.loader"))) mini_uart_putc(unsigned char c)
 {
     // Wait until the transmitter is ready
     while(1)
@@ -64,7 +64,7 @@ void mini_uart_putc(unsigned char c)
     mmio_write(AUX_MU_IO_REG, c);
 }
 
-uint8_t mini_uart_getc(void)
+uint8_t __attribute__((section(".text.loader"))) mini_uart_getc(void)
 {
     // Wait until data is available to read
     while (1)
@@ -77,7 +77,7 @@ uint8_t mini_uart_getc(void)
     return (unsigned char)(mmio_read(AUX_MU_IO_REG) & 0xFF);
 }
 
-uint32_t mini_uart_recv(uint8_t *data, uint32_t size)
+uint32_t __attribute__((section(".text.loader"))) mini_uart_recv(uint8_t *data, uint32_t size)
 {
     for (uint32_t i = 0; i < size; i++) {
         data[i] = mini_uart_getc();
@@ -85,15 +85,15 @@ uint32_t mini_uart_recv(uint8_t *data, uint32_t size)
     return size;
 }
 
-void mini_uart_puts(const char* str)
+void __attribute__((section(".text.loader"))) mini_uart_puts(const char* str)
 {
     for (uint32_t i = 0; str[i] != '\0'; i ++)
         mini_uart_putc((unsigned char)str[i]);
 }
 
-void mini_uart_put_int(uint32_t x)
+void __attribute__((section(".text.loader"))) mini_uart_put_int(uint32_t x)
 {
-    char result[12] = "";
+    char result[32] = "";
     int index = 11;
 
     while (x > 0) {
