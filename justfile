@@ -5,11 +5,18 @@ cross_file := "raspi0.ini"
 default:
   just --list
 
+# build tasks
+
 configure:
     meson setup {{build_dir}} --cross-file {{cross_file}}
 
 build:
     meson compile -C {{build_dir}}
+
+clean:
+    rm -rf {{build_dir}}
+
+# emulation
 
 run_kernel: build
     @echo "Press ctrl+A X to quit emulation"
@@ -25,5 +32,10 @@ run_serial_loader: build
 run_serial_loader_pty: build
     qemu-system-arm -display none -m 512 -M raspi0 -kernel {{build_dir}}/serial_loader.elf -d guest_errors -serial null -serial pty -s
 
-clean:
-    rm -rf {{build_dir}}
+# real hardware
+
+flash: build
+    python tools/serial_boot.py --device /dev/ttyACM0 --data {{build_dir}}//kernel.img
+
+run_kernel_raspi0: flash
+    minicom --device /dev/ttyACM0

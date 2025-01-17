@@ -23,6 +23,10 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     // initialize the mini UART
     mini_uart_init();
 
+    // wait a first input
+    mini_uart_puts("press a key...");
+    mini_uart_getc();
+
     // print a welcome message ;)
     mini_uart_puts(welcome_message);
 
