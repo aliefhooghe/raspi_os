@@ -39,3 +39,5 @@ flash: build
 
 run_kernel_raspi0: flash
     minicom --device /dev/ttyACM0
+    @echo 'reboot satan OS..'
+    @echo 'q' > /dev/ttyACM0
