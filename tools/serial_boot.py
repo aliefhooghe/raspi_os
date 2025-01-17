@@ -1,22 +1,34 @@
-import time
 import serial
 import argparse
 
 
 class SerialBootProtocol:
-    # => MAGIC (1 bytes)
+    # while not init
+    #   => INIT (1 bytes)
+    #   <= INIT_ACK (1bytes)
+    #
     # => SIZE (4 bytes)
     # for byte in bytes:
     #    => byte
     #    <= byte
-    # <= MAGIC (1 bytes)
-    MAGIC = 0xFF
+    # <= END (1 bytes)
+
+    INIT = 0xFA
+    INIT_ACK = 0xFB
+    END = 0xFC
+    END_ACK = 0xFD
 
 def serial_send(port: serial.Serial, data: bytes):
     datasize = len(data)
 
-    print('📡 initiate serial transfert.')
-    port.write(bytes([SerialBootProtocol.MAGIC]))
+    print('📡 initiate serial transfert ...')
+    while True:
+        port.write(bytes([SerialBootProtocol.INIT]))
+
+        init_ack = port.read(1)
+        if init_ack == bytes([SerialBootProtocol.INIT_ACK]):
+            print('✅ transfert initiated')
+            break
 
     print(f'🚀 sending {datasize} bytes...')
     port.write(datasize.to_bytes(4, byteorder='little'))
@@ -38,12 +50,13 @@ def serial_send(port: serial.Serial, data: bytes):
 
     print(f'\n💾 {datasize} where sent. Wait for final ack...')
     transfert_ack = port.read(1)
-    if transfert_ack == bytes([SerialBootProtocol.MAGIC]):
+    if transfert_ack == bytes([SerialBootProtocol.END]):
         print(f'🎉 received final ack !')
+        port.write(bytes([SerialBootProtocol.END_ACK]))
+        port.flush()
         print(f'✅ data transfert was succesfull.')
     else:
-        print(f'❌ final ack receipt failure')
-
+        print(f'❌ final ack receipt failure' + str(transfert_ack))
 
 
 def main():

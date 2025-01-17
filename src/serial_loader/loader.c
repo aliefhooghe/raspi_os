@@ -23,7 +23,11 @@
 #define AUX_MU_STAT_REG 0x20215064  // Mini UART status register
 #define AUX_MU_BAUD_REG 0x20215068  // Baud rate register
 
-#define UART_LOADER_MAGIC   0xFFu
+#define SERIAL_LOADER_INIT     0xFAu
+#define SERIAL_LOADER_INIT_ACK 0xFBu
+#define SERIAL_LOADER_END      0xFCu
+#define SERIAL_LOADER_END_ACK  0xFDu
+
 #define KERNEL_START_ADRESS 0x8000u
 #define KERNEL_MAX_SIZE     0x8000u
 
@@ -81,10 +85,18 @@ static void mini_uart_init(void)
     __mmio_write(AUX_MU_CNTL_REG, 3);
 }
 
+static void mini_uart_wait_tx_idle(void)
+{
+    // Wait until the transmitter is idle
+    while(1)
+    {
+        if(__mmio_read(AUX_MU_LSR_REG) & 0x40) break;
+    }
+}
 
 static void mini_uart_putc(unsigned char c)
 {
-    // Wait until the transmitter is ready
+    // Wait until the transmitter is ready to receive one byte
     while(1)
     {
         if(__mmio_read(AUX_MU_LSR_REG) & 0x20) break;
@@ -128,7 +140,8 @@ static void __memcpy(void *restrict dest, const void *restrict source, uint32_t 
 static uint32_t serial_load(uint8_t *buffer, uint32_t max_size)
 {
     // wait for the transmision start signal
-    while (mini_uart_getc() != UART_LOADER_MAGIC);
+    while (mini_uart_getc() != SERIAL_LOADER_INIT);
+    mini_uart_putc(SERIAL_LOADER_INIT_ACK);
 
     // receive size
     uint32_t datasize;
@@ -144,10 +157,16 @@ static uint32_t serial_load(uint8_t *buffer, uint32_t max_size)
         buffer[i] = byte;
     }
 
-    // send final ack
-    mini_uart_putc(UART_LOADER_MAGIC);
-
-    return datasize;
+    // send end signal
+    mini_uart_putc(SERIAL_LOADER_END);
+    if (mini_uart_getc() == SERIAL_LOADER_END_ACK)
+    {
+        return datasize;
+    }
+    else {
+        // something bad happened
+        return 0;
+    }
 }
 
 
@@ -178,14 +197,13 @@ void loader_main(uint32_t r0, uint32_t r1, uint32_t atags)
         // we are in the loader copy.
         // load the kernel from mini UART
         mini_uart_init();
-        const uint32_t kernel_size = serial_load(
-            (uint8_t*)KERNEL_START_ADRESS,
-            KERNEL_MAX_SIZE);
 
-        if (kernel_size == 0)
+        // try forever to reveive a kernel on serial
+        while (serial_load(
+            (uint8_t*)KERNEL_START_ADRESS,
+            KERNEL_MAX_SIZE) == 0)
         {
-            // hang if kernel was not received
-            while (1);
+            __cpu_delay(250);
         }
 
         // execute the kernel
