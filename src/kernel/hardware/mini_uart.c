@@ -64,6 +64,15 @@ void mini_uart_putc(unsigned char c)
     mmio_write(AUX_MU_IO_REG, c);
 }
 
+void mini_uart_wait_tx_idle(void)
+{
+    // Wait until the transmitter is idle
+    while(1)
+    {
+        if(mmio_read(AUX_MU_LSR_REG) & 0x40) break;
+    }
+}
+
 uint8_t mini_uart_getc(void)
 {
     // Wait until data is available to read
