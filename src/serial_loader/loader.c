@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-// GPÏO REGISTER
+// GPIO REGISTER
 #define GPFSEL1     0x20200004  // GPIO Function Select Register (for GPIO14 and GPIO15)
 #define GPSET0      0x2020001C  // GPIO Pin Output Set Register
 #define GPCLR0      0x20200028  // GPIO Pin Output Clear Register
@@ -23,8 +23,7 @@
 #define AUX_MU_STAT_REG 0x20215064  // Mini UART status register
 #define AUX_MU_BAUD_REG 0x20215068  // Baud rate register
 
-
-#define UART_LOADER_MAGIC   0x42u
+#define UART_LOADER_MAGIC   0xFFu
 #define KERNEL_START_ADRESS 0x8000u
 #define KERNEL_MAX_SIZE     0x8000u
 
@@ -128,12 +127,8 @@ static void __memcpy(void *restrict dest, const void *restrict source, uint32_t 
 
 static uint32_t serial_load(uint8_t *buffer, uint32_t max_size)
 {
-    // receive and check magic
-    const uint8_t magic = mini_uart_getc();
-    if (magic != UART_LOADER_MAGIC)
-    {
-        return 0;
-    }
+    // wait for the transmision start signal
+    while (mini_uart_getc() != UART_LOADER_MAGIC);
 
     // receive size
     uint32_t datasize;

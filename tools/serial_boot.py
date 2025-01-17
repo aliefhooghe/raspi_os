@@ -10,7 +10,7 @@ class SerialBootProtocol:
     #    => byte
     #    <= byte
     # <= MAGIC (1 bytes)
-    MAGIC = 0x42
+    MAGIC = 0xFF
 
 def serial_send(port: serial.Serial, data: bytes):
     datasize = len(data)
