@@ -1,5 +1,7 @@
 .cache
 build/
-doc/
+doc/references/
+doc/linux_image
+doc/*.pdf
 compile_commands.json
 __pycache__
