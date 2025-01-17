@@ -1,11 +1,7 @@
 
 
-.section ".text.loader"
+.section ".text"
 
-.globl __boot_kernel
-__boot_kernel:
-	mov r3, #0x8000
-	blx r3
 
 .globl __mmio_write
 __mmio_write:

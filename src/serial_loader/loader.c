@@ -1,3 +1,4 @@
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -27,11 +28,13 @@
 #define KERNEL_START_ADRESS 0x8000u
 #define KERNEL_MAX_SIZE     0x8000u
 
+#define LOADER_START_ADDRESS    0x7000u
+#define LOADER_MAX_SIZE         0x1000u
+
 // loader.S symbols
 extern void __mmio_write(uint32_t addr, uint32_t value);
 extern uint32_t __mmio_read(uint32_t addr);
 extern void __cpu_delay(uint32_t cycle_count);
-extern void __boot_kernel(void);
 
 static void mini_uart_init(void)
 {
@@ -80,7 +83,7 @@ static void mini_uart_init(void)
 }
 
 
-static void __attribute__((section(".text.loader"))) mini_uart_putc(unsigned char c)
+static void mini_uart_putc(unsigned char c)
 {
     // Wait until the transmitter is ready
     while(1)
@@ -92,7 +95,7 @@ static void __attribute__((section(".text.loader"))) mini_uart_putc(unsigned cha
     __mmio_write(AUX_MU_IO_REG, c);
 }
 
-static uint8_t __attribute__((section(".text.loader"))) mini_uart_getc(void)
+static uint8_t mini_uart_getc(void)
 {
     // Wait until data is available to read
     while (1)
@@ -105,7 +108,7 @@ static uint8_t __attribute__((section(".text.loader"))) mini_uart_getc(void)
     return (unsigned char)(__mmio_read(AUX_MU_IO_REG) & 0xFF);
 }
 
-static uint32_t __attribute__((section(".text.loader"))) mini_uart_recv(uint8_t *data, uint32_t size)
+static uint32_t mini_uart_recv(uint8_t *data, uint32_t size)
 {
     for (uint32_t i = 0; i < size; i++) {
         data[i] = mini_uart_getc();
@@ -113,7 +116,17 @@ static uint32_t __attribute__((section(".text.loader"))) mini_uart_recv(uint8_t 
     return size;
 }
 
-static uint32_t __attribute__((section(".text.loader"))) serial_load(uint8_t *buffer, uint32_t max_size)
+static void __memcpy(void *restrict dest, const void *restrict source, uint32_t size)
+{
+    uint8_t *dst = (uint8_t*)dest;
+    const uint8_t *src = (const uint8_t*)source;
+
+    for (uint32_t i = 0; i < size; ++i) {
+        dst[i] = src[i];
+    }
+}
+
+static uint32_t serial_load(uint8_t *buffer, uint32_t max_size)
 {
     // receive and check magic
     const uint8_t magic = mini_uart_getc();
@@ -144,23 +157,45 @@ static uint32_t __attribute__((section(".text.loader"))) serial_load(uint8_t *bu
 
 
 // arguments for AArch32
-void __attribute__((section(".text.loader"))) loader_main(uint32_t r0, uint32_t r1, uint32_t atags)
+void loader_main(uint32_t r0, uint32_t r1, uint32_t atags)
 {
     (void)r0,
     (void)r1,
     (void)atags;
 
-    // initialize mini UART
-    mini_uart_init();
+    // Get the current program counter
+    uint32_t pc;
+    asm volatile ("adr %0, ." : "=r" (pc));
 
-    // receive the kernel from serial
-    const uint32_t kernel_size = serial_load((uint8_t*)KERNEL_START_ADRESS, KERNEL_MAX_SIZE);
-    if (kernel_size == 0)
+    if (pc > KERNEL_START_ADRESS)
     {
-        // hang if kernel was not received
-        while (1);
+        // first run: copy the loader
+        __memcpy(
+            (void*)LOADER_START_ADDRESS,
+            (void*)KERNEL_START_ADRESS,
+            LOADER_MAX_SIZE);
+
+        // execute the copied loader
+        asm volatile("BX %0" : : "r"(LOADER_START_ADDRESS));
+    }
+    else
+    {
+        // we are in the loader copy.
+        // load the kernel from mini UART
+        mini_uart_init();
+        const uint32_t kernel_size = serial_load(
+            (uint8_t*)KERNEL_START_ADRESS,
+            KERNEL_MAX_SIZE);
+
+        if (kernel_size == 0)
+        {
+            // hang if kernel was not received
+            while (1);
+        }
+
+        // execute the kernel
+        asm volatile("BX %0" : : "r"(KERNEL_START_ADRESS));
     }
 
-    // pass to the kernel
-    __boot_kernel();
+
 }
