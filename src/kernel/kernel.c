@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "hardware/watchdog.h"
 #include "hardware/mini_uart.h"
 
 
@@ -35,6 +36,11 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
         if (car == '\r')
         {
             mini_uart_puts("\r\nsatan ~ ");
+        }
+        else if (car == 'q')
+        {
+            mini_uart_puts("\r\nreboot now !!\r\n");
+            watchdog_init(0x100);
         }
         else {
             mini_uart_putc(car);
