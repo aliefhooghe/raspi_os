@@ -3,9 +3,14 @@
 
 #include <stddef.h>
 
-void *memcpy(
+void *_memcpy(
     void *restrict destination,
     const void *restrict source,
     size_t size);
+
+void *_memset(
+    void *destination,
+    int c,
+    size_t n);
 
 #endif

@@ -1,8 +1,9 @@
 
 #include <stdint.h>
-#include <std/str.h>
 
-void *memcpy(
+#include "lib/str.h"
+
+void *_memcpy(
     void *restrict destination,
     const void *restrict source,
     size_t size)
@@ -15,4 +16,17 @@ void *memcpy(
     }
 
     return destination;
+}
+
+
+void *_memset(
+    void *destination,
+    int c,
+    size_t size)
+{
+    uint8_t *dst = (uint8_t*)destination;
+    for (uint32_t i = 0; i < size; ++i) {
+        dst[i] = c;
+    }
+    return dst;
 }
