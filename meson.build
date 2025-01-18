@@ -39,6 +39,9 @@ custom_target(
 kernel_sources = files(
   'src/kernel/boot.S',
   'src/kernel/kernel.c',
+  'src/kernel/lib/eabi_rt.c',
+  'src/kernel/lib/str.h',
+  'src/kernel/lib/str.c',
   'src/kernel/hardware/cpu.h',
   'src/kernel/hardware/cpu.S',
   'src/kernel/hardware/gpio.h',
