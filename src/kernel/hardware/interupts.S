@@ -17,12 +17,20 @@
 
 .section ".text"
 
+.globl _reset_handler
+.globl _undefined_handler
+.globl _svc_handler
+.globl _prefetch_abort
+.globl _data_abort
+.globl _reserved_handler
+.globl _irq_handler
+.globl _fiq_handler
+
 /**
  *	Interupt Handlers
  */
 
 // Reset
-.globl _reset_handler
 _reset_handler:
 	// Setup the stack.
 	mov sp, #0x8000
@@ -54,21 +62,48 @@ halt:
 	wfe
 	b halt
 
-// Unhandled interuptions
-.globl _undefined_handler
-.globl _svc_handler
-.globl _prefetch_abort
-.globl _data_abort
-.globl _reserved_handler
-.globl _irq_handler
-.globl _fiq_handler
-
-_undefined_handler:
 _svc_handler:
+    #   syscall number      : from lr
+    #   syscall arguments   : r0, r1
+    #
+
+    # save user registers on the stack
+    stmfd sp!, {r0-r12, lr}
+
+    mov r2, r0 // get 1st argument to r2
+    mov r3, r1 // get 2nd argument to r3
+
+    # Get syscall number in r0
+    ldr r0, [lr, #-4]
+    and r0, r0, #0xFF
+
+    # Get program status in r1
+    # When an exception (like SVC) occurs, the processor:
+    # - Saves processor state (CPSR) to SPSR.
+    # - Changes the current mode to supervisor mode (or another preferred mode).
+    # mrs  : Move Register from Status register
+    # spsr : Saved Program Status Register (mode, flags)
+    mrs r1, spsr
+
+    # call C interupt handler
+    bl software_interupt_handler
+
+    # restore user registers
+    ldmfd sp!, {r0-r12, lr}
+
+    subs pc, lr, #4
+
+_irq_handler:
+    # timers, etc.
+    # pc = lr - #4 (lr = return adress)
+    subs pc, lr, #4
+
+// Unhandled interuptions
+_undefined_handler:
 _prefetch_abort:
 _data_abort:
 _reserved_handler:
-_irq_handler:
+
 _fiq_handler:
     // Default handler: hang
     b .
