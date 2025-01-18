@@ -27,5 +27,7 @@ void mini_uart_putc(unsigned char c);
 void mini_uart_wait_tx_idle(void);
 void mini_uart_puts(const char* str);
 void mini_uart_put_int(uint32_t x);
+void mini_uart_put_hex(uint32_t x);
+void mini_uart_put_bin(uint32_t x);
 
 #endif

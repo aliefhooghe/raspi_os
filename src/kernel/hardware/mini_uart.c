@@ -102,12 +102,39 @@ void  mini_uart_puts(const char* str)
 
 void mini_uart_put_int(uint32_t x)
 {
-    char result[32] = "";
-    int index = 11;
+    char result[11] = "";
+    int index = 10;
 
     do {
         result[--index] = '0' + (x % 10);
         x /= 10;
+    } while (x > 0);
+
+    mini_uart_puts(result + index);
+}
+
+void mini_uart_put_hex(uint32_t x)
+{
+    static const char cars[] = "0123456789abcdef";
+    char result[9] = "";
+    int index = 8;
+
+    do {
+        result[--index] = cars[x & 0xf];
+        x >>= 4;
+    } while (x > 0);
+
+    mini_uart_puts(result + index);
+}
+
+void mini_uart_put_bin(uint32_t x)
+{
+    char result[33] = "";
+    int index = 32;
+
+    do {
+        result[--index] = '0' + (x & 0x1);
+        x >>= 1;
     } while (x > 0);
 
     mini_uart_puts(result + index);
