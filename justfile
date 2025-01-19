@@ -38,6 +38,6 @@ flash: build
     python tools/serial_boot.py --device /dev/ttyACM0 --data {{build_dir}}//kernel.img
 
 run_kernel_raspi0: flash
-    minicom --device /dev/ttyACM0
+    minicom --device /dev/ttyACM0 --color=on
     @echo 'reboot satan OS..'
     @echo 'q' > /dev/ttyACM0
