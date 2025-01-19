@@ -8,7 +8,6 @@
 #include "hardware/io_registers.h"
 #include "hardware/mini_uart.h"
 #include "hardware/mmio.h"
-#include "hardware/watchdog.h"
 
 
 static const char *welcome_message =
@@ -36,7 +35,7 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     mini_uart_init();
 
     // wait a first input
-    mini_uart_puts("[kernel] press a key...");
+    mini_uart_puts("[kernel] starting satan OS...\r\n[kernel] press a key...");
     mini_uart_getc();
 
     // print a welcome message ;)

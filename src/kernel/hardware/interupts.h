@@ -21,7 +21,8 @@
 #define IRQ2_UART_INT        0x02000000u // 1 << 25
 
 
-uint32_t syscall(
+int32_t syscall(
+    uint32_t syscall_num,
     uint32_t arg0,
     uint32_t arg1
 );

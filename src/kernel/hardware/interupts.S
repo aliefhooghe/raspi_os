@@ -95,19 +95,20 @@ hang: b hang
 
 
 _svc_handler:
-    #   syscall number      : from lr
-    #   syscall arguments   : r0, r1
-    #
+    //   svcc number        : from lr (not used for now)
+    //   syscall number     : r0
+    //   syscall arguments  : r1 = arg0, r2 = arg1
+    //
 
-    # save user registers on the stack
+    // save user registers on the stack
     stmfd sp!, {r1-r12, lr}
 
-    mov r2, r0 // get 1st argument to r2
-    mov r3, r1 // get 2nd argument to r3
+    mov r3, r2 // get arg1 to r3
+    mov r2, r1 // get arg0 to r2
 
-    // Get syscall number in r0
-    ldr r0, [lr, #-4]
-    and r0, r0, #0xFF
+    // not used anymore: Get svc number in r0
+    // ldr r0, [lr, #-4]
+    // and r0, r0, #0xFF
 
     // Get program status in r1
     // When an exception (like SVC) occurs, the processor:
@@ -118,6 +119,10 @@ _svc_handler:
     mrs r1, spsr
 
     // call C interupt handler
+    //  r0 = syscall_num
+    //  r1 = program_status
+    //  r2 = arg0
+    //  r3 = arg1
     bl software_interupt_handler
 
     // restore user registers
@@ -145,5 +150,7 @@ _fiq_handler:
 
     .globl syscall
 syscall:
-    svc #2
+    //   syscall number     : r0
+    //   syscall arguments  : r1 = arg0, r2 = arg1
+    svc #0
     bx lr
