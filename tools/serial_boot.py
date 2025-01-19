@@ -1,6 +1,6 @@
 import serial
 import argparse
-
+import time
 
 class SerialBootProtocol:
     # while not init
@@ -21,24 +21,36 @@ class SerialBootProtocol:
 def serial_send(port: serial.Serial, data: bytes):
     datasize = len(data)
 
-    print('📡 initiate serial transfert ...')
+    print('⏳ wait for device ...')
     while True:
-        port.write(bytes([SerialBootProtocol.INIT]))
 
         init_ack = port.read(1)
-        if init_ack == bytes([SerialBootProtocol.INIT_ACK]):
+
+        if len(init_ack) == 0:
+            # reached timeout
+            port.write(bytes([SerialBootProtocol.INIT]))
+        elif init_ack == bytes([SerialBootProtocol.INIT_ACK]):
             print('✅ transfert initiated')
             break
+        elif init_ack == bytes([SerialBootProtocol.INIT]):
+            port.write(bytes([SerialBootProtocol.INIT]))
+
 
     print(f'🚀 sending {datasize} bytes...')
     port.write(datasize.to_bytes(4, byteorder='little'))
 
+    start_time = time.time()
+    bytes_per_sec = 0.0
+
     for idx, byte in enumerate(data):
-        progression = int(100.0 * float(idx)/float(datasize))
+        # Compute stats
+        progression = int(80.0 * float(idx)/float(datasize))
+
+
 
         print(
-            '\r⏳ [' + progression * '=',
-            end=' ' * (100 - progression) + f'] ({idx+1}/{datasize})',
+            f'\r⏳ \033[31;1m' + progression * '█',
+            end=' ' * (80 - progression) + f'\033[0m {idx+1}/{datasize} - {bytes_per_sec} b/s',
             flush=True)
 
         port.write(bytes([byte]))
@@ -47,6 +59,11 @@ def serial_send(port: serial.Serial, data: bytes):
         if ack != bytes([byte]):
             print(f'\n❌ fatal ack error {ack} instead of {bytes([byte])}')
             raise Exception('ack error')
+
+        total_sent = idx + 1
+        time_spent = time.time() - start_time
+        bytes_per_sec = int(total_sent / time_spent)
+
 
     print(f'\n💾 {datasize} where sent. Wait for final ack...')
     transfert_ack = port.read(1)
@@ -79,7 +96,10 @@ def main():
     args = parser.parse_args()
 
     print(f'👹 Satan Serial Loader 👹')
-    port = serial.Serial(port=args.device, baudrate=115200)
+    port = serial.Serial(
+        port=args.device,
+        baudrate=115200,
+        timeout=0.5)
     with open(args.data, 'rb') as file:
         file_content = file.read()
         serial_send(port, data=file_content)
