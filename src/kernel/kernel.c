@@ -1,6 +1,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "user_init.h"
+
 #include "hardware/cpu.h"
 #include "hardware/interupts.h"
 #include "hardware/io_registers.h"
@@ -34,51 +36,55 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     mini_uart_init();
 
     // wait a first input
-    mini_uart_puts("press a key...");
+    mini_uart_puts("[kernel] press a key...");
     mini_uart_getc();
 
     // print a welcome message ;)
     mini_uart_puts(welcome_message);
 
-    mini_uart_puts("\r\nSystem informations:\r\n");
-    mini_uart_puts("OS   : satan\r\n");
-    mini_uart_puts("CPU  : arm1176jzf-s\r\n");
-    mini_uart_puts("GPU  : RTX 4090\r\n");
-    mini_uart_puts("RAM  : 42 To\r\n");
-    mini_uart_puts("Temp : 666°C\r\n");
-    mini_uart_puts("Mode : 0x");
+    mini_uart_puts("\r\n[kernel] System informations:\r\n");
+    mini_uart_puts("[kernel] OS   : satan\r\n");
+    mini_uart_puts("[kernel] CPU  : arm1176jzf-s\r\n");
+    mini_uart_puts("[kernel] GPU  : RTX 6090 Satanic Edition\r\n");
+    mini_uart_puts("[kernel] RAM  : 42 Go\r\n");
+    mini_uart_puts("[kernel] Temp : 666°C\r\n");
+    mini_uart_puts("[kernel] Mode : 0x");
     mini_uart_put_hex(cpu_mode);
     mini_uart_puts("\r\n\r\n");
 
     // enable irq globaly
     cpu_irq_enable();
+    mmio_write(REG__IRQ_ENABLE_1, IRQ1_AUX_INT);
 
+    // start user mode
+    mini_uart_puts("[kernel] call user mode !\r\n");
+    start_usermode();
 
-    char car = '\r';
-    do {
-        if (car == '\r')
-        {
-            mini_uart_puts("\r\nsatan ~ ");
-        }
-        else if (car == 'o')
-        {
-            // const uint32_t code = syscall(3, 2);
-            mini_uart_puts("\r\n enable aux (mini uart) interuptions ");
-            // enable aux (mini uart) interuptions
-            mmio_write(REG__IRQ_ENABLE_1, IRQ1_AUX_INT);
-            while (1) {
+    // char car = '\r';
+    // do {
+    //     if (car == '\r')
+    //     {
+    //         mini_uart_puts("\r\nsatan ~ ");
+    //     }
+    //     else if (car == 'o')
+    //     {
+    //         // const uint32_t code = syscall(3, 2);
+    //         mini_uart_puts("\r\n enable aux (mini uart) interuptions ");
+    //         // enable aux (mini uart) interuptions
+    //         mmio_write(REG__IRQ_ENABLE_1, IRQ1_AUX_INT);
+    //         while (1) {
 
-            }
-        }
-        else if (car == 'q')
-        {
-            mini_uart_puts("\r\nreboot now !!\r\n");
-            watchdog_init(0x100);
-        }
-        else {
-            mini_uart_putc(car);
-        }
+    //         }
+    //     }
+    //     else if (car == 'q')
+    //     {
+    //         mini_uart_puts("\r\nreboot now !!\r\n");
+    //         watchdog_init(0x100);
+    //     }
+    //     else {
+    //         mini_uart_putc(car);
+    //     }
 
-        car = mini_uart_getc();
-    } while (1);
+    //     car = mini_uart_getc();
+    // } while (1);
 }

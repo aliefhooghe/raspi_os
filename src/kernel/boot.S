@@ -1,5 +1,5 @@
 
-.section ".text"
+    .section ".text"
 
 // Entry point for the kernel.
 // r15 -> should begin execution at 0x8000.
@@ -14,7 +14,7 @@
  *	- The ARM processor begins by executing the instruction located at the address of the reset vector.
  *  - Using ldr ensure the handler address are absolute
  */
-.globl _start
+    .globl _start
 _start:
 _interupt_vector:
     ldr pc, reset_handler

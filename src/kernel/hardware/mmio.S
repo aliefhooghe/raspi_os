@@ -1,12 +1,12 @@
 
-.section ".text"
+    .section ".text"
 
-.globl mmio_write
+    .globl mmio_write
 mmio_write:
     str r1,[r0]
     bx lr
 
-.globl mmio_read
+    .globl mmio_read
 mmio_read:
     ldr r0,[r0]
     bx lr

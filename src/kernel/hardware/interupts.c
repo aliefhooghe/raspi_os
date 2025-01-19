@@ -2,6 +2,7 @@
 #include "hardware/mmio.h"
 #include "hardware/io_registers.h"
 #include "hardware/mini_uart.h"
+#include "hardware/cpu.h"
 
 uint32_t software_interupt_handler(
     uint32_t syscall_num,
@@ -12,7 +13,11 @@ uint32_t software_interupt_handler(
     (void)program_status;
     (void)arg0;
     (void)arg1;
-
+    const uint16_t cpu_mode = cpu_get_execution_mode();
+    mini_uart_puts("[kernel] handling syscall\r\n");
+    mini_uart_puts("[kernel] cpu mode: 0x");
+    mini_uart_put_hex(cpu_mode);
+    mini_uart_puts("\r\n");
     return syscall_num * 100 + 10 * arg0 + arg1;
 }
 
@@ -21,7 +26,11 @@ uint32_t software_interupt_handler(
 void irq_handler(void)
 {
     unsigned int rb,rc;
-    mini_uart_putc('X');
+
+    const uint16_t cpu_mode = cpu_get_execution_mode();
+    mini_uart_puts("[irq] cpu mode: 0x");
+    mini_uart_put_hex(cpu_mode);
+    mini_uart_puts("\r\n");
 
 
     // goal: empty the rx buffer

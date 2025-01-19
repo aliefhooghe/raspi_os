@@ -5,16 +5,16 @@
 @ 0x7E215054  => 0x20215054
 @ 0x7E00B000  => 0x2000B000
 
-.section ".text"
+    .section ".text"
 
-.globl _reset_handler
-.globl _undefined_handler
-.globl _svc_handler
-.globl _prefetch_abort
-.globl _data_abort
-.globl _reserved_handler
-.globl _irq_handler
-.globl _fiq_handler
+    .globl _reset_handler
+    .globl _undefined_handler
+    .globl _svc_handler
+    .globl _prefetch_abort
+    .globl _data_abort
+    .globl _reserved_handler
+    .globl _irq_handler
+    .globl _fiq_handler
 
 /**
  *	Interupt Handlers
@@ -41,35 +41,33 @@ _reset_handler:
     /**
      *  Setup the stacks for the different cpu modes
      *
-     *    - irq mode: sp = 0x00008000
-     *    - fiq mode: sp = 0x00004000
-     *    - sv  mode: sp = 0x08000000
+     *     FIQ stack:   0x00001000 -> 0x00000000: 4 KB
+     *     IRQ stack:   0x00002000 -> 0x00001000: 4 KB
+     *     SVC stack:   0x00003000 -> 0x00002000: 4 KB
+     *     USR stack:   0x00800000 -> 0x00700000: 1 MB
+     *
      */
 
-    // switch to mode IRQ
-    // PSR_IRQ_MODE = 0b10010 (0x12), PSR_FIQ_DIS = 0x40, PSR_IRQ_DIS = 0x80
-    // 0xD2 = (0x80 | 0x40 | 0x12)
-    mov r0, #0xD2
-    msr cpsr_c,r0
-    mov sp, #0x8000
-
-    // switch to mode FIQ (Fast Interrupt Mode)
+    // switch to mode FIQ (Fast Interrupt Mode) / no interupt
     // PSR_FIQ_MODE = 0b10001 (0x11), PSR_FIQ_DIS = 0x40, PSR_IRQ_DIS = 0x80
     // 0xD1 = (0x80 | 0x40 | 0x11)
     mov r0, #0xD1
     msr cpsr_c, r0
-    mov sp, #0x4000
+    mov sp, #0x00001000
 
-    // switch to supervisor mode
+    // switch to mode IRQ / no interupt
+    // PSR_IRQ_MODE = 0b10010 (0x12), PSR_FIQ_DIS = 0x40, PSR_IRQ_DIS = 0x80
+    // 0xD2 = (0x80 | 0x40 | 0x12)
+    mov r0, #0xD2
+    msr cpsr_c,r0
+    mov sp, #0x00002000
+
+    // switch to supervisor mode / no interupt
     // PSR_SVC_MODE = 0b10011 (0x13), PSR_FIQ_DIS = 0x40, PSR_IRQ_DIS = 0x80
     // 0xD3 = (0x80 | 0x40 | 0x13)
     mov r0, 0xD3
     msr cpsr_c, r0
-    mov sp, #0x8000000
-
-
-    bl kernel_main
-hang: b hang
+    mov sp, #0x00003000
 
 @ 	// Clear out bss.
 @ 	ldr r4, =__bss_start
@@ -90,15 +88,11 @@ hang: b hang
 @ 	blo 1b
 
 
+    bl kernel_main
+hang: b hang
 
-@ 	// Call kernel_main
-@ 	ldr r3, =kernel_main
-@ 	blx r3
 
-@ 	// halt
-@ halt:
-@ 	wfe
-@ 	b halt
+
 
 _svc_handler:
     #   syscall number      : from lr
@@ -106,39 +100,39 @@ _svc_handler:
     #
 
     # save user registers on the stack
-    @ stmfd sp!, {r1-r12, lr}
+    stmfd sp!, {r1-r12, lr}
 
-    @ mov r2, r0 // get 1st argument to r2
-    @ mov r3, r1 // get 2nd argument to r3
+    mov r2, r0 // get 1st argument to r2
+    mov r3, r1 // get 2nd argument to r3
 
-    @ // Get syscall number in r0
-    @ ldr r0, [lr, #-4]
-    @ and r0, r0, #0xFF
+    // Get syscall number in r0
+    ldr r0, [lr, #-4]
+    and r0, r0, #0xFF
 
-    @ // Get program status in r1
-    @ // When an exception (like SVC) occurs, the processor:
-    @ // - Saves processor state (CPSR) to SPSR.
-    @ // - Changes the current mode to supervisor mode (or another preferred mode).
-    @ // mrs  : Move Register from Status register
-    @ // spsr : Saved Program Status Register (mode, flags)
-    @ mrs r1, spsr
+    // Get program status in r1
+    // When an exception (like SVC) occurs, the processor:
+    // - Saves processor state (CPSR) to SPSR.
+    // - Changes the current mode to supervisor mode (or another preferred mode).
+    // mrs  : Move Register from Status register
+    // spsr : Saved Program Status Register (mode, flags)
+    mrs r1, spsr
 
-    @ // call C interupt handler
-    @ bl software_interupt_handler
+    // call C interupt handler
+    bl software_interupt_handler
 
-    @ // restore user registers
-    @ ldmfd sp!, {r1-r12, lr}
+    // restore user registers
+    ldmfd sp!, {r1-r12, lr}
 
-    subs pc, lr, #4
+    // return
+    movs pc, lr
 
 _irq_handler:
     // timers, etc.
-    // pc = lr - #4 (lr = return adress)
+    // pc = lr - #4 (lr = return adress): return from interupt
     stmfd sp!, {r0-r12, lr}
     bl irq_handler
     ldmfd sp!, {r0-r12, lr}
     subs pc, lr, #4
-
 
 // Unhandled interuptions
 _undefined_handler:
@@ -149,8 +143,7 @@ _fiq_handler:
     // Default handler: hang
     b .
 
-// TODO: to be tested.
-.globl syscall
+    .globl syscall
 syscall:
-    svc #1
+    svc #2
     bx lr

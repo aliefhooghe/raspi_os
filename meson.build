@@ -53,6 +53,9 @@ kernel_sources = files(
   'src/kernel/hardware/mini_uart.h',
   'src/kernel/hardware/mmio.h',
   'src/kernel/hardware/mmio.S',
+  'src/kernel/user_init.h',
+  'src/kernel/user_init.c',
+  'src/kernel/user_init.S',
   'src/kernel/hardware/watchdog.c',
   'src/kernel/hardware/watchdog.h'
 )
