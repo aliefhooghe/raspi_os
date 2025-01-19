@@ -19,8 +19,8 @@ void mini_uart_init(void)
     // Enable the mini UART
     mmio_write(AUX_ENABLES, 1);
 
-    // Disable interrupts for the mini UART
-    mmio_write(AUX_MU_IER_REG, 0);
+    // Enable rx interrupts
+    mmio_write(AUX_MU_IER_REG, 0x5);
 
     // Disable the transmitter and receiver
     mmio_write(AUX_MU_CNTL_REG, 0);

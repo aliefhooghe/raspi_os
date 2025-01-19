@@ -5,10 +5,6 @@
 
 extern void cpu_delay(uint32_t cycle_count);
 
-
-
-
-
 /**
  *  # APSR – Application Program Status Register
  *
@@ -27,6 +23,8 @@ extern void cpu_delay(uint32_t cycle_count);
  *   | 5      | T      | Thumb mode                              |
  *   | 4-0    | M      | cpu mode (see bellow)                   |
  *   +--------+--------+-----------------------------------------+
+ *
+ *   CPSR_C alias: bit 7-0 (CPSR Control)
  *
  *  # SPSR – Saved Program Status Register
  */

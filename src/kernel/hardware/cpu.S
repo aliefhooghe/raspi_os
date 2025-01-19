@@ -17,5 +17,5 @@ cpu_get_execution_mode:
 cpu_irq_enable:
     mrs r0, cpsr       // read Current Program Status Register
     bic r0, r0, #0x80  // clear bit 7: enable irq
-    msr cpsr_c,r0      // write Current Program Status Register
+    msr cpsr_c, r0     // write Program Status Register Control
     bx lr

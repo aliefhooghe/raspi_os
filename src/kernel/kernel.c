@@ -1,8 +1,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "hardware/watchdog.h"
+#include "hardware/cpu.h"
+#include "hardware/interupts.h"
 #include "hardware/mini_uart.h"
+#include "hardware/mmio.h"
+#include "hardware/watchdog.h"
 
 
 static const char *welcome_message =
@@ -21,6 +24,11 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     (void)r1,
     (void)atags;
 
+    const uint16_t cpu_mode = cpu_get_execution_mode();
+
+    // disable aux (mini uart) interuptions
+    mmio_write(IRQ_REG_DISABLE_1, IRQ1_AUX_INT);
+
     // initialize the mini UART
     mini_uart_init();
 
@@ -31,11 +39,35 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     // print a welcome message ;)
     mini_uart_puts(welcome_message);
 
+    mini_uart_puts("\r\nSystem informations:\r\n");
+    mini_uart_puts("OS   : satan\r\n");
+    mini_uart_puts("CPU  : arm1176jzf-s\r\n");
+    mini_uart_puts("GPU  : RTX 4090\r\n");
+    mini_uart_puts("RAM  : 42 To\r\n");
+    mini_uart_puts("Temp : 666°C\r\n");
+    mini_uart_puts("Mode : 0x");
+    mini_uart_put_hex(cpu_mode);
+    mini_uart_puts("\r\n\r\n");
+
+    // enable irq globaly
+    cpu_irq_enable();
+
+
     char car = '\r';
     do {
         if (car == '\r')
         {
             mini_uart_puts("\r\nsatan ~ ");
+        }
+        else if (car == 'o')
+        {
+            // const uint32_t code = syscall(3, 2);
+            mini_uart_puts("\r\n enable aux (mini uart) interuptions ");
+            // enable aux (mini uart) interuptions
+            mmio_write(IRQ_REG_ENABLE_1, IRQ1_AUX_INT);
+            while (1) {
+
+            }
         }
         else if (car == 'q')
         {
