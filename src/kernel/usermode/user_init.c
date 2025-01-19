@@ -61,16 +61,3 @@ void user_init(void)
         car = mini_uart_getc();
     } while (1);
 }
-
-
-    //     else if (car == 'o')
-    //     {
-    //         // const uint32_t code = syscall(3, 2);
-    //         mini_uart_puts("\r\n enable aux (mini uart) interuptions ");
-    //         // enable aux (mini uart) interuptions
-    //         mmio_write(REG__IRQ_ENABLE_1, IRQ1_AUX_INT);
-    //         while (1) {
-
-    //         }
-    //     }
-    //     else if (car == 'q')

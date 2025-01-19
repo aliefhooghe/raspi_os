@@ -2,7 +2,8 @@
 #define SATAN_SERIAL_LOADER_LIB_H_
 
 /**
- * A minimal tiny library for the serial bootloader
+ * A minimal tiny library for the serial bootloader. The mini uart is used
+ * by polling the rx register in order to avoid using interupts here.
  */
 
 #include <stdint.h>

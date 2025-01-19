@@ -1,5 +1,6 @@
 project(
     'Satan-OS', 'c',
+    version: '0.1',
     meson_version: '>=1.4.0',
     default_options: ['warning_level=3', 'optimization=2']
 )
@@ -37,13 +38,13 @@ custom_target(
 # Kernel
 
 kernel_sources = files(
-  'src/kernel/boot.S',
+  'src/kernel/hardware/boot.S',
   'src/kernel/kernel.c',
   'src/kernel/syscalls.c',
   'src/kernel/syscalls.h',
-  'src/kernel/user_init.c',
-  'src/kernel/user_init.h',
-  'src/kernel/user_init.S',
+  'src/kernel/usermode/user_init.c',
+  'src/kernel/usermode/user_init.h',
+  'src/kernel/usermode/user_init.S',
   'src/kernel/lib/eabi_rt.c',
   'src/kernel/lib/str.c',
   'src/kernel/lib/str.h',

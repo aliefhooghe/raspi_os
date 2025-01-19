@@ -1,15 +1,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "user_init.h"
-
 #include "hardware/cpu.h"
 #include "hardware/interupts.h"
 #include "hardware/io_registers.h"
 #include "hardware/mini_uart.h"
 #include "hardware/mmio.h"
 
-
+#include "usermode/user_init.h"
 
 static const char *welcome_message =
 "\x1b[31;1m\r\n"
@@ -25,7 +23,7 @@ static const char *welcome_message =
 
 
 
-#define USER_STACK 0x00800000u
+#define USER_STACK 0x00800000u // 0x00800000 -> 0x00700000: 1 MB
 
 void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 {

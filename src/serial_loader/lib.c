@@ -18,8 +18,8 @@ void *loader_memcpy(
 }
 
 // defined in lib.S
-extern void loader_mmio_write(uint32_t addr, uint32_t value);
-extern uint32_t loader_mmio_read(uint32_t addr);
+extern void loader_mmio_write(uintptr_t addr, uint32_t value);
+extern uint32_t loader_mmio_read(uintptr_t addr);
 
 // Registers for the GPIOs
 #define GPFSEL1     0x20200004  // GPIO Function Select Register (for GPIO14 and GPIO15)

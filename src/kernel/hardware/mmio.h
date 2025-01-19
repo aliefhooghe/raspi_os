@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-extern void mmio_write(uint32_t addr, uint32_t value);
-extern uint32_t mmio_read(uint32_t addr);
+extern void mmio_write(uintptr_t addr, uint32_t value);
+extern uint32_t mmio_read(uintptr_t addr);
 
 #endif

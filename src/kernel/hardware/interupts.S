@@ -33,10 +33,10 @@ _reset_handler:
      */
     mov r0, #0x8000  // data source
     mov r1, #0x0000  // data destination
-    ldmia r0!,{r2,r3,r4,r5,r6,r7,r8,r9} // load r2-r9 from *r0++
-    stmia r1!,{r2,r3,r4,r5,r6,r7,r8,r9} // store r2-r9 to *r1++ (8 registers * 4 byte = 32 bytes)
-    ldmia r0!,{r2,r3,r4,r5,r6,r7,r8,r9} // again, 32 more bytes => 64 bytes
-    stmia r1!,{r2,r3,r4,r5,r6,r7,r8,r9}
+    ldmia r0!, {r2,r3,r4,r5,r6,r7,r8,r9} // load r2-r9 from *r0++
+    stmia r1!, {r2,r3,r4,r5,r6,r7,r8,r9} // store r2-r9 to *r1++ (8 registers * 4 byte = 32 bytes)
+    ldmia r0!, {r2,r3,r4,r5,r6,r7,r8,r9} // again, 32 more bytes => 64 bytes
+    stmia r1!, {r2,r3,r4,r5,r6,r7,r8,r9}
 
     /**
      *  Setup the stacks for the different cpu modes
@@ -44,8 +44,6 @@ _reset_handler:
      *     FIQ stack:   0x00001000 -> 0x00000000: 4 KB
      *     IRQ stack:   0x00002000 -> 0x00001000: 4 KB
      *     SVC stack:   0x00003000 -> 0x00002000: 4 KB
-     *     USR stack:   0x00800000 -> 0x00700000: 1 MB
-     *
      */
 
     // switch to mode FIQ (Fast Interrupt Mode) / no interupt
@@ -69,25 +67,7 @@ _reset_handler:
     msr cpsr_c, r0
     mov sp, #0x00003000
 
-@ 	// Clear out bss.
-@ 	ldr r4, =__bss_start
-@ 	ldr r9, =__bss_end
-@ 	mov r5, #0
-@ 	mov r6, #0
-@ 	mov r7, #0
-@ 	mov r8, #0
-@ 	b       2f
-
-@ 1:
-@ 	// store multiple at r4.
-@ 	stmia r4!, {r5-r8}
-
-@ 	// If we are still below bss_end, loop.
-@ 2:
-@ 	cmp r4, r9
-@ 	blo 1b
-
-
+    // jump to kernel entrypoint
     bl kernel_main
 hang: b hang
 
@@ -95,10 +75,9 @@ hang: b hang
 
 
 _svc_handler:
-    //   svcc number        : from lr (not used for now)
-    //   syscall number     : r0
-    //   syscall arguments  : r1 = arg0, r2 = arg1
-    //
+    // svc number         : from lr (not used for now)
+    // syscall number     : r0
+    // syscall arguments  : r1 = arg0, r2 = arg1
 
     // save user registers on the stack
     stmfd sp!, {r1-r12, lr}
@@ -123,7 +102,7 @@ _svc_handler:
     //  r1 = program_status
     //  r2 = arg0
     //  r3 = arg1
-    bl software_interupt_handler
+    bl kernel_syscall_handler
 
     // restore user registers
     ldmfd sp!, {r1-r12, lr}
@@ -150,7 +129,7 @@ _fiq_handler:
 
     .globl syscall
 syscall:
-    //   syscall number     : r0
-    //   syscall arguments  : r1 = arg0, r2 = arg1
+    //  syscall number     : r0
+    //  syscall arguments  : r1 = arg0, r2 = arg1
     svc #0
     bx lr

@@ -12,9 +12,4 @@ typedef enum {
 #define SYSCALL_STATUS_OK   0
 #define SYSCALL_STATUS_ERR  (-1)
 
-int32_t kernel_syscall_handler(
-    syscall_num_t syscall_num,
-    uint32_t arg0, uint32_t arg1
-);
-
 #endif

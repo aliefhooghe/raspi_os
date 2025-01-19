@@ -46,8 +46,6 @@ def serial_send(port: serial.Serial, data: bytes):
         # Compute stats
         progression = int(80.0 * float(idx)/float(datasize))
 
-
-
         print(
             f'\r⏳ \033[31;1m' + progression * '█',
             end=' ' * (80 - progression) + f'\033[0m {idx+1}/{datasize} - {bytes_per_sec} b/s',

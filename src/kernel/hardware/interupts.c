@@ -1,24 +1,9 @@
-#include "syscalls.h"
+
 
 #include "hardware/cpu.h"
 #include "hardware/io_registers.h"
 #include "hardware/mini_uart.h"
 #include "hardware/mmio.h"
-
-int32_t software_interupt_handler(
-    uint32_t syscall_num,
-    uint32_t program_status,
-    uint32_t arg0, uint32_t arg1)
-{
-    (void)program_status;
-    const uint16_t cpu_mode = cpu_get_execution_mode();
-    mini_uart_puts("[kernel] handling software interupt\r\n");
-    mini_uart_puts("[kernel] cpu mode: 0x");
-    mini_uart_put_hex(cpu_mode);
-    mini_uart_puts("\r\n");
-    return kernel_syscall_handler(syscall_num, arg0, arg1);
-}
-
 
 void irq_handler(void)
 {
