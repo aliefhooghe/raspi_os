@@ -3,28 +3,6 @@
 
 #include <stdint.h>
 
-// harware interupt request
-#define IRQ_REG_BASE          0x2000B000u  // The base address for the ARM interrupt register
-#define IRQ_REG_PEND_BASE     0x2000B200u  // IRQ basic pending
-#define IRQ_REG_PEND_1        0x2000B204u  // IRQ pending 1
-#define IRQ_REG_PEND_2        0x2000B208u  // IRQ pending 2
-#define IRQ_REG_FIQ_CTL       0x2000B20Cu  // FIQ control
-#define IRQ_REG_ENABLE_1      0x2000B210u  // Enable IRQs 1
-#define IRQ_REG_ENABLE_2      0x2000B214u  // Enable IRQs 2
-#define IRQ_REG_ENABLE_BASIC  0x2000B218u  // Enable Basic IRQs
-#define IRQ_REG_DISABLE_1     0x2000B21Cu  // Disable IRQs 1
-#define IRQ_REG_DISABLE_2     0x2000B220u  // Disable IRQs 2
-#define IRQ_REG_DISABLE_BASIC 0x2000B224u  // Disable Basic IRQs
-
-/**
- * - IRQ_REG_ENABLE_1/2
- *      Writing a 1 to a bit will set the corresponding IRQ enable bit.
- *      All other IRQ enable bits are unaffected.
- * - IRQ_REG_DISABLE_1/2
- *      Writing a 1 to a bit will clear the corresponding IRQ enable bit.
- *      All other IRQ enable bits are unaffected.
- */
-
 // mask apply on ENABLE/DISABLE 1
 #define IRQ1_AUX_INT         0x20000000u // 1 << 29
 

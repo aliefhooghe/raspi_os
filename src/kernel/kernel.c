@@ -3,6 +3,7 @@
 
 #include "hardware/cpu.h"
 #include "hardware/interupts.h"
+#include "hardware/io_registers.h"
 #include "hardware/mini_uart.h"
 #include "hardware/mmio.h"
 #include "hardware/watchdog.h"
@@ -27,7 +28,7 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     const uint16_t cpu_mode = cpu_get_execution_mode();
 
     // disable aux (mini uart) interuptions
-    mmio_write(IRQ_REG_DISABLE_1, IRQ1_AUX_INT);
+    mmio_write(REG__IRQ_DISABLE_1, IRQ1_AUX_INT);
 
     // initialize the mini UART
     mini_uart_init();
@@ -64,7 +65,7 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
             // const uint32_t code = syscall(3, 2);
             mini_uart_puts("\r\n enable aux (mini uart) interuptions ");
             // enable aux (mini uart) interuptions
-            mmio_write(IRQ_REG_ENABLE_1, IRQ1_AUX_INT);
+            mmio_write(REG__IRQ_ENABLE_1, IRQ1_AUX_INT);
             while (1) {
 
             }

@@ -48,6 +48,7 @@ kernel_sources = files(
   'src/kernel/hardware/interupts.h',
   'src/kernel/hardware/interupts.c',
   'src/kernel/hardware/interupts.S',
+  'src/kernel/hardware/io_registers.h',
   'src/kernel/hardware/mini_uart.c',
   'src/kernel/hardware/mini_uart.h',
   'src/kernel/hardware/mmio.h',
