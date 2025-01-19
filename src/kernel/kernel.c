@@ -28,9 +28,6 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     const uint16_t cpu_mode = cpu_get_execution_mode();
 
-    // disable aux (mini uart) interuptions
-    mmio_write(REG__IRQ_DISABLE_1, IRQ1_AUX_INT);
-
     // initialize the mini UART
     mini_uart_init();
 
@@ -49,41 +46,15 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     mini_uart_puts("[kernel] Temp : 666°C\r\n");
     mini_uart_puts("[kernel] Mode : 0x");
     mini_uart_put_hex(cpu_mode);
-    mini_uart_puts("\r\n\r\n");
+    mini_uart_puts("\r\n");
 
     // enable irq globaly
     cpu_irq_enable();
-    mmio_write(REG__IRQ_ENABLE_1, IRQ1_AUX_INT);
+
+    // disable aux (mini uart) interuptions (using polling for now)
+    mmio_write(REG__IRQ_DISABLE_1, IRQ1_AUX_INT);
 
     // start user mode
     mini_uart_puts("[kernel] call user mode !\r\n");
     start_usermode();
-
-    // char car = '\r';
-    // do {
-    //     if (car == '\r')
-    //     {
-    //         mini_uart_puts("\r\nsatan ~ ");
-    //     }
-    //     else if (car == 'o')
-    //     {
-    //         // const uint32_t code = syscall(3, 2);
-    //         mini_uart_puts("\r\n enable aux (mini uart) interuptions ");
-    //         // enable aux (mini uart) interuptions
-    //         mmio_write(REG__IRQ_ENABLE_1, IRQ1_AUX_INT);
-    //         while (1) {
-
-    //         }
-    //     }
-    //     else if (car == 'q')
-    //     {
-    //         mini_uart_puts("\r\nreboot now !!\r\n");
-    //         watchdog_init(0x100);
-    //     }
-    //     else {
-    //         mini_uart_putc(car);
-    //     }
-
-    //     car = mini_uart_getc();
-    // } while (1);
 }
