@@ -39,15 +39,6 @@ custom_target(
 
 kernel_sources = files(
   'src/kernel/hardware/boot.S',
-  'src/kernel/kernel.c',
-  'src/kernel/syscalls.c',
-  'src/kernel/syscalls.h',
-  'src/kernel/usermode/user_init.c',
-  'src/kernel/usermode/user_init.h',
-  'src/kernel/usermode/user_init.S',
-  'src/kernel/lib/eabi_rt.c',
-  'src/kernel/lib/str.c',
-  'src/kernel/lib/str.h',
   'src/kernel/hardware/cpu.h',
   'src/kernel/hardware/cpu.S',
   'src/kernel/hardware/gpio.h',
@@ -60,7 +51,17 @@ kernel_sources = files(
   'src/kernel/hardware/mmio.h',
   'src/kernel/hardware/mmio.S',
   'src/kernel/hardware/watchdog.c',
-  'src/kernel/hardware/watchdog.h'
+  'src/kernel/hardware/watchdog.h',
+  'src/kernel/kernel.c',
+  'src/kernel/lib/eabi_rt.c',
+  'src/kernel/lib/str.c',
+  'src/kernel/lib/str.h',
+  'src/kernel/scheduler/task_context.h',
+  'src/kernel/syscalls.c',
+  'src/kernel/syscalls.h',
+  'src/kernel/usermode/user_init.c',
+  'src/kernel/usermode/user_init.h',
+  'src/kernel/usermode/user_init.S',
 )
 kernel_linker_script = files(
   'src/kernel/linker.ld'

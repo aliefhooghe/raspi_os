@@ -64,5 +64,5 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     // start user mode
     mini_uart_puts("[kernel] call user mode !\r\n");
-    start_usermode(USER_STACK);
+    start_usermode((uintptr_t)user_function, USER_STACK);
 }

@@ -16,7 +16,7 @@ static void print_cpu_mode(void)
 
 #define CONTINUE car='\r';continue
 
-void user_init(void)
+void user_function(void)
 {
     // starting user mode
     mini_uart_puts("[user] welcome in user mode\r\n");

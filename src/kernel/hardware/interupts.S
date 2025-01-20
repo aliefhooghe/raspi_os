@@ -43,7 +43,7 @@ _reset_handler:
      *
      *     FIQ stack:   0x00001000 -> 0x00000000: 4 KB
      *     IRQ stack:   0x00002000 -> 0x00001000: 4 KB
-     *     SVC stack:   0x00003000 -> 0x00002000: 4 KB
+     *     SVC stack:   0x00003000 -> 0x00002000: 4 KB  // should become bigger. TODO: CANARY test the ram
      */
 
     // switch to mode FIQ (Fast Interrupt Mode) / no interupt
@@ -106,6 +106,9 @@ _svc_handler:
 
     // restore user registers
     ldmfd sp!, {r1-r12, lr}
+
+    // note: here r1-r12, lr are restored from the previous values
+    // this could be from another place
 
     // return
     movs pc, lr
