@@ -1,20 +1,21 @@
+#include <stdint.h>
 
 #include "syscalls.h"
+
 #include "hardware/cpu.h"
 #include "hardware/mini_uart.h"
 #include "hardware/watchdog.h"
 
-typedef int32_t (*syscall_handler_t)(uint32_t arg0, uint32_t arg1);
 
+typedef int32_t (*syscall_handler_t)(uint32_t arg0, uint32_t arg1);
 
 /**
  *  System Call Handlers definition
  */
-static int32_t _syscall__dummy(uint32_t arg0, uint32_t arg1)
+static int32_t _syscall__yield(uint32_t arg0, uint32_t arg1)
 {
     (void)arg0;
     (void)arg1;
-
     return 42;
 }
 
@@ -32,8 +33,8 @@ static int32_t _syscall__reboot(uint32_t arg0, uint32_t arg1)
  */
 static syscall_handler_t _syscall_table[SYSCALL_COUNT] =
 {
-    [SYSCALL_DUMMY] = _syscall__dummy,
-    [SYSCALL_REBOOT] = _syscall__reboot
+    [SYSCALL_YIELD] = _syscall__yield,
+    [SYSCALL_REBOOT] = _syscall__reboot,
 };
 
 int32_t kernel_syscall_handler(

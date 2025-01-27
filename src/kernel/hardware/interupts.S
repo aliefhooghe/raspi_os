@@ -43,7 +43,7 @@ _reset_handler:
      *
      *     FIQ stack:   0x00001000 -> 0x00000000: 4 KB
      *     IRQ stack:   0x00002000 -> 0x00001000: 4 KB
-     *     SVC stack:   0x00003000 -> 0x00002000: 4 KB  // should become bigger. TODO: CANARY test the ram
+     *     SVC stack:   0x00003000 -> 0x00002000: 4 KB  // should become bigger. TODO: CANARY test the stack
      */
 
     // switch to mode FIQ (Fast Interrupt Mode) / no interupt
@@ -82,12 +82,9 @@ _svc_handler:
     // save user registers on the stack
     stmfd sp!, {r1-r12, lr}
 
+    // maintenant
     mov r3, r2 // get arg1 to r3
     mov r2, r1 // get arg0 to r2
-
-    // not used anymore: Get svc number in r0
-    // ldr r0, [lr, #-4]
-    // and r0, r0, #0xFF
 
     // Get program status in r1
     // When an exception (like SVC) occurs, the processor:
@@ -104,11 +101,25 @@ _svc_handler:
     //  r3 = arg1
     bl kernel_syscall_handler
 
-    // restore user registers
-    ldmfd sp!, {r1-r12, lr}
+    // save syscall status
+    push {r0}
 
-    // note: here r1-r12, lr are restored from the previous values
-    // this could be from another place
+    // get a pointer to the current task context (r0 take 4 bytes)
+    // TODO: put r0 in the context: does it even make sense ?
+    add r0, sp, #4
+
+    // get the task context to be restored
+    bl kernel_switch_task
+
+    // restore the next task context
+    ldmfd r0, {r1-r12, lr}
+
+    // restore syscall status
+    pop {r0}
+
+    // restore stack pointer
+    // r1-r12, lr = 4 * (12 + 1) = 52
+    add sp, sp, #52
 
     // return
     movs pc, lr

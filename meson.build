@@ -56,6 +56,8 @@ kernel_sources = files(
   'src/kernel/lib/eabi_rt.c',
   'src/kernel/lib/str.c',
   'src/kernel/lib/str.h',
+  'src/kernel/scheduler/scheduler.c',
+  'src/kernel/scheduler/scheduler.h',
   'src/kernel/scheduler/task_context.h',
   'src/kernel/syscalls.c',
   'src/kernel/syscalls.h',

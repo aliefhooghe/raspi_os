@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 typedef enum {
-    SYSCALL_DUMMY = 0,
+    SYSCALL_YIELD = 0,
     SYSCALL_REBOOT = 1,
     SYSCALL_COUNT
 } syscall_num_t;

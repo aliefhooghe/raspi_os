@@ -94,7 +94,7 @@ uint32_t mini_uart_recv(uint8_t *data, uint32_t size)
     return size;
 }
 
-void  mini_uart_puts(const char* str)
+void mini_uart_puts(const char* str)
 {
     for (uint32_t i = 0; str[i] != '\0'; i ++)
         mini_uart_putc((unsigned char)str[i]);
