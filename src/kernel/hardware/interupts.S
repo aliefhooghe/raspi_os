@@ -77,51 +77,61 @@ hang: b hang
 _svc_handler:
     // svc number         : from lr (not used for now)
     // syscall number     : r0
-    // syscall arguments  : r1 = arg0, r2 = arg1
+    // syscall arguments  : r1 = arg0, r2 = arg1 -> already good for kernel handler
 
-    // save user registers on the stack
+    // I - save the task context on the stack:
+
+    // I.1 - save user registers on the stack
     stmfd sp!, {r1-r12, lr}
 
-    // maintenant
-    mov r3, r2 // get arg1 to r3
-    mov r2, r1 // get arg0 to r2
-
-    // Get program status in r1
+    // I.2 - save program status on the stack
     // When an exception (like SVC) occurs, the processor:
     // - Saves processor state (CPSR) to SPSR.
     // - Changes the current mode to supervisor mode (or another preferred mode).
     // mrs  : Move Register from Status register
     // spsr : Saved Program Status Register (mode, flags)
-    mrs r1, spsr
+    mrs r3, spsr
+    push { r3 }
 
-    // call C interupt handler
+    // II - call the C syscall handler
     //  r0 = syscall_num
-    //  r1 = program_status
-    //  r2 = arg0
-    //  r3 = arg1
+    //  r1 = arg0
+    //  r2 = arg1
+    //  r3 is <unused>
     bl kernel_syscall_handler
 
-    // save syscall status
+    // III - schedule the next task
+
+    // III.1 save syscall status
     push {r0}
 
-    // get a pointer to the current task context (r0 take 4 bytes)
-    // TODO: put r0 in the context: does it even make sense ?
+    // III.2 get a pointer to the current task context (r0 take 4 bytes)
     add r0, sp, #4
 
-    // get the task context to be restored
+    // III.3 get the task context to be restored
     bl kernel_switch_task
 
-    // restore the next task context
+    // IV - restore the task context
+
+    // IV.1 - restore the saved program status register
+    ldr r1, [r0]
+    msr spsr, r1
+    add r0, r0, #4
+
+    // IV.2 - restore user registers on the stack
     ldmfd r0, {r1-r12, lr}
 
     // restore syscall status
+    // note: this is bad because a task could get a result from another sycall
+    // TODO: !!!!!!! FIX THIS !!!!!!!!
     pop {r0}
 
-    // restore stack pointer
-    // r1-r12, lr = 4 * (12 + 1) = 52
+    // restore supervisor stack pointer: free the saved context
+    // r1-r12, lr, spsr = 4 * (12 + 2) = 56
     add sp, sp, #52
 
-    // return
+    // return to the next scheduled task
+    // cpu status will be restored from spsr
     movs pc, lr
 
 _irq_handler:

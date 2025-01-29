@@ -6,6 +6,8 @@
 typedef struct {
 
     // task register which must be saved and restored when switching context
+    uint32_t spsr;  // saved status register
+
     // r0 is not saved as it is used to return the syscall status
     uint32_t r1;
     uint32_t r2;

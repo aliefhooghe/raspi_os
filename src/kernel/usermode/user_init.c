@@ -36,7 +36,7 @@ void user_function(void)
             case 's':
             {
                 mini_uart_puts("\r\n[user] syscall YIELD\r\n");
-                const int32_t status = syscall(SYSCALL_YIELD, 0, 0);
+                const int32_t status = syscall(SYSCALL_YIELD, 0x42, 0xFA);
                 mini_uart_puts("[user] syscall status: ");
                 mini_uart_put_uint(status);
                 CONTINUE;

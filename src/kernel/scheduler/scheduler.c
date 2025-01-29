@@ -1,6 +1,7 @@
 
 #include <stdint.h>
 
+#include "hardware/mini_uart.h"
 #include "lib/str.h"
 
 #include "scheduler.h"
@@ -41,6 +42,23 @@ const task_context_t *scheduler_switch_task(
     scheduler_t *scheduler,
     const task_context_t *current_context)
 {
+    mini_uart_printf("[kernel] save current task context:\r\n");
+
+    mini_uart_printf("[kernel] spsr = 0x%x\r\n", current_context->spsr);
+    mini_uart_printf("[kernel] r1   = 0x%x\r\n", current_context->r1);
+    mini_uart_printf("[kernel] r2   = 0x%x\r\n", current_context->r2);
+    mini_uart_printf("[kernel] r3   = 0x%x\r\n", current_context->r3);
+    mini_uart_printf("[kernel] r4   = 0x%x\r\n", current_context->r4);
+    mini_uart_printf("[kernel] r5   = 0x%x\r\n", current_context->r5);
+    mini_uart_printf("[kernel] r6   = 0x%x\r\n", current_context->r6);
+    mini_uart_printf("[kernel] r7   = 0x%x\r\n", current_context->r7);
+    mini_uart_printf("[kernel] r8   = 0x%x\r\n", current_context->r8);
+    mini_uart_printf("[kernel] r9   = 0x%x\r\n", current_context->r9);
+    mini_uart_printf("[kernel] r10  = 0x%x\r\n", current_context->r10);
+    mini_uart_printf("[kernel] r11  = 0x%x\r\n", current_context->r11);
+    mini_uart_printf("[kernel] r12  = 0x%x\r\n", current_context->r12);
+    mini_uart_printf("[kernel] lr   = 0x%x\r\n", current_context->lr);
+
     // save the current task context context
     _memcpy(
         &scheduler->task_contexts[scheduler->current_task],
