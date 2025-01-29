@@ -7,10 +7,10 @@
 #include "syscalls.h"
 #include <stdint.h>
 
-static void print_cpu_mode(void)
+static void print_cpu_mode(const char *name)
 {
     const uint16_t cpu_mode = cpu_get_execution_mode();
-    mini_uart_printf("[user] cpu mode: 0x%x", cpu_mode);
+    mini_uart_printf("[%s] cpu mode: 0x%x", name, cpu_mode);
 
 }
 
@@ -22,7 +22,7 @@ static void user_function(const char *name)
 {
     // starting user mode
     mini_uart_printf("[%s] welcome in user mode\r\n", name);
-    print_cpu_mode();
+    print_cpu_mode(name);
 
     //
     char car = '\r';
@@ -44,7 +44,7 @@ static void user_function(const char *name)
 
             case 'p':
                 mini_uart_puts("\r\n");
-                print_cpu_mode();
+                print_cpu_mode(name);
                 CONTINUE;
 
             case 'q':
@@ -55,7 +55,8 @@ static void user_function(const char *name)
             case 'z':
                 if (!_spawned) {
                     mini_uart_printf("\r\n[%s] spawn another task !\r\n", name);
-                    syscall(SYSCALL_SPAWN, (uint32_t)user_function2, 0x00700000u);
+                    const int32_t status = syscall(SYSCALL_SPAWN, (uint32_t)user_function2, 0x00700000u);
+                    mini_uart_printf("\r\n[%s] spawn syscall status: %x\r\n", name, status);
                     _spawned = 1;
                 }
                 else {

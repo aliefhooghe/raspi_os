@@ -99,10 +99,10 @@ _svc_handler:
 
     mov r3, sp              // save sp
 
-    mov r4, #0x13            // switch to the SVC cpu mode (0x13)
+    mov r4, #0x13           // switch to the SVC cpu mode (0x13)
     msr cpsr_c, r4
 
-    push { r3 }
+    push { r3 }             // push user mode stack pointer
 
     // II - call the C syscall handler
     //  r0 = syscall_num
@@ -113,47 +113,48 @@ _svc_handler:
 
     // III - schedule the next task
 
-    // III.1 save syscall status
+    // III.1 save syscall status: now there is a task context on the stack
     push {r0}
 
-    // III.2 get a pointer to the current task context (r0 take 4 bytes)
-    add r0, sp, #4
-
-    // III.3 get the task context to be restored
+    // III.2 call scheduler: pass the current context, and get the task context to be restored
+    mov r0, sp
     bl kernel_switch_task
+
+    // III.3 restore supervisor stack pointer: free the saved context
+    // task_context = r1-r12, lr, spsr, r0 = 4 * (12 + 3) = 60 bytes
+    add sp, sp, #60
 
     // IV - restore the task context
 
-    // IV.1 - restore the **user mode** stack pointer
+    // IV.1 - push the syscall status
+    ldr r1, [r0]            // load saved r0 (syscall return status) from context
+    push {r1}               // push status on the stack
+    add r0, r0, #4
+
+    // IV.2 - restore the **user mode** stack pointer
     ldr r1, [r0]            // load saved sp from context
     add r0, r0, #4
 
-    mov r2, #0x1F            // switch to the system cpu mode (0x1F)
+    mov r2, #0x1F           // switch to the system cpu mode (0x1F)
     msr cpsr_c, r2
 
     mov sp, r1              // restore sp
 
-    mov r2, #0x13            // switch to the SVC cpu mode (0x13)
+    mov r2, #0x13           // switch to the SVC cpu mode (0x13)
     msr cpsr_c, r2
 
-    // IV.2 - restore the saved program status register
+    // IV.3 - restore the saved program status register
     ldr r1, [r0]            // load saved spsr
     add r0, r0, #4
     msr spsr, r1            // restore spsr
 
-    // IV.3 - restore user registers on the stack
+    // IV.4 - restore user registers on the stack
     ldmfd r0, {r1-r12, lr}
 
-    // restore syscall status
-    // note: this is bad because a task could get a result from another sycall
-    // TODO: !!!!!!! FIX THIS !!!!!!!!
+    // IV.5 - restore syscall return status into r0
     pop {r0}
 
-    // restore supervisor stack pointer: free the saved context
-    // r1-r12, lr, spsr = 4 * (12 + 2) = 56
-    add sp, sp, #52
-
-    // return to the next scheduled task
+    // V - return to the next scheduled task
     // cpu status will be restored from spsr
     movs pc, lr
 

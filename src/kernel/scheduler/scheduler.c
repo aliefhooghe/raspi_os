@@ -38,7 +38,7 @@ task_id scheduler_add_task(
     new_context->spsr =
         CPU_CPSR_MODE_USER |
         CPU_CPSR_DISABLE_IRQ |
-        CPU_CPSR_MODE_FIQ;
+        CPU_CPSR_DISABLE_FIQ;
 
     return new_task;
 }
@@ -52,6 +52,7 @@ const task_context_t *scheduler_switch_task(
 
     mini_uart_printf("[kernel] spsr = 0x%x\r\n", current_context->spsr);
     mini_uart_printf("[kernel] sp   = 0x%x\r\n", current_context->sp);
+    mini_uart_printf("[kernel] r0   = 0x%x\r\n", current_context->r0);
     mini_uart_printf("[kernel] r1   = 0x%x\r\n", current_context->r1);
     mini_uart_printf("[kernel] r2   = 0x%x\r\n", current_context->r2);
     mini_uart_printf("[kernel] r3   = 0x%x\r\n", current_context->r3);

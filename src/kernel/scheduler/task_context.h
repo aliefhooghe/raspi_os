@@ -7,6 +7,8 @@
  * task register which must be saved and restored when switching context
  */
 typedef struct {
+    uint32_t r0;    // syscall return status
+
     uint32_t sp;    // stack pointer
     uint32_t spsr;  // saved status register
 
@@ -24,8 +26,6 @@ typedef struct {
     uint32_t r12;
 
     uint32_t lr;    // return address register
-
-    // Note: r0 is not saved as it is used to return the syscall status
 } task_context_t;
 
 

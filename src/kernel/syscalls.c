@@ -32,7 +32,7 @@ static int32_t _syscall__reboot(uint32_t arg0, uint32_t arg1)
 static int32_t _syscall__spawn(uint32_t proc_address, uint32_t stack_address)
 {
     kernel_scheduler_add_task(proc_address, stack_address);
-    return 0;
+    return 43;
 }
 
 /**
