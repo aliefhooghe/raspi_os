@@ -57,14 +57,14 @@ kernel_sources = files(
   'src/kernel/lib/eabi_rt.c',
   'src/kernel/lib/str.c',
   'src/kernel/lib/str.h',
-  'src/kernel/scheduler/scheduler.c',
   'src/kernel/scheduler/scheduler.h',
+  'src/kernel/scheduler/scheduler.c',
+  'src/kernel/scheduler/scheduler.S',
   'src/kernel/scheduler/task_context.h',
   'src/kernel/syscalls.c',
   'src/kernel/syscalls.h',
-  'src/kernel/usermode/user_init.c',
-  'src/kernel/usermode/user_init.h',
-  'src/kernel/usermode/user_init.S',
+  'src/kernel/usermode/usermode.c',
+  'src/kernel/usermode/usermode.h',
 )
 kernel_linker_script = files(
   'src/kernel/linker.ld'

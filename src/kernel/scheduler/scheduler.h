@@ -22,18 +22,15 @@ typedef struct {
 } scheduler_t;
 
 void scheduler_init(scheduler_t *scheduler);
-
+void scheduler_start(scheduler_t *scheduler);
 
 task_id scheduler_add_task(
     scheduler_t *scheduler,
     uintptr_t proc_address,
     uintptr_t stack_address);
 
-
-// API principale pour les svcs ?
 const task_context_t *scheduler_switch_task(
     scheduler_t *scheduler,
     const task_context_t *current_context);
-
 
 #endif

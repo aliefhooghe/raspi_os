@@ -10,13 +10,24 @@
 #include "task_context.h"
 
 
+extern void __set_task_context(task_context_t *current_context);
+
 
 void scheduler_init(scheduler_t *scheduler)
 {
     _memset(scheduler, 0, sizeof(*scheduler));
-    scheduler->task_count = 1u; // baaaaad. TODO: fixme
 }
 
+void scheduler_start(scheduler_t *scheduler)
+{
+    if (scheduler->task_count > 0) {
+        __set_task_context(&scheduler->task_contexts[0]);
+    }
+    else {
+        mini_uart_puts("[kernel] FATAL ERROR: no task to be started\r\n");
+        for (;;);
+    }
+}
 
 task_id scheduler_add_task(
     scheduler_t *scheduler,

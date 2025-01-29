@@ -10,7 +10,7 @@
 #include "scheduler/scheduler.h"
 #include "scheduler/task_context.h"
 
-#include "usermode/user_init.h"
+#include "usermode/usermode.h"
 
 static const char *welcome_message =
 "\x1b[31;1m\r\n"
@@ -52,6 +52,11 @@ task_id kernel_scheduler_add_task(uintptr_t proc_address, uintptr_t stack_addres
         &__kernel_state.scheduler, proc_address, stack_address);
 }
 
+static void kernel_scheduler_start(void)
+{
+    scheduler_start(&__kernel_state.scheduler);
+}
+
 void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 {
     (void)r0,
@@ -91,5 +96,6 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     // start user mode
     mini_uart_puts("[kernel] call user mode !\r\n");
-    start_usermode((uintptr_t)user_function1, USER_STACK_0);
+    kernel_scheduler_add_task((uintptr_t)user_function1, USER_STACK_0);
+    kernel_scheduler_start();
 }
