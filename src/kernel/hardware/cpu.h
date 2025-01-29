@@ -34,15 +34,19 @@ extern void cpu_delay(uint32_t cycle_count);
  * - The presence of particular processor modes and states depends on whether the processor implements the relevant architecture extension
  */
 //      Mode                Encoding       Function                                                                  SecurityState   PrivilegeLevel
-#define CPU_MODE_USER        0X10u      // Unprivileged mode in which most applications run                          Both            PL0
-#define CPU_MODE_FIQ         0X11u      // Entered on an FIQ interrupt exception                                     Both            PL1
-#define CPU_MODE_IRQ         0X12u      // Entered on an IRQ interrupt exception                                     Both            PL1
-#define CPU_MODE_SUPERVISOR  0X13u      // Entered on reset or when a Supervisor Call instruction (SVC) is executed  Both            PL1
-#define CPU_MODE_MONITOR     0X16u      // Implemented with Security Extensions.                                     Secure only     PL1
-#define CPU_MODE_ABORT       0X17u      // Entered on a memory access exception                                      Both            PL1
-#define CPU_MODE_HYP         0X1Au      // Implemented with Virtualization Extensions.                               Non-secure      PL2
-#define CPU_MODE_UNDEF       0X1Bu      // Entered when an undefined instruction executed                            Both            PL1
-#define CPU_MODE_SYSTEM      0X1Fu      // Privileged mode, sharing the register view with User mode                 Both            PL1
+#define CPU_CPSR_MODE_MASK        0X1Fu
+#define CPU_CPSR_MODE_USER        0X10u      // Unprivileged mode in which most applications run                          Both            PL0
+#define CPU_CPSR_MODE_FIQ         0X11u      // Entered on an FIQ interrupt exception                                     Both            PL1
+#define CPU_CPSR_MODE_IRQ         0X12u      // Entered on an IRQ interrupt exception                                     Both            PL1
+#define CPU_CPSR_MODE_SUPERVISOR  0X13u      // Entered on reset or when a Supervisor Call instruction (SVC) is executed  Both            PL1
+#define CPU_CPSR_MODE_MONITOR     0X16u      // Implemented with Security Extensions.                                     Secure only     PL1
+#define CPU_CPSR_MODE_ABORT       0X17u      // Entered on a memory access exception                                      Both            PL1
+#define CPU_CPSR_MODE_HYP         0X1Au      // Implemented with Virtualization Extensions.                               Non-secure      PL2
+#define CPU_CPSR_MODE_UNDEF       0X1Bu      // Entered when an undefined instruction executed                            Both            PL1
+#define CPU_CPSR_MODE_SYSTEM      0X1Fu      // Privileged mode, sharing the register view with User mode                 Both            PL1
+
+#define CPU_CPSR_DISABLE_FIQ      (1 << 6)
+#define CPU_CPSR_DISABLE_IRQ      (1 << 7)
 
 // a formatter: registre acceccibles par mode.
 // 10000 	User 	PC, R14 to R0, CPSR
@@ -52,8 +56,6 @@ extern void cpu_delay(uint32_t cycle_count);
 // 10111 	Abort 	PC, R14_abt, R13_abt, R12 to R0, CPSR, SPSR_abt
 // 11011 	Undefined 	PC, R14_und, R13_und, R12 to R0, CPSR, SPSR_und
 // 11111 	System 	PC, R14 to R0, CPSR
-
-
 
 
 void cpu_irq_enable(void);

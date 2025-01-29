@@ -1,10 +1,12 @@
 #include <stdint.h>
 
+#include "kernel.h"
 #include "syscalls.h"
 
 #include "hardware/cpu.h"
 #include "hardware/mini_uart.h"
 #include "hardware/watchdog.h"
+
 
 
 typedef int32_t (*syscall_handler_t)(uint32_t arg0, uint32_t arg1);
@@ -27,6 +29,11 @@ static int32_t _syscall__reboot(uint32_t arg0, uint32_t arg1)
     return 0;
 }
 
+static int32_t _syscall__spawn(uint32_t proc_address, uint32_t stack_address)
+{
+    kernel_scheduler_add_task(proc_address, stack_address);
+    return 0;
+}
 
 /**
  *  System Call Handler entrypoint
@@ -35,6 +42,7 @@ static syscall_handler_t _syscall_table[SYSCALL_COUNT] =
 {
     [SYSCALL_YIELD] = _syscall__yield,
     [SYSCALL_REBOOT] = _syscall__reboot,
+    [SYSCALL_SPAWN] = _syscall__spawn
 };
 
 int32_t kernel_syscall_handler(

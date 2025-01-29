@@ -52,6 +52,7 @@ kernel_sources = files(
   'src/kernel/hardware/mmio.S',
   'src/kernel/hardware/watchdog.c',
   'src/kernel/hardware/watchdog.h',
+    'src/kernel/kernel.h',
   'src/kernel/kernel.c',
   'src/kernel/lib/eabi_rt.c',
   'src/kernel/lib/str.c',

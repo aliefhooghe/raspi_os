@@ -7,8 +7,8 @@
  * task register which must be saved and restored when switching context
  */
 typedef struct {
-    uint32_t spsr;  // saved status register
     uint32_t sp;    // stack pointer
+    uint32_t spsr;  // saved status register
 
     uint32_t r1;    // user registers
     uint32_t r2;

@@ -1,7 +1,9 @@
 
 #include <stdint.h>
 
+#include "hardware/cpu.h"
 #include "hardware/mini_uart.h"
+
 #include "lib/str.h"
 
 #include "scheduler.h"
@@ -12,7 +14,7 @@
 void scheduler_init(scheduler_t *scheduler)
 {
     _memset(scheduler, 0, sizeof(*scheduler));
-    scheduler->task_count = 1u; // baaaaad
+    scheduler->task_count = 1u; // baaaaad. TODO: fixme
 }
 
 
@@ -31,8 +33,12 @@ task_id scheduler_add_task(
     task_context_t *new_context = &scheduler->task_contexts[new_task];
 
     _memset(new_context, 0, sizeof(task_context_t));
-    new_context->lr = proc_address;
     new_context->sp = stack_address;
+    new_context->lr = proc_address;
+    new_context->spsr =
+        CPU_CPSR_MODE_USER |
+        CPU_CPSR_DISABLE_IRQ |
+        CPU_CPSR_MODE_FIQ;
 
     return new_task;
 }

@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-void user_function(void);
+void user_function1(void);
+void user_function2(void);
 
 void start_usermode(
     uintptr_t function,
