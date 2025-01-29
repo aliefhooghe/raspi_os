@@ -10,10 +10,7 @@ void irq_handler(void)
     unsigned int rb,rc;
 
     const uint16_t cpu_mode = cpu_get_execution_mode();
-    mini_uart_puts("[irq] cpu mode: 0x");
-    mini_uart_put_hex(cpu_mode);
-    mini_uart_puts("\r\n");
-
+    mini_uart_printf("[irq] cpu mode: 0x%x\r\n", cpu_mode);
 
     // goal: empty the rx buffer
     // an interrupt has occurred, find out why

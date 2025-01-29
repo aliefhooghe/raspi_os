@@ -10,8 +10,8 @@
 static void print_cpu_mode(void)
 {
     const uint16_t cpu_mode = cpu_get_execution_mode();
-    mini_uart_puts("[user] cpu mode: 0x");
-    mini_uart_put_hex(cpu_mode);
+    mini_uart_printf("[user] cpu mode: 0x%x", cpu_mode);
+
 }
 
 #define CONTINUE car='\r';continue
@@ -38,7 +38,7 @@ void user_function(void)
                 mini_uart_puts("\r\n[user] syscall YIELD\r\n");
                 const int32_t status = syscall(SYSCALL_YIELD, 0, 0);
                 mini_uart_puts("[user] syscall status: ");
-                mini_uart_put_int(status);
+                mini_uart_put_uint(status);
                 CONTINUE;
             }
 

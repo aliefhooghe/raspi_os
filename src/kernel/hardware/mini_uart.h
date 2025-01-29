@@ -11,9 +11,12 @@ uint32_t mini_uart_recv(uint8_t *data, uint32_t size);
 
 void mini_uart_putc(unsigned char c);
 void mini_uart_wait_tx_idle(void);
+
 void mini_uart_puts(const char* str);
-void mini_uart_put_int(uint32_t x);
-void mini_uart_put_hex(uint32_t x);
-void mini_uart_put_bin(uint32_t x);
+void mini_uart_printf(const char *restrict format, ...);
+
+void mini_uart_put_uint(uint32_t x);
+void mini_uart_put_uint_hex(uint32_t x);
+void mini_uart_put_uint_bin(uint32_t x);
 
 #endif

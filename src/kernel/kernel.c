@@ -68,17 +68,14 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     // print a welcome message ;)
     mini_uart_puts(welcome_message);
 
+    const uint16_t cpu_mode = cpu_get_execution_mode();
     mini_uart_puts("\r\n[kernel] System informations:\r\n");
     mini_uart_puts("[kernel] OS   : satan\r\n");
     mini_uart_puts("[kernel] CPU  : arm1176jzf-s\r\n");
     mini_uart_puts("[kernel] GPU  : RTX 6090 Satanic Edition\r\n");
     mini_uart_puts("[kernel] RAM  : 42 Go\r\n");
     mini_uart_puts("[kernel] Temp : 666°C\r\n");
-    mini_uart_puts("[kernel] Mode : 0x");
-
-    const uint16_t cpu_mode = cpu_get_execution_mode();
-    mini_uart_put_hex(cpu_mode);
-    mini_uart_puts("\r\n");
+    mini_uart_printf("[kernel] Mode : 0x%x\r\n", cpu_mode);
 
     // enable irq globaly
     cpu_irq_enable();

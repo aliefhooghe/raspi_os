@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdarg.h>
 
 #include "hardware/mmio.h"
 #include "hardware/cpu.h"
@@ -96,11 +97,72 @@ uint32_t mini_uart_recv(uint8_t *data, uint32_t size)
 
 void mini_uart_puts(const char* str)
 {
-    for (uint32_t i = 0; str[i] != '\0'; i ++)
-        mini_uart_putc((unsigned char)str[i]);
+    char c;
+    while ((c = *(str++)) != '\0')
+    {
+        mini_uart_putc((unsigned char)c);
+    }
 }
 
-void mini_uart_put_int(uint32_t x)
+void mini_uart_printf(const char *restrict format, ...)
+{
+    va_list ap;
+    int escape = 0;
+    char c;
+
+    va_start(ap, format);
+    while ((c = *(format++)) != '\0') {
+        if (escape) {
+            switch (c) {
+                case 'u':
+                    {
+                        const uint32_t value = va_arg(ap, uint32_t);
+                        mini_uart_put_uint(value);
+                    }
+                    break;
+                case 'x':
+                    {
+                        const uint32_t value = va_arg(ap, uint32_t);
+                        mini_uart_put_uint_hex(value);
+                    }
+                    break;
+                case 'b':
+                    {
+                        const uint32_t value = va_arg(ap, uint32_t);
+                        mini_uart_put_uint_bin(value);
+                    }
+                    break;
+                case 's':
+                    {
+                        const char *str = va_arg(ap, const char*);
+                        mini_uart_puts(str);
+                    }
+                    break;
+                case 'c':
+                    {
+                        const char value = (char)va_arg(ap, int);
+                        mini_uart_putc(value);
+                    }
+                    break;
+
+                case '%':
+                default:
+                    mini_uart_putc('%');
+                    break;
+            }
+            escape = 0;
+        }
+        else if (c == '%') {
+            escape = 1;
+        }
+        else {
+            mini_uart_putc((unsigned char)c);
+        }
+    }
+    va_end(ap);
+}
+
+void mini_uart_put_uint(uint32_t x)
 {
     char result[11] = "";
     int index = 10;
@@ -113,7 +175,7 @@ void mini_uart_put_int(uint32_t x)
     mini_uart_puts(result + index);
 }
 
-void mini_uart_put_hex(uint32_t x)
+void mini_uart_put_uint_hex(uint32_t x)
 {
     static const char cars[] = "0123456789abcdef";
     char result[9] = "";
@@ -127,7 +189,7 @@ void mini_uart_put_hex(uint32_t x)
     mini_uart_puts(result + index);
 }
 
-void mini_uart_put_bin(uint32_t x)
+void mini_uart_put_uint_bin(uint32_t x)
 {
     char result[33] = "";
     int index = 32;
