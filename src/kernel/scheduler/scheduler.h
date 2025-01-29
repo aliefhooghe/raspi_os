@@ -5,7 +5,7 @@
 
 #include "task_context.h"
 
-#define SCHEDULER_MAX_TASK_COUNT 0x10u
+#define SCHEDULER_MAX_TASK_COUNT 0x6u
 
 typedef int32_t task_id;
 #define TASK_ERROR ((task_id)-1)
@@ -27,7 +27,8 @@ void scheduler_start(scheduler_t *scheduler);
 task_id scheduler_add_task(
     scheduler_t *scheduler,
     uintptr_t proc_address,
-    uintptr_t stack_address);
+    uintptr_t stack_address,
+    uint32_t param);
 
 const task_context_t *scheduler_switch_task(
     scheduler_t *scheduler,

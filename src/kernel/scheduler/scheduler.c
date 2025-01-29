@@ -32,7 +32,8 @@ void scheduler_start(scheduler_t *scheduler)
 task_id scheduler_add_task(
     scheduler_t *scheduler,
     uintptr_t proc_address,
-    uintptr_t stack_address)
+    uintptr_t stack_address,
+    uint32_t param)
 {
     if (scheduler->task_count >= SCHEDULER_MAX_TASK_COUNT)
     {
@@ -44,6 +45,7 @@ task_id scheduler_add_task(
     task_context_t *new_context = &scheduler->task_contexts[new_task];
 
     _memset(new_context, 0, sizeof(task_context_t));
+    new_context->r0 = param;
     new_context->sp = stack_address;
     new_context->lr = proc_address;
     new_context->spsr =

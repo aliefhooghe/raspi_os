@@ -46,10 +46,10 @@ const task_context_t *kernel_switch_task(const task_context_t *current_context)
     return scheduler_switch_task(&__kernel_state.scheduler, current_context);
 }
 
-task_id kernel_scheduler_add_task(uintptr_t proc_address, uintptr_t stack_address)
+task_id kernel_scheduler_add_task(uintptr_t proc_address, uintptr_t stack_address, uint32_t param)
 {
     return scheduler_add_task(
-        &__kernel_state.scheduler, proc_address, stack_address);
+        &__kernel_state.scheduler, proc_address, stack_address, param);
 }
 
 static void kernel_scheduler_start(void)
@@ -96,6 +96,6 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     // start user mode
     mini_uart_puts("[kernel] call user mode !\r\n");
-    kernel_scheduler_add_task((uintptr_t)user_function1, USER_STACK_0);
+    kernel_scheduler_add_task((uintptr_t)user_function, USER_STACK_0, 0);
     kernel_scheduler_start();
 }

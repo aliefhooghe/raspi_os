@@ -7,22 +7,25 @@
 #include "syscalls.h"
 #include <stdint.h>
 
-static void print_cpu_mode(const char *name)
+static void print_cpu_mode(uint32_t id)
 {
     const uint16_t cpu_mode = cpu_get_execution_mode();
-    mini_uart_printf("[%s] cpu mode: 0x%x", name, cpu_mode);
+    mini_uart_printf("[%u] cpu mode: 0x%x", id, cpu_mode);
 
 }
 
 #define CONTINUE car='\r';continue
 
-static volatile int _spawned = 0;
+uint32_t stack_address_by_id(uint32_t id)
+{
+    return 0x00800000u - id * 0x00100000u;
+}
 
-static void user_function(const char *name)
+void user_function(uint32_t id)
 {
     // starting user mode
-    mini_uart_printf("[%s] welcome in user mode\r\n", name);
-    print_cpu_mode(name);
+    mini_uart_printf("[%u] welcome in user mode\r\n", id);
+    print_cpu_mode(id);
 
     //
     char car = '\r';
@@ -31,37 +34,42 @@ static void user_function(const char *name)
         switch (car) {
 
             case '\r':
-                mini_uart_printf("\r\n[%s] satan ~ ", name);
+                mini_uart_printf("\r\n[%u] satan ~ ", id);
                 break;
 
             case 's':
             {
-                mini_uart_printf("\r\n[%s] syscall YIELD\r\n", name);
-                const int32_t status = syscall(SYSCALL_YIELD, 0x42, 0xFA);
-                mini_uart_printf("[%s] syscall status: %x", name, status);
+                mini_uart_printf("\r\n[%u] syscall YIELD\r\n", id);
+                const int32_t status = syscall(SYSCALL_YIELD, 0x42, 0xFA, 0);
+                mini_uart_printf("[%u] syscall status: %x", id, status);
                 CONTINUE;
             }
 
             case 'p':
                 mini_uart_puts("\r\n");
-                print_cpu_mode(name);
+                print_cpu_mode(id);
                 CONTINUE;
 
             case 'q':
-                mini_uart_printf("\r\n[%s] reboot now !!\r\n", name);
-                syscall(SYSCALL_REBOOT, 0, 0);
+                mini_uart_printf("\r\n[%u] reboot now !!\r\n", id);
+                syscall(SYSCALL_REBOOT, 0, 0, 0);
                 while (1); // hang.
 
             case 'z':
-                if (!_spawned) {
-                    mini_uart_printf("\r\n[%s] spawn another task !\r\n", name);
-                    const int32_t status = syscall(SYSCALL_SPAWN, (uint32_t)user_function2, 0x00700000u);
-                    mini_uart_printf("\r\n[%s] spawn syscall status: %x\r\n", name, status);
-                    _spawned = 1;
+            {
+                if (id == 0)
+                {
+                    const uint32_t new_task_id = id + 1u;
+                    const uint32_t new_task_stack = stack_address_by_id(new_task_id);
+                    mini_uart_printf("\r\n[%u] spawn task %u\r\n", id, new_task_id);
+                    const int32_t status = syscall(
+                        SYSCALL_SPAWN,
+                        (uint32_t)user_function,
+                        new_task_stack,
+                        new_task_id);
+                    mini_uart_printf("\r\n[%u] spawn syscall status: %x\r\n", id, status);
                 }
-                else {
-                    mini_uart_printf("\r\n[%s] ignore spawn request", name);
-                }
+            }
                 break;
 
             default:
@@ -72,14 +80,4 @@ static void user_function(const char *name)
 
         car = mini_uart_getc();
     } while (1);
-}
-
-void user_function1(void)
-{
-    user_function("user app1");
-}
-
-void user_function2(void)
-{
-    user_function("user app2");
 }

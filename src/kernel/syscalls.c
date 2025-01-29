@@ -9,29 +9,31 @@
 
 
 
-typedef int32_t (*syscall_handler_t)(uint32_t arg0, uint32_t arg1);
+typedef int32_t (*syscall_handler_t)(uint32_t arg0, uint32_t arg1, uint32_t arg2);
 
 /**
  *  System Call Handlers definition
  */
-static int32_t _syscall__yield(uint32_t arg0, uint32_t arg1)
+static int32_t _syscall__yield(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     (void)arg0;
     (void)arg1;
+    (void)arg2;
     return 42;
 }
 
-static int32_t _syscall__reboot(uint32_t arg0, uint32_t arg1)
+static int32_t _syscall__reboot(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     (void)arg0;
     (void)arg1;
+    (void)arg2;
     watchdog_init(0x100);
     return 0;
 }
 
-static int32_t _syscall__spawn(uint32_t proc_address, uint32_t stack_address)
+static int32_t _syscall__spawn(uint32_t proc_address, uint32_t stack_address, uint32_t param)
 {
-    kernel_scheduler_add_task(proc_address, stack_address);
+    kernel_scheduler_add_task(proc_address, stack_address, param);
     return 43;
 }
 
@@ -45,10 +47,7 @@ static syscall_handler_t _syscall_table[SYSCALL_COUNT] =
     [SYSCALL_SPAWN] = _syscall__spawn
 };
 
-int32_t kernel_syscall_handler(
-    syscall_num_t syscall_num,
-    uint32_t arg0,
-    uint32_t arg1)
+int32_t kernel_syscall_handler(syscall_num_t syscall_num, uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     const uint16_t cpu_mode = cpu_get_execution_mode();
     mini_uart_puts("[kernel] handling software interupt\r\n");
@@ -61,6 +60,6 @@ int32_t kernel_syscall_handler(
     else
     {
         syscall_handler_t handler = _syscall_table[syscall_num];
-        return handler(arg0, arg1);
+        return handler(arg0, arg1, arg2);
     }
 }

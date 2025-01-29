@@ -77,7 +77,7 @@ hang: b hang
 _svc_handler:
     // svc number         : from lr (not used for now)
     // syscall number     : r0
-    // syscall arguments  : r1 = arg0, r2 = arg1 -> already good for kernel handler
+    // syscall arguments  : r1 = arg0, r2 = arg1, r3 = arg2 -> already good for kernel handler
 
     // I - save the task context on the stack:
 
@@ -90,25 +90,25 @@ _svc_handler:
     // - Changes the current mode to supervisor mode (or another preferred mode).
     // mrs  : Move Register from Status register
     // spsr : Saved Program Status Register (mode, flags)
-    mrs r3, spsr
-    push { r3 }
+    mrs r4, spsr
+    push { r4 }
 
     // I.3 - save the **user mode** stack pointer
     mov r4, #0x1F            // switch to the system cpu mode (0x1F)
     msr cpsr_c, r4
 
-    mov r3, sp              // save sp
+    mov r5, sp              // save sp
 
     mov r4, #0x13           // switch to the SVC cpu mode (0x13)
     msr cpsr_c, r4
 
-    push { r3 }             // push user mode stack pointer
+    push { r5 }             // push user mode stack pointer
 
     // II - call the C syscall handler
     //  r0 = syscall_num
     //  r1 = arg0
     //  r2 = arg1
-    //  r3 is <unused>
+    //  r3 = arg2
     bl kernel_syscall_handler
 
     // III - schedule the next task

@@ -24,7 +24,8 @@
 int32_t syscall(
     uint32_t syscall_num,
     uint32_t arg0,
-    uint32_t arg1
+    uint32_t arg1,
+    uint32_t arg2
 );
 
 #endif
