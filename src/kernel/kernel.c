@@ -33,7 +33,7 @@ static struct {
 
 
 #define USER_STACK_0 0x00800000u // 0x00800000 -> 0x00700000: 1 MB
-#define USER_STACK_1 0x00800000u // 0x00700000 -> 0x00600000: 1 MB
+#define USER_STACK_1 0x00700000u // 0x00700000 -> 0x00600000: 1 MB
 
 
 static void kernel_init(void)

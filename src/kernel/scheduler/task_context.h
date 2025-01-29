@@ -3,13 +3,14 @@
 
 #include <stdint.h>
 
+/**
+ * task register which must be saved and restored when switching context
+ */
 typedef struct {
-
-    // task register which must be saved and restored when switching context
     uint32_t spsr;  // saved status register
+    uint32_t sp;    // stack pointer
 
-    // r0 is not saved as it is used to return the syscall status
-    uint32_t r1;
+    uint32_t r1;    // user registers
     uint32_t r2;
     uint32_t r3;
     uint32_t r4;
@@ -21,7 +22,10 @@ typedef struct {
     uint32_t r10;
     uint32_t r11;
     uint32_t r12;
-    uint32_t lr;
+
+    uint32_t lr;    // return address register
+
+    // Note: r0 is not saved as it is used to return the syscall status
 } task_context_t;
 
 

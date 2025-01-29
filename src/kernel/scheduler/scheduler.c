@@ -26,13 +26,13 @@ task_id scheduler_add_task(
         return TASK_ERROR;
     }
 
-    // clear the new task context.
+    // initialize the new task context
     const task_id new_task = scheduler->task_count++;
-    _memset(&scheduler->task_contexts[new_task], 0, sizeof(task_context_t));
+    task_context_t *new_context = &scheduler->task_contexts[new_task];
 
-    // set the return address to the function start
-    scheduler->task_contexts[new_task].lr = proc_address;
-    // how to set and pass the stack ?
+    _memset(new_context, 0, sizeof(task_context_t));
+    new_context->lr = proc_address;
+    new_context->sp = stack_address;
 
     return new_task;
 }
@@ -45,6 +45,7 @@ const task_context_t *scheduler_switch_task(
     mini_uart_printf("[kernel] save current task context:\r\n");
 
     mini_uart_printf("[kernel] spsr = 0x%x\r\n", current_context->spsr);
+    mini_uart_printf("[kernel] sp   = 0x%x\r\n", current_context->sp);
     mini_uart_printf("[kernel] r1   = 0x%x\r\n", current_context->r1);
     mini_uart_printf("[kernel] r2   = 0x%x\r\n", current_context->r2);
     mini_uart_printf("[kernel] r3   = 0x%x\r\n", current_context->r3);

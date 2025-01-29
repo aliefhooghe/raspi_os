@@ -84,7 +84,18 @@ _svc_handler:
     // I.1 - save user registers on the stack
     stmfd sp!, {r1-r12, lr}
 
-    // I.2 - save program status on the stack
+    // I.2 - save the **user mode** stack pointer
+    mov r4, 0x1F            // switch to the system cpu mode (0x1F)
+    msr cpsr_c, r4
+
+    mov r3, sp              // save sp
+
+    mov r4, 0x13            // switch to the SVC cpu mode (0x13)
+    msr cpsr_c, r4
+
+    push { r3 }
+
+    // I.3 - save program status on the stack
     // When an exception (like SVC) occurs, the processor:
     // - Saves processor state (CPSR) to SPSR.
     // - Changes the current mode to supervisor mode (or another preferred mode).
@@ -114,11 +125,23 @@ _svc_handler:
     // IV - restore the task context
 
     // IV.1 - restore the saved program status register
-    ldr r1, [r0]
-    msr spsr, r1
+    ldr r1, [r0]            // load saved spsr
+    add r0, r0, #4
+    msr spsr, r1            // restore spsr
+
+    // IV.2 - restore the **user mode** stack pointer
+    ldr r1, [r0]            // load saved sp from context
     add r0, r0, #4
 
-    // IV.2 - restore user registers on the stack
+    mov r2, 0x1F            // switch to the system cpu mode (0x1F)
+    msr cpsr_c, r2
+
+    mov sp, r1              // restore sp
+
+    mov r2, 0x13            // switch to the SVC cpu mode (0x13)
+    msr cpsr_c, r2
+
+    // IV.3 - restore user registers on the stack
     ldmfd r0, {r1-r12, lr}
 
     // restore syscall status
