@@ -1,3 +1,4 @@
+#include <stdint.h>
 
 #include "usermode.h"
 
@@ -5,7 +6,6 @@
 #include "hardware/interupts.h"
 #include "hardware/mini_uart.h"
 #include "syscalls.h"
-#include <stdint.h>
 
 static void print_cpu_mode(uint32_t id)
 {

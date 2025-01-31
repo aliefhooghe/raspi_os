@@ -6,6 +6,7 @@
 #include "hardware/cpu.h"
 #include "hardware/mini_uart.h"
 #include "hardware/watchdog.h"
+#include "scheduler/scheduler.h"
 
 
 
@@ -33,8 +34,14 @@ static int32_t _syscall__reboot(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 
 static int32_t _syscall__spawn(uint32_t proc_address, uint32_t stack_address, uint32_t param)
 {
-    kernel_scheduler_add_task(proc_address, stack_address, param);
-    return 43;
+    if (TASK_ERROR == kernel_scheduler_add_task(proc_address, stack_address, param))
+    {
+        return SYSCALL_STATUS_ERR;
+    }
+    else
+    {
+        return SYSCALL_STATUS_OK;
+    }
 }
 
 /**
