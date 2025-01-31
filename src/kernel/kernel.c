@@ -1,5 +1,8 @@
+
 #include <stddef.h>
 #include <stdint.h>
+
+#include "kernel.h"
 
 #include "hardware/cpu.h"
 #include "hardware/interupts.h"
@@ -8,7 +11,6 @@
 #include "hardware/mmio.h"
 
 #include "scheduler/scheduler.h"
-#include "scheduler/task_context.h"
 
 #include "usermode/usermode.h"
 
@@ -27,9 +29,7 @@ static const char *welcome_message =
 /**
  * Global kernel state
  */
-static struct {
-    scheduler_t scheduler;
-} __kernel_state;
+kernel_state_t __kernel_state;
 
 
 #define USER_STACK_0 0x00800000u // 0x00800000 -> 0x00700000: 1 MB
@@ -44,17 +44,6 @@ static void kernel_init(void)
 const task_context_t *kernel_switch_task(const task_context_t *current_context)
 {
     return scheduler_switch_task(&__kernel_state.scheduler, current_context);
-}
-
-task_id kernel_scheduler_add_task(uintptr_t proc_address, uintptr_t stack_address, uint32_t param)
-{
-    return scheduler_add_task(
-        &__kernel_state.scheduler, proc_address, stack_address, param);
-}
-
-static void kernel_scheduler_start(void)
-{
-    scheduler_start(&__kernel_state.scheduler);
 }
 
 void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
@@ -96,6 +85,9 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     // start user mode
     mini_uart_puts("[kernel] call user mode !\r\n");
-    kernel_scheduler_add_task((uintptr_t)user_function, USER_STACK_0, 0);
-    kernel_scheduler_start();
+    scheduler_add_task(
+        &__kernel_state.scheduler,
+        (uintptr_t)user_function, USER_STACK_0, 0);
+    scheduler_start(
+        &__kernel_state.scheduler);
 }

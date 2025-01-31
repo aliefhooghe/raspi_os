@@ -20,7 +20,7 @@
 #define IRQ2_PCM_INT         0x00800000u // 1 << 23
 #define IRQ2_UART_INT        0x02000000u // 1 << 25
 
-
+// perform a syscall
 int32_t syscall(
     uint32_t syscall_num,
     uint32_t arg0,
