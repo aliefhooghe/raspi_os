@@ -37,7 +37,7 @@ const task_context_t *scheduler_switch_task(
 int32_t scheduler_add_task(
     scheduler_t *scheduler,
     uintptr_t proc_address,
-    uintptr_t stack_address,
+    void* stack_address,
     uint32_t param
 );
 

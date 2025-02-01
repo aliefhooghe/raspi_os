@@ -113,7 +113,7 @@ const task_context_t *scheduler_switch_task(
 int32_t scheduler_add_task(
     scheduler_t *scheduler,
     uintptr_t proc_address,
-    uintptr_t stack_address,
+    void* stack_address,
     uint32_t param)
 {
 
@@ -133,7 +133,7 @@ int32_t scheduler_add_task(
     _memset(new_task, 0, sizeof(task_t));
     new_task->id = new_task_id;
     new_task->context.r0 = param;
-    new_task->context.sp = stack_address;
+    new_task->context.sp = (uint32_t)stack_address;
     new_task->context.lr = proc_address;
     new_task->context.spsr =
         CPU_CPSR_MODE_USER |

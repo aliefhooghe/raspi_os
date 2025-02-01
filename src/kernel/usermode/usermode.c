@@ -16,10 +16,10 @@ static void print_cpu_mode(uint32_t id)
 
 #define CONTINUE car='\r';continue
 
-uint32_t new_stack_address_by_pid(uint32_t id)
-{
-    return 0x00800000u - id * 0x00100000u;
-}
+// uint32_t new_stack_address_by_pid(uint32_t id)
+// {
+//     return 0x00800000u - id * 0x00100000u;
+// }
 
 void user_function(void)
 {
@@ -68,9 +68,8 @@ void user_function(void)
                 if (!spawned)
                 {
                     spawned = 1;
-                    const uint32_t new_task_stack = new_stack_address_by_pid(pid);
-                    mini_uart_printf("\r\n[%u] spawn new task with stack = %x\r\n", pid, new_task_stack);
-                    const int32_t status = usr_syscall_spawn((void*)user_function, (void*)new_task_stack, 0);
+                    mini_uart_printf("\r\n[%u] spawn new task\r\n", pid);
+                    const int32_t status = usr_syscall_spawn((void*)user_function, 0);
                     mini_uart_printf("\r\n[%u] spawn syscall status: %x\r\n", pid, status);
                 }
                 else {

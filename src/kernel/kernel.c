@@ -12,6 +12,7 @@
 #include "hardware/watchdog.h"
 
 
+#include "memory/allocator.h"
 #include "scheduler/scheduler.h"
 
 #include "usermode/usermode.h"
@@ -23,12 +24,15 @@ extern const char *__satan_fatal_error_banner;
  */
 kernel_state_t __kernel_state;
 
-
-#define USER_STACK_0 0x00900000u
+#define KERNEL_HEAP_BEGIN 0x00080000u
+#define KERNEL_HEAP_END   0x00800000u
 
 static void kernel_init(void)
 {
-    // memory_allocator_init(&__kernel_state.allocator);
+    memory_allocator_init(
+        &__kernel_state.allocator,
+        KERNEL_HEAP_BEGIN,
+        KERNEL_HEAP_END);
     scheduler_init(&__kernel_state.scheduler);
 }
 
@@ -76,9 +80,12 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     // start user mode
     mini_uart_puts("[kernel] call user mode !\r\n");
+
+    // bad: duplicated code
+    void *first_user_stack = memory_allocator_alloc(&__kernel_state.allocator, 0x1000u);
     scheduler_add_task(
         &__kernel_state.scheduler,
-        (uintptr_t)user_function, USER_STACK_0, 0);
+        (uintptr_t)user_function, first_user_stack, 0);
     scheduler_start(
         &__kernel_state.scheduler);
 }

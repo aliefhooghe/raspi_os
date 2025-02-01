@@ -6,25 +6,24 @@
 void memory_allocator_init(
     memory_allocator_t *allocator,
     uint32_t base,
-    uint32_t size)
+    uint32_t limit)
 {
-    allocator->limit = base;
     allocator->base = base;
-    allocator->size = size;
+    allocator->limit = limit;
+    allocator->cursor = base;
 }
 
 void *memory_allocator_alloc(memory_allocator_t *allocator, size_t size)
 {
-    const uint32_t max_limit = allocator->base + allocator->size;
-    const uint32_t new_limit = allocator->limit + size;
-    if (new_limit > max_limit)
+    const uint32_t new_cursor = allocator->cursor + size;
+    if (new_cursor > allocator->limit)
     {
         return NULL;
     }
     else
     {
-        const uint32_t result = allocator->limit;
-        allocator->limit = new_limit;
+        const uint32_t result = allocator->cursor;
+        allocator->cursor = new_cursor;
         return (void*)result;
     }
 }

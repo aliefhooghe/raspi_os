@@ -12,7 +12,7 @@
 
 // Memory layout
 #define KERNEL_START_ADRESS    0x8000u
-#define KERNEL_MAX_SIZE        0x8000u
+#define KERNEL_MAX_SIZE        0x8000u // 32.0KiB
 
 #define LOADER_START_ADDRESS   0x7000u
 #define LOADER_MAX_SIZE        0x1000u

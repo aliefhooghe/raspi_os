@@ -3,11 +3,11 @@
 
 #include <stdint.h>
 
-// #include "memory/allocator.h"
+#include "memory/allocator.h"
 #include "scheduler/scheduler.h"
 
 typedef struct {
-    // memory_allocator_t allocator;
+    memory_allocator_t allocator;
     scheduler_t scheduler;
 } kernel_state_t;
 

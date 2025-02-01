@@ -6,7 +6,7 @@
 
 int32_t usr_syscall_yield(void);
 int32_t usr_syscall_reboot(void);
-int32_t usr_syscall_spawn(void* proc_address, void* stack_address, uint32_t param);
+int32_t usr_syscall_spawn(void* proc_address, uint32_t param);
 int32_t usr_syscall_exit(int32_t status);
 // int32_t usr_syscall_read(void);
 // int32_t usr_syscall_write(void);

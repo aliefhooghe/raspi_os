@@ -6,14 +6,14 @@
 
 typedef struct {
     uint32_t base;
-    uint32_t size;
+    uint32_t cursor;
     uint32_t limit;
 } memory_allocator_t;
 
 void memory_allocator_init(
     memory_allocator_t *allocator,
     uint32_t base,
-    uint32_t size);
+    uint32_t limit);
 
 void *memory_allocator_alloc(
     memory_allocator_t *allocator,
