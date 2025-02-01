@@ -14,6 +14,8 @@ typedef enum {
     // SYSCALL_OPEN,
     // SYSCALL_CLOSE,
 
+    SYSCALL_GETPID,
+
     SYSCALL_COUNT
 } syscall_num_t;
 

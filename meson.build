@@ -68,6 +68,9 @@ kernel_sources = files(
   'src/kernel/syscalls.h',
   'src/kernel/usermode/usermode.c',
   'src/kernel/usermode/usermode.h',
+  'src/kernel/usermode/usr_syscalls.c',
+  'src/kernel/usermode/usr_syscalls.h',
+  'src/kernel/usermode/usr_syscalls.S',
 )
 kernel_linker_script = files(
   'src/kernel/linker.ld'

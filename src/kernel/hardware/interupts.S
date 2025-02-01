@@ -143,10 +143,3 @@ _reserved_handler:
 _fiq_handler:
     // Default handler: hang
     b .
-
-    .globl syscall
-syscall:
-    //  syscall number     : r0
-    //  syscall arguments  : r1 = arg0, r2 = arg1
-    svc #0
-    bx lr
