@@ -43,7 +43,8 @@ static int32_t _syscall__reboot(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 
 static int32_t _syscall__spawn(uint32_t proc_address, uint32_t stack_address, uint32_t param)
 {
-    if (TASK_ERROR == scheduler_add_task(&__kernel_state.scheduler, proc_address, stack_address, param))
+    const int32_t pid = scheduler_add_task(&__kernel_state.scheduler, proc_address, stack_address, param);
+    if (pid < 0)
     {
         return SYSCALL_STATUS_ERR;
     }
@@ -55,11 +56,22 @@ static int32_t _syscall__spawn(uint32_t proc_address, uint32_t stack_address, ui
 
 static int32_t _syscall__exit(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
+    (void)arg1;
+    (void)arg2;
+    const int32_t status = arg0;
+    (void)status;
+    scheduler_stop_current_task(&__kernel_state.scheduler);
+    return SYSCALL_STATUS_OK;
+}
+
+static int32_t _syscall__getpid(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
     (void)arg0;
     (void)arg1;
     (void)arg2;
-    return SYSCALL_STATUS_ERR;
+    return scheduler_get_current_task_id(&__kernel_state.scheduler);
 }
+
 
 /**
  *  System Call Handler entrypoint
@@ -75,6 +87,8 @@ static syscall_handler_t _syscall_table[SYSCALL_COUNT] =
     // [SYSCALL_WRITE] = _syscall__write,
     // [SYSCALL_OPEN] = _syscall__open,
     // [SYSCALL_CLOSE] = _syscall__close,
+
+    [SYSCALL_GETPID] = _syscall__getpid
 };
 
 int32_t kernel_syscall_handler(

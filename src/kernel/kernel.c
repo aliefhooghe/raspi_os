@@ -9,25 +9,26 @@
 #include "hardware/io_registers.h"
 #include "hardware/mini_uart.h"
 #include "hardware/mmio.h"
+#include "hardware/watchdog.h"
+
 
 #include "scheduler/scheduler.h"
 
 #include "usermode/usermode.h"
 
 extern const char *__satan_welcome_banner;
-
+extern const char *__satan_fatal_error_banner;
 /**
  * Global kernel state
  */
 kernel_state_t __kernel_state;
 
 
-#define USER_STACK_0 0x00800000u // 0x00800000 -> 0x00700000: 1 MB
-#define USER_STACK_1 0x00700000u // 0x00700000 -> 0x00600000: 1 MB
-
+#define USER_STACK_0 0x00900000u
 
 static void kernel_init(void)
 {
+    // memory_allocator_init(&__kernel_state.allocator);
     scheduler_init(&__kernel_state.scheduler);
 }
 
@@ -80,4 +81,12 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
         (uintptr_t)user_function, USER_STACK_0, 0);
     scheduler_start(
         &__kernel_state.scheduler);
+}
+
+void kernel_fatal_error(const char *reason)
+{
+    mini_uart_puts(__satan_fatal_error_banner);
+    mini_uart_printf("[kernel] Fatal Satan failure:  %s\n\n[kernel] press a key...\r\n", reason);
+    mini_uart_getc();
+    watchdog_init(0x100);
 }

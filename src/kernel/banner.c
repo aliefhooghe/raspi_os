@@ -56,7 +56,5 @@ const char *__satan_fatal_error_banner =
 "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢷⣾⡿⠁⠈⣿⠛⠀⠀⠀⠀⠀⠀⠀\r\n"
 "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠋⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠀\r\n"
 "\r\n"
-"    FATAL SATAN FAILURE !\r\n"
-"\r\n"
 "\x1b[0m"
 ;

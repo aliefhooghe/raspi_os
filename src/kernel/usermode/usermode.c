@@ -16,20 +16,19 @@ static void print_cpu_mode(uint32_t id)
 
 #define CONTINUE car='\r';continue
 
-uint32_t stack_address_by_id(uint32_t id)
+uint32_t new_stack_address_by_pid(uint32_t id)
 {
     return 0x00800000u - id * 0x00100000u;
 }
 
-void user_function(uint32_t id)
+void user_function(void)
 {
-    mini_uart_printf("-- start user function ---\r\n");
-    int32_t pid = id; //usr_syscall_getpid();
+    int32_t pid = usr_syscall_getpid();
     int spawned = 0;
 
     // starting user mode
-    mini_uart_printf("[%u] welcome in user mode\r\n", id);
-    print_cpu_mode(id);
+    mini_uart_printf("[%u] welcome in user mode\r\n", pid);
+    print_cpu_mode(pid);
 
     //
     char car = '\r';
@@ -40,6 +39,11 @@ void user_function(uint32_t id)
             case '\r':
                 mini_uart_printf("\r\n[%u] satan ~ ", pid);
                 break;
+
+            case 'x':
+                mini_uart_printf("\r\n[%u] quit task now !!\r\n", pid);
+                usr_syscall_exit(0);
+                while (1); // hang.
 
             case 's':
             {
@@ -64,11 +68,10 @@ void user_function(uint32_t id)
                 if (!spawned)
                 {
                     spawned = 1;
-                    const uint32_t new_task_stack = stack_address_by_id(pid + 1);
+                    const uint32_t new_task_stack = new_stack_address_by_pid(pid);
                     mini_uart_printf("\r\n[%u] spawn new task with stack = %x\r\n", pid, new_task_stack);
-                    const int32_t status = usr_syscall_spawn((void*)user_function, (void*)new_task_stack, pid + 1);
+                    const int32_t status = usr_syscall_spawn((void*)user_function, (void*)new_task_stack, 0);
                     mini_uart_printf("\r\n[%u] spawn syscall status: %x\r\n", pid, status);
-
                 }
                 else {
                     mini_uart_printf("\r\n[%u] no spawn !!\r\n", pid);

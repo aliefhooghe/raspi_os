@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-void user_function(uint32_t id);
+void user_function(void);
 
 #endif

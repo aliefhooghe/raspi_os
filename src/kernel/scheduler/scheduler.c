@@ -1,6 +1,7 @@
 
 #include <stdint.h>
 
+#include "kernel.h"
 #include "hardware/cpu.h"
 #include "hardware/mini_uart.h"
 
@@ -12,6 +13,38 @@
 
 extern void __set_task_context(task_context_t *current_context);
 
+static int32_t _scheduler_task_index_by_pid(
+    scheduler_t *scheduler,
+    int32_t pid)
+{
+    for (uint32_t index = 0u; index < scheduler->task_count; index++) {
+        if (scheduler->tasks[index].id == pid)
+            return index;
+    }
+
+    return -1;
+}
+
+static void mini_uart_print_context(const task_context_t *context)
+{
+    mini_uart_printf("[kernel] spsr = 0x%x\r\n", context->spsr);
+    mini_uart_printf("[kernel] sp   = 0x%x\r\n", context->sp);
+    mini_uart_printf("[kernel] r0   = 0x%x\r\n", context->r0);
+    mini_uart_printf("[kernel] r1   = 0x%x\r\n", context->r1);
+    mini_uart_printf("[kernel] r2   = 0x%x\r\n", context->r2);
+    mini_uart_printf("[kernel] r3   = 0x%x\r\n", context->r3);
+    mini_uart_printf("[kernel] r4   = 0x%x\r\n", context->r4);
+    mini_uart_printf("[kernel] r5   = 0x%x\r\n", context->r5);
+    mini_uart_printf("[kernel] r6   = 0x%x\r\n", context->r6);
+    mini_uart_printf("[kernel] r7   = 0x%x\r\n", context->r7);
+    mini_uart_printf("[kernel] r8   = 0x%x\r\n", context->r8);
+    mini_uart_printf("[kernel] r9   = 0x%x\r\n", context->r9);
+    mini_uart_printf("[kernel] r10  = 0x%x\r\n", context->r10);
+    mini_uart_printf("[kernel] r11  = 0x%x\r\n", context->r11);
+    mini_uart_printf("[kernel] r12  = 0x%x\r\n", context->r12);
+    mini_uart_printf("[kernel] lr   = 0x%x\r\n", context->lr);
+
+}
 
 void scheduler_init(scheduler_t *scheduler)
 {
@@ -21,75 +54,112 @@ void scheduler_init(scheduler_t *scheduler)
 void scheduler_start(scheduler_t *scheduler)
 {
     if (scheduler->task_count > 0) {
-        __set_task_context(&scheduler->task_contexts[0]);
+        __set_task_context(&scheduler->tasks[0].context);
     }
     else {
-        mini_uart_puts("[kernel] FATAL ERROR: no task to be started\r\n");
-        for (;;);
+        kernel_fatal_error("no task to be started");
     }
 }
-
-task_id scheduler_add_task(
-    scheduler_t *scheduler,
-    uintptr_t proc_address,
-    uintptr_t stack_address,
-    uint32_t param)
-{
-    if (scheduler->task_count >= SCHEDULER_MAX_TASK_COUNT)
-    {
-        return TASK_ERROR;
-    }
-
-    // initialize the new task context
-    const task_id new_task = scheduler->task_count++;
-    task_context_t *new_context = &scheduler->task_contexts[new_task];
-
-    _memset(new_context, 0, sizeof(task_context_t));
-    new_context->r0 = param;
-    new_context->sp = stack_address;
-    new_context->lr = proc_address;
-    new_context->spsr =
-        CPU_CPSR_MODE_USER |
-        CPU_CPSR_DISABLE_IRQ |
-        CPU_CPSR_DISABLE_FIQ;
-
-    return new_task;
-}
-
 
 const task_context_t *scheduler_switch_task(
     scheduler_t *scheduler,
     const task_context_t *current_context)
 {
-    mini_uart_printf("[kernel] save current task context:\r\n");
+    const int32_t current_id = scheduler_get_current_task_id(scheduler);
 
-    mini_uart_printf("[kernel] spsr = 0x%x\r\n", current_context->spsr);
-    mini_uart_printf("[kernel] sp   = 0x%x\r\n", current_context->sp);
-    mini_uart_printf("[kernel] r0   = 0x%x\r\n", current_context->r0);
-    mini_uart_printf("[kernel] r1   = 0x%x\r\n", current_context->r1);
-    mini_uart_printf("[kernel] r2   = 0x%x\r\n", current_context->r2);
-    mini_uart_printf("[kernel] r3   = 0x%x\r\n", current_context->r3);
-    mini_uart_printf("[kernel] r4   = 0x%x\r\n", current_context->r4);
-    mini_uart_printf("[kernel] r5   = 0x%x\r\n", current_context->r5);
-    mini_uart_printf("[kernel] r6   = 0x%x\r\n", current_context->r6);
-    mini_uart_printf("[kernel] r7   = 0x%x\r\n", current_context->r7);
-    mini_uart_printf("[kernel] r8   = 0x%x\r\n", current_context->r8);
-    mini_uart_printf("[kernel] r9   = 0x%x\r\n", current_context->r9);
-    mini_uart_printf("[kernel] r10  = 0x%x\r\n", current_context->r10);
-    mini_uart_printf("[kernel] r11  = 0x%x\r\n", current_context->r11);
-    mini_uart_printf("[kernel] r12  = 0x%x\r\n", current_context->r12);
-    mini_uart_printf("[kernel] lr   = 0x%x\r\n", current_context->lr);
+    if (scheduler->stop_current_task)
+    {
+        scheduler->stop_current_task = 0u;
 
-    // save the current task context context
-    _memcpy(
-        &scheduler->task_contexts[scheduler->current_task],
-        current_context,
-        sizeof(task_context_t));
+        // remove the current task. No state to save
+        _memmove(
+            &scheduler->tasks[scheduler->current_task],
+            &scheduler->tasks[scheduler->current_task + 1],
+            sizeof(task_t) * (scheduler->task_count - (scheduler->current_task + 1)));
+        scheduler->task_count--;
 
-    // switch to next task (avoid modulo)
-    scheduler->current_task = (scheduler->current_task + 1u);
-    if (scheduler->current_task == scheduler->task_count) {
+        // index stay the same
+    }
+    else {
+        // save the current task context context
+        _memcpy(
+            &scheduler->tasks[scheduler->current_task].context,
+            current_context,
+            sizeof(task_context_t));
+
+        // compute the next task index
+        scheduler->current_task = scheduler->current_task + 1;
+    }
+
+    // round robin
+    if (scheduler->task_count == 0u)
+    {
+        kernel_fatal_error("the last running task was stopped");
+    }
+    if (scheduler->current_task == scheduler->task_count)
+    {
         scheduler->current_task = 0u;
     }
-    return &scheduler->task_contexts[scheduler->current_task];
+
+    const int32_t next_id = scheduler_get_current_task_id(scheduler);
+    mini_uart_printf(
+        "[kernel] kernel switch task %u -> %u\r\n",
+        current_id, next_id);
+
+    // switch to next task
+    return &scheduler->tasks[scheduler->current_task].context;
+}
+
+int32_t scheduler_add_task(
+    scheduler_t *scheduler,
+    uintptr_t proc_address,
+    uintptr_t stack_address,
+    uint32_t param)
+{
+
+    if (scheduler->task_count >= SCHEDULER_MAX_TASK_COUNT)
+    {
+        return -1;
+    }
+
+    // initialize the new task context
+    const int32_t new_task_id = scheduler->id_gen++;
+    const uint32_t new_index = scheduler->task_count++;
+
+    mini_uart_printf("[kernel] add task with pid %u (index=%u)\r\n", new_task_id, new_index);
+
+    task_t *new_task = &scheduler->tasks[new_index];
+
+    _memset(new_task, 0, sizeof(task_t));
+    new_task->id = new_task_id;
+    new_task->context.r0 = param;
+    new_task->context.sp = stack_address;
+    new_task->context.lr = proc_address;
+    new_task->context.spsr =
+        CPU_CPSR_MODE_USER |
+        CPU_CPSR_DISABLE_IRQ |
+        CPU_CPSR_DISABLE_FIQ;
+
+    return new_task_id;
+}
+
+
+int32_t scheduler_get_current_task_id(scheduler_t *scheduler)
+{
+    if (scheduler->current_task < scheduler->task_count)
+    {
+        return scheduler->tasks[scheduler->current_task].id;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+
+void scheduler_stop_current_task(scheduler_t *scheduler)
+{
+    const int32_t current_id = scheduler_get_current_task_id(scheduler);
+    mini_uart_printf("[kernel] stop currrent task: pid=%u\r\n", current_id);
+    scheduler->stop_current_task = 1u;
 }
