@@ -38,6 +38,7 @@ custom_target(
 # Kernel
 
 kernel_sources = files(
+  'src/kernel/banner.c',
   'src/kernel/hardware/boot.S',
   'src/kernel/hardware/cpu.h',
   'src/kernel/hardware/cpu.S',
@@ -52,14 +53,15 @@ kernel_sources = files(
   'src/kernel/hardware/mmio.S',
   'src/kernel/hardware/watchdog.c',
   'src/kernel/hardware/watchdog.h',
-  'src/kernel/banner.c',
-  'src/kernel/kernel.h',
   'src/kernel/kernel.c',
+  'src/kernel/kernel.h',
   'src/kernel/lib/eabi_rt.c',
   'src/kernel/lib/str.c',
   'src/kernel/lib/str.h',
-  'src/kernel/scheduler/scheduler.h',
+  'src/kernel/memory/allocator.h',
+  'src/kernel/memory/allocator.c',
   'src/kernel/scheduler/scheduler.c',
+  'src/kernel/scheduler/scheduler.h',
   'src/kernel/scheduler/scheduler.S',
   'src/kernel/scheduler/task_context.h',
   'src/kernel/syscalls.c',
