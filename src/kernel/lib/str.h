@@ -3,6 +3,10 @@
 
 #include <stddef.h>
 
+/**
+ * tiny kernel pseudo libc
+ */
+
 void *_memcpy(
     void *restrict destination,
     const void *restrict source,
@@ -12,5 +16,10 @@ void *_memset(
     void *destination,
     int c,
     size_t n);
+
+void *_memmove(
+    void *destination,
+    const void *source,
+    size_t size);
 
 #endif
