@@ -5,7 +5,7 @@
 
 #include "task_context.h"
 
-#define SCHEDULER_MAX_TASK_COUNT 0x8u
+#define SCHEDULER_MAX_TASK_COUNT 0x80u
 
 
 // allocations des stack pour le moment => une règle arithmétique en fonction du task_id id

@@ -56,7 +56,7 @@ static int32_t _syscall__spawn(uint32_t proc_address, uint32_t param, uint32_t a
     }
     else
     {
-        return SYSCALL_STATUS_OK;
+        return pid;
     }
 }
 
