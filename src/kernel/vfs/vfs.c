@@ -15,14 +15,39 @@ static int32_t _tty_mini_uart_read(struct file_handle* handle, void *data, size_
 {
     (void)handle;
     (void)offset;
-    return mini_uart_read(data, size);
+
+    uint8_t *bdata = (uint8_t*)data;
+
+    for (uint32_t i = 0u; i < size; i++)
+    {
+        const uint8_t car = mini_uart_getc();
+        if (car == '\r')
+        {
+            bdata[i] = '\n';
+            return i + 1;
+        }
+
+        bdata[i] = car;
+    }
+
+    return size;
 }
 
 static int32_t _tty_mini_uart_write(struct file_handle *handle, const void *data, size_t offset, size_t size)
 {
     (void)handle;
     (void)offset;
-    return mini_uart_write(data, size);
+
+    const uint8_t *bdata = (const uint8_t*)data;
+
+    for (uint32_t i = 0u; i < size; i++)
+    {
+        if (bdata[i] == '\n')
+            mini_uart_putc('\r');
+        mini_uart_putc(bdata[i]);
+    }
+
+    return size;
 }
 
 

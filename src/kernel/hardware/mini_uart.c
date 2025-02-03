@@ -95,22 +95,6 @@ uint32_t mini_uart_recv(uint8_t *data, uint32_t size)
     return size;
 }
 
-int32_t mini_uart_write(const void *data, size_t size)
-{
-    const uint8_t *bdata = (const uint8_t*)data;
-    for (uint32_t i = 0u; i < size; i++)
-    {
-        mini_uart_putc(bdata[i]);
-    }
-    return size;
-}
-
-int32_t mini_uart_read(void *data, size_t size)
-{
-    (void)data, (void)size;
-    return 0;
-}
-
 void mini_uart_puts(const char* str)
 {
     char c;

@@ -13,10 +13,6 @@ uint32_t mini_uart_recv(uint8_t *data, uint32_t size);
 void mini_uart_putc(unsigned char c);
 void mini_uart_wait_tx_idle(void);
 
-// stream interface
-int32_t mini_uart_write(const void *data, size_t size);
-int32_t mini_uart_read(void *data, size_t size);
-
 // print interface
 void mini_uart_puts(const char* str);
 void mini_uart_printf(const char *restrict format, ...);

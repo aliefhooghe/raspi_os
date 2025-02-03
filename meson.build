@@ -71,6 +71,10 @@ kernel_sources = files(
   'src/kernel/usermode/usr_syscalls.c',
   'src/kernel/usermode/usr_syscalls.h',
   'src/kernel/usermode/usr_syscalls.S',
+  'src/kernel/usermode/libc/stdio.c',
+  'src/kernel/usermode/libc/stdio.h',
+  'src/kernel/usermode/libc/string.c',
+  'src/kernel/usermode/libc/string.h',
   'src/kernel/vfs/vfs.h',
   'src/kernel/vfs/vfs.c',
 )
