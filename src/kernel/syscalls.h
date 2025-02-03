@@ -9,12 +9,20 @@ typedef enum {
     SYSCALL_SPAWN,
     SYSCALL_EXIT,
 
-    // SYSCALL_READ,
-    // SYSCALL_WRITE,
+    SYSCALL_READ,
+    SYSCALL_WRITE,
     // SYSCALL_OPEN,
     // SYSCALL_CLOSE,
 
+    // pour un shell dup, dup2, exec, fork, getppid (parent pid), wait
+
+    // SYSCALL_EXEC,
+    // SYSCALL_FORK,
+    // SYSCALL_WAIT
+
+
     SYSCALL_GETPID,
+    // SYSCALL_GETPPID,
 
     SYSCALL_COUNT
 } syscall_num_t;
@@ -31,7 +39,6 @@ close: uint32_t fd
 
 poll ?
 seek ?
-
 
  */
 

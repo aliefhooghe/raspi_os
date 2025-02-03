@@ -71,6 +71,8 @@ kernel_sources = files(
   'src/kernel/usermode/usr_syscalls.c',
   'src/kernel/usermode/usr_syscalls.h',
   'src/kernel/usermode/usr_syscalls.S',
+  'src/kernel/vfs/vfs.h',
+  'src/kernel/vfs/vfs.c',
 )
 kernel_linker_script = files(
   'src/kernel/linker.ld'

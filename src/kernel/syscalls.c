@@ -1,3 +1,5 @@
+
+#include <stddef.h>
 #include <stdint.h>
 
 #include "kernel.h"
@@ -8,7 +10,10 @@
 #include "hardware/watchdog.h"
 
 #include "memory/allocator.h"
+
 #include "scheduler/scheduler.h"
+
+#include "vfs/vfs.h"
 
 #define DEFAULT_TASK_SIZE 0x1000u // 4 KB
 
@@ -48,7 +53,10 @@ static int32_t _syscall__spawn(uint32_t proc_address, uint32_t param, uint32_t a
 {
     (void)arg2;
     void *task_stack = memory_allocator_alloc(&__kernel_state.allocator, DEFAULT_TASK_SIZE);
-    const int32_t pid = scheduler_add_task(&__kernel_state.scheduler, proc_address, task_stack, param);
+    const int32_t pid = scheduler_add_task(
+        &__kernel_state.scheduler, &__kernel_state.vfs,
+        proc_address, task_stack, param);
+
     // bug here
     if (pid < 0)
     {
@@ -65,9 +73,51 @@ static int32_t _syscall__exit(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg1;
     (void)arg2;
     const int32_t status = arg0;
-    (void)status;
-    scheduler_stop_current_task(&__kernel_state.scheduler);
+    (void)status; // TODO: handle the status.
+    scheduler_cur_proc_exit(&__kernel_state.scheduler);
     return SYSCALL_STATUS_OK;
+}
+
+static int32_t _syscall__read(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+    const int32_t fd = arg0;
+    void* data = (void*)arg1;
+    const size_t size = arg2;
+
+    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(
+        &__kernel_state.scheduler,
+        fd
+    );
+
+    if (descriptor == NULL)
+    {
+        return SYSCALL_STATUS_ERR;
+    }
+    else
+    {
+        return file_descriptor_read(descriptor, data, size);
+    }
+}
+
+static int32_t _syscall__write(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+    const int32_t fd = arg0;
+    const void* data = (const void*)arg1;
+    const size_t size = arg2;
+
+    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(
+        &__kernel_state.scheduler,
+        fd
+    );
+
+    if (descriptor == NULL)
+    {
+        return SYSCALL_STATUS_ERR;
+    }
+    else
+    {
+        return file_descriptor_write(descriptor, data, size);
+    }
 }
 
 static int32_t _syscall__getpid(uint32_t arg0, uint32_t arg1, uint32_t arg2)
@@ -75,7 +125,7 @@ static int32_t _syscall__getpid(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg0;
     (void)arg1;
     (void)arg2;
-    return scheduler_get_current_task_id(&__kernel_state.scheduler);
+    return scheduler_cur_proc_get_id(&__kernel_state.scheduler);
 }
 
 
@@ -87,10 +137,9 @@ static syscall_handler_t _syscall_table[SYSCALL_COUNT] =
     [SYSCALL_YIELD] = _syscall__yield,
     [SYSCALL_REBOOT] = _syscall__reboot,
     [SYSCALL_SPAWN] = _syscall__spawn,
-
     [SYSCALL_EXIT] = _syscall__exit,
-    // [SYSCALL_READ] = _syscall__read,
-    // [SYSCALL_WRITE] = _syscall__write,
+    [SYSCALL_READ] = _syscall__read,
+    [SYSCALL_WRITE] = _syscall__write,
     // [SYSCALL_OPEN] = _syscall__open,
     // [SYSCALL_CLOSE] = _syscall__close,
 

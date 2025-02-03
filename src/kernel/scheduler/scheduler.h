@@ -4,21 +4,35 @@
 #include <stdint.h>
 
 #include "task_context.h"
+#include "vfs/vfs.h"
 
 #define SCHEDULER_MAX_TASK_COUNT 0x80u
 
 
-// allocations des stack pour le moment => une règle arithmétique en fonction du task_id id
+typedef struct {
+    task_context_t context;     // saved task context (register and processor status)
+    int32_t id;                 // process id: pid
 
-// stack = 0xXXXXXXXXXXXX - task_id * TASK_STACK_SIZE
+    // on voudrais ici un array des fichier ouverts
+    // modèle de polymorphisme sans doute à revoir.
+    // est ce que certaines choses ne sont pas stocké dans le vfs ?
+    file_descriptor_t file_descriptors[2];  // stdin, stdout
+    uint32_t fd_count;
+
+    // comment gérer un appel open ? Notion de path coté vfs. Stocker le fd: coté process ?
+    /**
+
+        fd = vfs.open(path)
+        task.fds.push(fd)
+
+     */
+
+     // qui initialize stdin/stdout pour un process ?
+
+} task_t; // a renommer => process
 
 typedef struct {
-    task_context_t context;
-    int32_t id;
-} task_t;
-
-typedef struct {
-    task_t tasks[SCHEDULER_MAX_TASK_COUNT];
+    task_t tasks[SCHEDULER_MAX_TASK_COUNT]; // process table.
     uint32_t current_task;
     uint32_t task_count;
     uint32_t id_gen;
@@ -35,18 +49,25 @@ const task_context_t *scheduler_switch_task(
 );
 
 int32_t scheduler_add_task(
-    scheduler_t *scheduler,
+    scheduler_t *scheduler, vfs_t *vfs,
     uintptr_t proc_address,
     void* stack_address,
     uint32_t param
 );
 
-int32_t scheduler_get_current_task_id(
+void scheduler_cur_proc_exit(
     scheduler_t *scheduler
 );
 
-void scheduler_stop_current_task(
+// Current task getters
+
+int32_t scheduler_cur_proc_get_id(
     scheduler_t *scheduler
+);
+
+file_descriptor_t *scheduler_cur_proc_get_fd(
+    scheduler_t *scheduler,
+    int32_t fd
 );
 
 #endif

@@ -5,10 +5,12 @@
 
 #include "memory/allocator.h"
 #include "scheduler/scheduler.h"
+#include "vfs/vfs.h"
 
 typedef struct {
     memory_allocator_t allocator;
     scheduler_t scheduler;
+    vfs_t vfs;
 } kernel_state_t;
 
 // kernel entry point. Called from reset handler

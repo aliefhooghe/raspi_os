@@ -33,15 +33,15 @@ int32_t usr_syscall_exit(int32_t status)
     return syscall(SYSCALL_EXIT, status, 0, 0);
 }
 
-// // int32_t usr_syscall_read(void)
-// {
+size_t usr_syscall_read(int32_t fd, void *data, size_t size)
+{
+    return syscall(SYSCALL_READ, fd, (uint32_t)data, size);
+}
 
-// }
-
-// // int32_t usr_syscall_write(void)
-// {
-
-// }
+size_t usr_syscall_write(int32_t fd, const void *data, size_t size)
+{
+    return syscall(SYSCALL_WRITE, fd, (uint32_t)data, size);
+}
 
 // // int32_t usr_syscall_open(void)
 // {

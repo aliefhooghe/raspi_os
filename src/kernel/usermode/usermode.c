@@ -25,6 +25,11 @@ void user_function(void)
     mini_uart_printf("[%u] welcome in user mode\r\n", pid);
     print_cpu_mode(pid);
 
+    const char msg[] = "Hello from stdout\r\n";
+    const int32_t status = usr_syscall_write(1, msg, 19);
+    mini_uart_printf("[%u] status = %x\r\n", pid, status);
+
+
     //
     char car = '\r';
     do {

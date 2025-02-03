@@ -16,6 +16,7 @@
 #include "scheduler/scheduler.h"
 
 #include "usermode/usermode.h"
+#include "vfs/vfs.h"
 
 extern const char *__satan_welcome_banner;
 extern const char *__satan_fatal_error_banner;
@@ -34,6 +35,7 @@ static void kernel_init(void)
         KERNEL_HEAP_BEGIN,
         KERNEL_HEAP_END);
     scheduler_init(&__kernel_state.scheduler);
+    vfs_init(&__kernel_state.vfs);
 }
 
 const task_context_t *kernel_switch_task(const task_context_t *current_context)
@@ -84,7 +86,7 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     // bad: duplicated code
     void *first_user_stack = memory_allocator_alloc(&__kernel_state.allocator, 0x1000u);
     scheduler_add_task(
-        &__kernel_state.scheduler,
+        &__kernel_state.scheduler, &__kernel_state.vfs,
         (uintptr_t)user_function, first_user_stack, 0);
     scheduler_start(
         &__kernel_state.scheduler);
@@ -95,5 +97,5 @@ void kernel_fatal_error(const char *reason)
     mini_uart_puts(__satan_fatal_error_banner);
     mini_uart_printf("[kernel] Fatal Satan failure:  %s\n\n[kernel] press a key...\r\n", reason);
     mini_uart_getc();
-    watchdog_init(0x100);
+    watchdog_init(0x0);
 }
