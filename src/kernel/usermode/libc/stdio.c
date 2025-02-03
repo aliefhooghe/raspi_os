@@ -1,6 +1,7 @@
 
 
 #include <stddef.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "usermode/libc/stdio.h"
@@ -94,4 +95,21 @@ int getchar(void)
     if (status < 0)
         return status;
     return (int)c;
+}
+
+char *gets_s(char* data, size_t size)
+{
+    const int32_t status = usr_syscall_read(0, data, size - 1u);
+    if (status < 0)
+    {
+        return NULL;
+    }
+    else if (data[status - 1u] == '\n')
+    {
+        data[status - 1u] = '\0';
+    }
+    else {
+        data[status] = '\0';
+    }
+    return data;
 }

@@ -26,11 +26,20 @@ static int32_t _tty_mini_uart_read(struct file_handle* handle, void *data, size_
     for (uint32_t i = 0u; i < size; i++)
     {
         const uint8_t car = mini_uart_getc();
+        mini_uart_putc(car);
+
         if (car == '\r')
         {
+            mini_uart_putc('\n');
             bdata[i] = '\n';
             return i + 1;
         }
+
+        //
+        //  TODO: place the tty infrastructure where it belong to
+        //          handle backspace
+        //
+        // echo the car onto the tty terminal
 
         bdata[i] = car;
     }

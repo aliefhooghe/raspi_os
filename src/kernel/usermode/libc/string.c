@@ -9,3 +9,13 @@ size_t strlen(const char *s)
         len++;
     return len;
 }
+
+int strcmp(const char *s1, const char *s2)
+{
+
+}
+
+int strncmp(const char s1, const char s2, size_t n)
+{
+
+}
