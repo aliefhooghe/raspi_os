@@ -21,10 +21,10 @@ typedef struct {
 } vfs_t;
 
 // vfs interface
-void vfs_init(vfs_t *vfs);
+void vfs_init(void);
 
 // draft:
-file_descriptor_t vfs_get_tty_file_descriptor(vfs_t *vfs);
+file_descriptor_t vfs_get_tty_file_descriptor(void);
 
 // file descriptor interface
 int32_t file_descriptor_read(file_descriptor_t *fd, void *data, size_t size);

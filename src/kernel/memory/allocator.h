@@ -11,16 +11,10 @@ typedef struct {
 } memory_allocator_t;
 
 void memory_allocator_init(
-    memory_allocator_t *allocator,
     uint32_t base,
     uint32_t limit);
 
-void *memory_allocator_alloc(
-    memory_allocator_t *allocator,
-    size_t size);
-
-void memory_allocator_free(
-    memory_allocator_t *allocator,
-    void *chunk);
+void *mem_alloc(size_t size);
+void mem_free(void *chunk);
 
 #endif

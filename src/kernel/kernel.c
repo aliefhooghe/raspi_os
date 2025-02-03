@@ -30,17 +30,9 @@ kernel_state_t __kernel_state;
 
 static void kernel_init(void)
 {
-    memory_allocator_init(
-        &__kernel_state.allocator,
-        KERNEL_HEAP_BEGIN,
-        KERNEL_HEAP_END);
-    scheduler_init(&__kernel_state.scheduler);
-    vfs_init(&__kernel_state.vfs);
-}
-
-const task_context_t *kernel_switch_task(const task_context_t *current_context)
-{
-    return scheduler_switch_task(&__kernel_state.scheduler, current_context);
+    memory_allocator_init(KERNEL_HEAP_BEGIN, KERNEL_HEAP_END);
+    scheduler_init();
+    vfs_init();
 }
 
 void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
@@ -84,12 +76,9 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     mini_uart_puts("[kernel] call user mode !\r\n");
 
     // bad: duplicated code
-    void *first_user_stack = memory_allocator_alloc(&__kernel_state.allocator, 0x1000u);
-    scheduler_add_task(
-        &__kernel_state.scheduler, &__kernel_state.vfs,
-        (uintptr_t)user_function, first_user_stack, 0);
-    scheduler_start(
-        &__kernel_state.scheduler);
+    void *first_user_stack = mem_alloc(0x1000u);
+    scheduler_add_task((uintptr_t)user_function, first_user_stack, 0);
+    scheduler_start();
 }
 
 void kernel_fatal_error(const char *reason)

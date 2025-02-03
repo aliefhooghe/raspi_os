@@ -9,8 +9,6 @@
 
 #include "memory/allocator.h"
 
-#include "scheduler/scheduler.h"
-
 #include "vfs/vfs.h"
 
 #define DEFAULT_TASK_SIZE 0x1000u // 4 KB
@@ -19,12 +17,6 @@
  *  syscall handler function pointer type
  */
 typedef int32_t (*syscall_handler_t)(uint32_t arg0, uint32_t arg1, uint32_t arg2);
-
-
-/**
- *  global kernel state is accessed by the syscall handlers
- */
-extern kernel_state_t __kernel_state;
 
 
 /**
@@ -50,10 +42,8 @@ static int32_t _syscall__reboot(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 static int32_t _syscall__spawn(uint32_t proc_address, uint32_t param, uint32_t arg2)
 {
     (void)arg2;
-    void *task_stack = memory_allocator_alloc(&__kernel_state.allocator, DEFAULT_TASK_SIZE);
-    const int32_t pid = scheduler_add_task(
-        &__kernel_state.scheduler, &__kernel_state.vfs,
-        proc_address, task_stack, param);
+    void *task_stack = mem_alloc(DEFAULT_TASK_SIZE);
+    const int32_t pid = scheduler_add_task(proc_address, task_stack, param);
 
     // bug here
     if (pid < 0)
@@ -72,7 +62,7 @@ static int32_t _syscall__exit(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg2;
     const int32_t status = arg0;
     (void)status; // TODO: handle the status.
-    scheduler_cur_proc_exit(&__kernel_state.scheduler);
+    scheduler_cur_proc_exit();
     return SYSCALL_STATUS_OK;
 }
 
@@ -82,11 +72,7 @@ static int32_t _syscall__read(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     void* data = (void*)arg1;
     const size_t size = arg2;
 
-    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(
-        &__kernel_state.scheduler,
-        fd
-    );
-
+    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
     if (descriptor == NULL)
     {
         return SYSCALL_STATUS_ERR;
@@ -103,10 +89,7 @@ static int32_t _syscall__write(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     const void* data = (const void*)arg1;
     const size_t size = arg2;
 
-    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(
-        &__kernel_state.scheduler,
-        fd
-    );
+    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
 
     if (descriptor == NULL)
     {
@@ -123,7 +106,7 @@ static int32_t _syscall__getpid(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg0;
     (void)arg1;
     (void)arg2;
-    return scheduler_cur_proc_get_id(&__kernel_state.scheduler);
+    return scheduler_cur_proc_get_id();
 }
 
 

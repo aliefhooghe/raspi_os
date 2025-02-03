@@ -40,34 +40,17 @@ typedef struct {
 } scheduler_t;
 
 
-void scheduler_init(scheduler_t *scheduler);
-void scheduler_start(scheduler_t *scheduler);
+void scheduler_init(void);
+void scheduler_start(void);
 
-const task_context_t *scheduler_switch_task(
-    scheduler_t *scheduler,
-    const task_context_t *current_context
-);
+// called from asm code in interupt.S
+const task_context_t *scheduler_switch_task(const task_context_t *current_context);
 
-int32_t scheduler_add_task(
-    scheduler_t *scheduler, vfs_t *vfs,
-    uintptr_t proc_address,
-    void* stack_address,
-    uint32_t param
-);
+int32_t scheduler_add_task(uintptr_t proc_address, void* stack_address, uint32_t param);
 
-void scheduler_cur_proc_exit(
-    scheduler_t *scheduler
-);
-
-// Current task getters
-
-int32_t scheduler_cur_proc_get_id(
-    scheduler_t *scheduler
-);
-
-file_descriptor_t *scheduler_cur_proc_get_fd(
-    scheduler_t *scheduler,
-    int32_t fd
-);
+// current process getters
+void scheduler_cur_proc_exit(void);
+int32_t scheduler_cur_proc_get_id(void);
+file_descriptor_t *scheduler_cur_proc_get_fd(int32_t fd);
 
 #endif

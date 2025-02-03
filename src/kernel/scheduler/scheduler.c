@@ -11,29 +11,36 @@
 #include "task_context.h"
 #include "vfs/vfs.h"
 
-
+/**
+ *  set the current task context into the cpu
+ */
 extern void __set_task_context(task_context_t *current_context);
 
+/**
+ *  global kernel state
+ */
+extern kernel_state_t __kernel_state;
 
-void scheduler_init(scheduler_t *scheduler)
+
+void scheduler_init(void)
 {
-    _memset(scheduler, 0, sizeof(*scheduler));
+    _memset(&__kernel_state.scheduler, 0, sizeof(scheduler_t));
 }
 
-void scheduler_start(scheduler_t *scheduler)
+void scheduler_start(void)
 {
-    if (scheduler->task_count > 0) {
-        __set_task_context(&scheduler->tasks[0].context);
+    if (__kernel_state.scheduler.task_count > 0u) {
+        __set_task_context(&__kernel_state.scheduler.tasks[0].context);
     }
     else {
         kernel_fatal_error("no task to be started");
     }
 }
 
-const task_context_t *scheduler_switch_task(
-    scheduler_t *scheduler,
-    const task_context_t *current_context)
+const task_context_t *scheduler_switch_task(const task_context_t *current_context)
 {
+    scheduler_t *scheduler = &__kernel_state.scheduler;
+
     if (scheduler->stop_current_task)
     {
         scheduler->stop_current_task = 0u;
@@ -73,7 +80,6 @@ const task_context_t *scheduler_switch_task(
 }
 
 static void scheduler_task_init(
-    vfs_t *vfs,
     task_t *new_task, uint32_t task_id,
     void *stack_address, uintptr_t proc_address,
     uint32_t param)
@@ -93,19 +99,18 @@ static void scheduler_task_init(
         CPU_CPSR_DISABLE_FIQ;
 
     // setup stdin/stdout
-    const file_descriptor_t tty_fd = vfs_get_tty_file_descriptor(vfs);
+    const file_descriptor_t tty_fd = vfs_get_tty_file_descriptor();
     new_task->fd_count = 2u;
     new_task->file_descriptors[0] = tty_fd;
     new_task->file_descriptors[1] = tty_fd;
 }
 
 int32_t scheduler_add_task(
-    scheduler_t *scheduler,
-    vfs_t *vfs,
     uintptr_t proc_address,
     void* stack_address,
     uint32_t param)
 {
+    scheduler_t *scheduler = &__kernel_state.scheduler;
 
     if (scheduler->task_count >= SCHEDULER_MAX_TASK_COUNT)
     {
@@ -118,21 +123,21 @@ int32_t scheduler_add_task(
 
     task_t *new_task = &scheduler->tasks[new_index];
     scheduler_task_init(
-        vfs,
         new_task, new_task_id,
         stack_address, proc_address, param);
 
     return new_task_id;
 }
 
-void scheduler_cur_proc_exit(scheduler_t *scheduler)
+void scheduler_cur_proc_exit(void)
 {
-    scheduler->stop_current_task = 1u;
+    __kernel_state.scheduler.stop_current_task = 1u;
 }
 
-
-int32_t scheduler_cur_proc_get_id(scheduler_t *scheduler)
+int32_t scheduler_cur_proc_get_id(void)
 {
+    scheduler_t *scheduler = &__kernel_state.scheduler;
+
     if (scheduler->current_task < scheduler->task_count)
     {
         return scheduler->tasks[scheduler->current_task].id;
@@ -143,10 +148,9 @@ int32_t scheduler_cur_proc_get_id(scheduler_t *scheduler)
     }
 }
 
-file_descriptor_t *scheduler_cur_proc_get_fd(
-    scheduler_t *scheduler,
-    int32_t fd)
+file_descriptor_t *scheduler_cur_proc_get_fd(int32_t fd)
 {
+    scheduler_t *scheduler = &__kernel_state.scheduler;
     task_t *current_task = &scheduler->tasks[scheduler->current_task];
     if ((uint32_t)fd >= current_task->fd_count)
         return NULL;

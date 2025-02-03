@@ -1,20 +1,30 @@
 
+
+#include "kernel.h"
 #include "allocator.h"
 
 #include <stdint.h>
 
+
+/**
+ *  global kernel state
+ */
+extern kernel_state_t __kernel_state;
+
+
 void memory_allocator_init(
-    memory_allocator_t *allocator,
     uint32_t base,
     uint32_t limit)
 {
+    memory_allocator_t *allocator = &__kernel_state.allocator;
     allocator->base = base;
     allocator->limit = limit;
     allocator->cursor = base;
 }
 
-void *memory_allocator_alloc(memory_allocator_t *allocator, size_t size)
+void *mem_alloc(size_t size)
 {
+    memory_allocator_t *allocator = &__kernel_state.allocator;
     const uint32_t new_cursor = allocator->cursor + size;
     if (new_cursor > allocator->limit)
     {
@@ -28,8 +38,7 @@ void *memory_allocator_alloc(memory_allocator_t *allocator, size_t size)
     }
 }
 
-void memory_allocator_free(memory_allocator_t *allocator, void *chunk)
+void mem_free(void *chunk)
 {
-    (void)allocator,
     (void)chunk;
 }

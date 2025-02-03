@@ -118,7 +118,7 @@ _svc_handler:
 
     // III.2 call scheduler: pass the current context, and get the task context to be restored
     mov r0, sp
-    bl kernel_switch_task
+    bl scheduler_switch_task
 
     // III.3 restore supervisor stack pointer: free the saved context
     // task_context = r1-r12, lr, spsr, r0 = 4 * (12 + 3) = 60 bytes
