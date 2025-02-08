@@ -3,12 +3,36 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 
-int putchar(int c);
-int puts(const char *s);
+#define WRITE_BUFFER_SIZE 128u
 
-int printf(const char *restrict format, ...);
-int vprintf(const char *restrict format, va_list ap);
+typedef struct {
+    int fd;
+    size_t write_buffer_cursor;
+    uint8_t write_buffer[WRITE_BUFFER_SIZE];
+} FILE;
+
+// stub the libc initialization
+FILE *get_stdout(void);
+
+
+// files manipulations
+int fflush(FILE *stream);
+size_t fread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream);
+size_t fwrite(const void *restrict ptr, size_t size, size_t n, FILE *restrict stream);
+
+// STDIO
+// int putchar(int c);
+
+int fputs(const char *restrict s, FILE *restrict stream);
+// int puts(const char *s);
+
+// int snprintf(char *restrict str, size_t size, const char *restrict format, ...);
+// int vsnprintf(char *restrict str, size_t size, const char *restrict format, va_list ap);
+
+int fprintf(FILE *restrict stream, const char *restrict format, ...);
+int vfprintf(FILE *restrict stream, const char *restrict format, va_list ap);
 
 int getchar(void);
 char *gets_s(char*, size_t size);

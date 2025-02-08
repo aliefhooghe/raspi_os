@@ -19,6 +19,7 @@ typedef enum {
     // SYSCALL_EXEC,
     // SYSCALL_FORK,
     // SYSCALL_WAIT
+    // SYSCALL_PIPE
 
 
     SYSCALL_GETPID,

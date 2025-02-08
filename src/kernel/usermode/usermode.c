@@ -14,16 +14,47 @@ void user_function(void)
     char line[LINE_SIZE] = "";
     const int32_t pid = usr_syscall_getpid();
 
-    printf("[%u] welcome in user mode process !!\n", pid);
+    FILE *stdout = get_stdout();
+
+    fprintf(stdout, "[%u] welcome in user mode process !!\n", pid);
 
     for (;;)
     {
-        printf("satan ~ ");
+        fprintf(stdout, "[%u] lucifer ~ ", pid);
         gets_s(line, LINE_SIZE);
 
         const size_t len = strlen(line);
-        if (len > 0)
-            printf("you wrote '%s'\n", line);
+        if (len == 0)
+            continue;
+
+        if (strcmp(line, "reboot") == 0)
+        {
+            fprintf(stdout, "[%u] reboot now !\n", pid);
+            usr_syscall_reboot();
+        }
+        else if (strcmp(line, "spawn") == 0)
+        {
+            fprintf(stdout, "[%u] spwan a new process\n", pid);
+            const int32_t new_pid = usr_syscall_spawn((void*)user_function, 0);
+            if (new_pid < 0)
+                fprintf(stdout, "\n[%u] failed to spawn a task\n", pid);
+            else
+                fprintf(stdout, "\n[%u] spawned task: pid=%u\n", pid, new_pid);
+        }
+        else if (strcmp(line, "switch") == 0)
+        {
+            fprintf(stdout, "[%u] switch to next process\n", pid);
+            usr_syscall_yield();
+        }
+        else if (strcmp(line, "exit") == 0)
+        {
+            fprintf(stdout, "[%u] exit current process\n", pid);
+            usr_syscall_exit(0u);
+        }
+        else
+        {
+            fprintf(stdout, "[%u] lucifer: %s: command not found\n", pid, line);
+        }
     }
 
     // do {

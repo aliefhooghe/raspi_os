@@ -9,9 +9,11 @@ typedef struct file_handle {
     int32_t (*write)(struct file_handle*, const void *data, size_t offset, size_t size);
 } file_handle_t;
 
+
 typedef struct  {
     file_handle_t *handle;
     uint32_t offset;
+
     // todo: add r/w mode here
 } file_descriptor_t;
 

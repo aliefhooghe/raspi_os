@@ -22,7 +22,7 @@
   v(12pt, weak: true)
   strong(it)
 }
-#outline(indent:17pt, depth: 8)
+#outline(indent:4pt)
 #pagebreak()
 
 // content:
@@ -35,6 +35,50 @@
 Il faudra déguager les section suivantes:
 - architecture du kernel
 - étude du harware armV6, périphériques
+
+= System boot
+
+= Context switching
+
+#figure(
+  table(
+    columns: (auto, auto, 1fr),
+    inset: 10pt,
+    align: (center, center, left),
+    table.header([*Offset*], [*Name*], [*Description*]),
+    [31],   [N], [],
+    [30],   [Z], [],
+    [29],   [C], [],
+    [28],   [V], [],
+    [27:8], [_unused_], [],
+    [7],    [I], [Disables IRQ interrupts when it is set],
+    [6],    [F], [Disables FIQ interrupts when it is set],
+    [5],    [T], [Thumb mode],
+    [4:0],  [M], [cpu mode (see bellow)],
+  ),
+  caption: [CPSR - Current Program Status Register]
+)
+
+Le registre `CPSR` est sauvegardé dans le registre `SPSR` lors des changements de contexte.
+
+#figure(
+  table(
+    columns: (auto, auto, auto, auto, auto),
+    inset: 10pt,
+    align: (left, center, left, left, center),
+    table.header([*Mode*], [*Encoding*], [*Function*], [*Security State*], [*Privilege Level*]),
+      [user],    [0x10], [Unprivileged mode in which most applications run],                         [Both],        [PL0],
+      [fiq],     [0x11], [Entered on an FIQ interrupt exception],                                    [Both],        [PL1],
+      [irq],     [0x12], [Entered on an IRQ interrupt exception],                                    [Both],        [PL1],
+      [svc],     [0x13], [Entered on reset or when a Supervisor Call instruction (SVC) is executed], [Both],        [PL1],
+      [monitor], [0x16], [Implemented with Security Extensions.],                                    [Secure only], [PL1],
+      [abort],   [0x17], [Entered on a memory access exception],                                     [Both],        [PL1],
+      [hyp],     [0x1a], [Implemented with Virtualization Extensions.],                              [Non-secure],  [PL2],
+      [undef],   [0x1b], [Entered when an undefined instruction executed],                           [Both],        [PL1],
+      [system],  [0x1f], [Privileged mode, sharing the register view with User mode],                [Both],        [PL1],
+  ),
+  caption: [CPU Modes]
+)
 
 
 
@@ -102,29 +146,44 @@ Chaque entrée (32 bits) peut représenter une section ou bien une _page table_.
 Une région de 1MB mappée directement (typiquement utile pour le mapping identité).
 #figure(
   table(
-    columns: (auto, 1fr),
+    columns: (auto, auto, 1fr),
     inset: 10pt,
-    align: (center, left),
-    table.header([*Offset*], [*Description*]),
-    [31:20], [Adresse physique des 12 bits les plus significatifs (base de 1 MB alignée).],
-    [19], [Global/Non-global bit. Pas utilisé ici.],
-    [18], [Accès partagé (Shared bit).],
-    [17], [Non-exécutable (NX).],
-    [16], [Access Flag (AF) : Définit si la page a été accédée.],
-    [15], [Non-secure (NS) : Définit si la page est sécurisée.],
-    [14:12], [Domain field : Référence un domaine d'accès (16 max).],
-    [11], [Should-Be-Zero (SBZ).],
-    [10], [Implementation defined. Généralement mis à 0.],
-    [9], [TEX (Bit 2) : Attribut mémoire avancé.],
-    [8], [Cacheable (C). Active ou non le cache de données.],
-    [7], [Bufferable (B). Active ou non le write buffer.],
-    [6], [TEX (Bits 1–0). Attribut mémoire avancé.],
-    [5], [APX : Accès (R/W ou R uniquement pour le kernel).],
-    [4], [AP[1] : Accès utilisateur ou kernel (R/W).],
-    [3], [AP[0] : Accès utilisateur ou kernel (R/W).],
-    [2], [Bit must be 0 pour une section (SBZ).],
-    [1], [Bit 1 : Type (1 pour Section).],
-    [0], [Bit 0 : Always 0 pour une section.],
+    align: (center, left, left),
+    table.header([*Offset*], [*Name*], [*Description*]),
+    [31:20], [], [Adresse physique des 12 bits les plus significatifs (base de 1 MB alignée).],
+    [19:17], [], [_Should-Be-Zero_],
+    [16],    [*`C`*], [  Active ou non le cache de données pour la section.],
+    [15-12], [*`TEX`*], [ Type Extension
+      - Dans la convention la plus répandue pour les sections, on utilise 3 bits TEX occupant les bits 14-12.
+      - Le rôle du champ TEX est d'étendre la définition des attributs mémoire.
+      - En combinaison avec le bit C (Cacheable) et le bit B (Bufferable, qui viendra plus bas), la triplette (TEX, C, B) permet de définir le type exact de mémoire.
+      - Par exemple, on pourra avoir:
+          - (`TEX = 000`, `C = 0`, `B = 0`) → _Mémoire fortement ordonnée (souvent pour les registres)._
+          - (`TEX = 000`, `C = 0`, `B = 1`) → _Mémoire de type Device (non cacheable, adapté aux _périphériques).
+          - (`TEX = 000`, `C = 1`, `B = 0`) → _Mémoire normale, non cacheable._
+          - (`TEX = 000`, `C = 1`, `B = 1`) → _Mémoire normale, Write-Through._
+          - (`TEX = 001`, `C = 1`, `B = 1`) → _Mémoire normale, Write-Back avec Write-Allocate._
+
+      / Remarque: Les valeurs exactes disponibles et leur interprétation peuvent varier légèrement selon le processeur et la configuration de la MMU, mais le principe reste le même : le champ TEX (souvent défini sur 3 bits pour les sections) offre une granularité supplémentaire pour le choix des attributs mémoire.
+    ],
+    [11:10], [*`AP[1:0]`*], [ Accès utilisateur ou kernel (R/W).
+      #table(
+          columns: (auto, auto, auto, auto),
+          stroke: none,
+          table.header([*`AP[1]`*], [*`AP[0]`*], [*Mode Privilégié*], [*Mode Non-Privilégié*]),
+          [0], [0],	[Lecture/Écriture], [Aucun accès],
+          [0], [1],	[Lecture/Écriture], [Lecture uniquement],
+          [1], [0],	[Lecture/Écriture], [Lecture/Écriture],
+          [1], [1],	[Lecture uniquement], [Aucun accès],
+      )
+    ],
+    [11:10], [*`domain`*], [
+      - Ces bits spécifient le numéro de domaine (0-15) auquel appartient la section.
+      - Le registre DACR (Domain Access Control Register) du processeur détermine les droits d'accès globaux pour chaque domaine.
+    ],
+    [4:3], [], [_Should-Be-Zero_],
+    [2], [*`B`*], [Ce bit indique si les écritures dans la mémoire de la section sont bufferisées.],
+    [1:0], [*`type`*], [ `0b10` pour une section]
   ),
   caption: [section layout]
 )
@@ -149,7 +208,29 @@ Une entrée de la table de niveau 1 peut également pointer vers une page table 
   caption: [pointeur de table de niveau 2]
 )
 
+==== Format des tables de niveau 2
+Les entrées de la table de niveau 2 sont également sur 32 bits. Chaque entrée correspond à une page de 4 KB.
 
+#figure(
+  table(
+    columns: (auto, 1fr),
+    inset: 10pt,
+    align: (center, left),
+    table.header([*Offset*], [*Description*]),
+      [31:12], [Adresse physique des 20 bits les plus significatifs (base de 4 KB alignée).],
+      [11], [Global/Non-global bit.],
+      [10], [Non-secure bit.],
+      [9], [Shared (S).],
+      [8], [Access Flag (AF).],
+      [7], [Non-exécutable (NX).],
+      [6:5], [TEX (Bits 2:1).],
+      [4], [Cacheable (C).],
+      [3], [Bufferable (B).],
+      [2], [TEX (Bit 0).],
+      [1:0], [Type (0b10 pour une petite page).],
+  ),
+  caption: [entrée d'une table de niveau 2]
+)
 
 === Configuration d'une MMU identité:
 
