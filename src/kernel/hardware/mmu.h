@@ -14,6 +14,9 @@
 #define MMU_L1_SECTION_AP_KERNEL_RW_USER_RO      0x00000800u  // read/write  *  read/write
 #define MMU_L1_SECTION_AP_KERNEL_RW_USER_RW      0x00000C00u  // read only   *  none
 
+//
+#define MMU_SECTION_SIZE 0x00100000u
+
 /**
  *  Enable the Memory Management Unit
  */
