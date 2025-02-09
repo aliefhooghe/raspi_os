@@ -137,8 +137,7 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     mini_uart_puts("[kernel] call user mode !\r\n");
 
     // bad: duplicated code
-    void *first_user_stack = mem_alloc(0x1000u);
-    scheduler_add_task((uintptr_t)user_function, first_user_stack, 0);
+    scheduler_add_task((uintptr_t)user_function, 0);
     scheduler_start();
 }
 

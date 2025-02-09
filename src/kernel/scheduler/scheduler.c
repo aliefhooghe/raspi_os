@@ -17,7 +17,8 @@
 
 #include "vfs/vfs.h"
 
-#define PROCESS_SECTION_VIRTUAL_ADDRRESS   0x00800000u
+#define PROCESS_SECTION_VIRTUAL_ADDRRESS  0x00800000u  // section 0x00800000u -> 0x00900000u = 1Mb
+#define PROCESS_STACK_VIRTUAL_ADDRRESS    0x00880000u  // stack at the midle of section (= a 512 kb stack)
 
 /**
  *  task structure
@@ -145,11 +146,12 @@ const task_context_t *scheduler_switch_task(const task_context_t *current_contex
 
 static void scheduler_task_context_init(
     task_context_t *context,
-    void *stack_address, uintptr_t proc_address,
+    uintptr_t stack_address,
+    uintptr_t proc_address,
     uint32_t param)
 {
     context->r0 = param;
-    context->sp = (uint32_t)stack_address;
+    context->sp = stack_address;
     context->lr = proc_address;
     context->spsr =
         CPU_CPSR_MODE_USER |
@@ -159,19 +161,14 @@ static void scheduler_task_context_init(
 
 static void scheduler_task_init(
     task_t *new_task, uint32_t task_id,
-    void *stack_address, uintptr_t proc_address,
-    uint32_t param)
+    uintptr_t proc_address, uint32_t param)
 {
     _memset(new_task, 0, sizeof(task_t));
 
     // set pid
     new_task->id = task_id;
 
-    // set initial task context
-    scheduler_task_context_init(
-        &new_task->context,
-        stack_address, proc_address, param);
-
+    //
     // setup the process virtual memory space
     //
 
@@ -201,7 +198,13 @@ static void scheduler_task_init(
         PROCESS_SECTION_VIRTUAL_ADDRRESS,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 
-    // --
+    //
+    // set initial task context
+    //
+    scheduler_task_context_init(
+        &new_task->context,
+        PROCESS_STACK_VIRTUAL_ADDRRESS,
+        proc_address, param);
 
     // setup stdin/stdout
     const file_descriptor_t tty_fd = vfs_get_tty_file_descriptor();
@@ -212,7 +215,6 @@ static void scheduler_task_init(
 
 int32_t scheduler_add_task(
     uintptr_t proc_address,
-    void* stack_address,
     uint32_t param)
 {
     if (_scheduler.task_count >= SCHEDULER_MAX_TASK_COUNT)
@@ -227,7 +229,7 @@ int32_t scheduler_add_task(
     task_t *new_task = &_scheduler.tasks[new_index];
     scheduler_task_init(
         new_task, new_task_id,
-        stack_address, proc_address, param);
+        proc_address, param);
 
     return new_task_id;
 }

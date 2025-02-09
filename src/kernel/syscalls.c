@@ -7,11 +7,8 @@
 
 #include "scheduler/scheduler.h"
 #include "hardware/watchdog.h"
-#include "memory/allocator.h"
 
 #include "vfs/vfs.h"
-
-#define DEFAULT_TASK_SIZE 0x1000u // 4 KB
 
 /**
  *  syscall handler function pointer type
@@ -42,10 +39,8 @@ static int32_t _syscall__reboot(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 static int32_t _syscall__spawn(uint32_t proc_address, uint32_t param, uint32_t arg2)
 {
     (void)arg2;
-    void *task_stack = mem_alloc(DEFAULT_TASK_SIZE);
-    const int32_t pid = scheduler_add_task(proc_address, task_stack, param);
 
-    // bug here
+    const int32_t pid = scheduler_add_task(proc_address, param);
     if (pid < 0)
     {
         return SYSCALL_STATUS_ERR;

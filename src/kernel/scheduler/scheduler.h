@@ -16,7 +16,7 @@ void scheduler_start(void);
 // called from asm code in interupt.S
 const task_context_t *scheduler_switch_task(const task_context_t *current_context);
 
-int32_t scheduler_add_task(uintptr_t proc_address, void* stack_address, uint32_t param);
+int32_t scheduler_add_task(uintptr_t proc_address, uint32_t param);
 
 // current process getters
 void scheduler_cur_proc_exit(void);

@@ -5,7 +5,6 @@
 #include "usermode/usr_syscalls.h"
 #include "usermode/libc/stdio.h"
 #include "usermode/libc/string.h"
-
 #include "hardware/mini_uart.h"
 
 
@@ -26,10 +25,6 @@ void user_function(void)
     {
         fprintf(stdout, "[%u] lucifer ~ ", pid);
         gets_s(line, LINE_SIZE);
-
-        const size_t len = strlen(line);
-        if (len == 0)
-            continue;
 
         if (strcmp(line, "reboot") == 0)
         {
@@ -57,53 +52,8 @@ void user_function(void)
         }
         else
         {
-            fprintf(stdout, "[%u] lucifer: %s: command not found\n", pid, line);
+            fprintf(stdout, "[%u] lucifer: '%s' command not found\n", pid, line);
         }
     }
 
-    // do {
-
-    //     switch (car) {
-
-    //         case '\n':
-    //             printf("\n[%u] satan ~ ", pid);
-    //             break;
-
-    //         case 'x':
-    //             printf("\n[%u] quit task now !!\n", pid);
-    //             usr_syscall_exit(0);
-    //             while (1); // hang.
-
-    //         case 's':
-    //         {
-    //             printf("\n[%u] syscall YIELD\n", pid);
-    //             const int32_t status = usr_syscall_yield();
-    //             printf("[%u] syscall status: %x\n", pid, status);
-    //             CONTINUE;
-    //         }
-
-    //         case 'q':
-    //             printf("\n[%u] reboot now !!\n", pid);
-    //             usr_syscall_reboot();
-    //             while (1); // hang.
-
-    //         case 'z':
-    //         {
-    //             printf("\n[%u] spawn new task\n", pid);
-    //             const int32_t new_pid = usr_syscall_spawn((void*)user_function, 0);
-    //             if (new_pid < 0)
-    //                 printf("\n[%u] failed to spawn a task\n", pid);
-    //             else
-    //                 printf("\n[%u] spawned task: pid=%u\n", pid, new_pid);
-    //         }
-    //             break;
-
-    //         default:
-    //             putchar(car);
-    //             break;
-
-    //     }
-
-    //     car = getchar();
-    // } while (1);
 }
