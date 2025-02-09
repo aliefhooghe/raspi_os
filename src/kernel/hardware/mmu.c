@@ -8,21 +8,11 @@ extern void _mmu_set_ttbr0(uint32_t table_addr);
 extern void _mmu_set_dacr(uint32_t dacr_value);
 extern void _mmu_enable(void);
 
-static uint32_t _page_table[4096] __attribute__((aligned(0x4000))); // 16 KB alignée
 
-// void _mmu_init_identity_page_table(void)
-// {
-//     for (int i = 0; i < 4096; i++) {
-//         const uint32_t page_address = i << 20;
-//         _page_table[i] =
-//             page_address |
-//             MMU_L1_TYPE_SECTION |
-//             MMU_L1_SECTION_AP_KERNEL_RW_USER_RW;
-//     }
-// }
+static uint32_t _page_table[MMU_L1_ENTRY_COUNT] __attribute__((aligned(MMU_L1_TABLE_ALIGN))); // 16 KB alignée
 
 
-void _mmu_set_kernel_identity_mapping(
+void _mmu_identity_mapping(
     uint32_t *l1_table,
     uint32_t start_address,
     uint32_t end_address,
@@ -46,13 +36,14 @@ void mmu_init(void)
 
     // map IO registers for the kernel
     // TODO: set le TEX et cie car nous ne voulons pas de mise en cache
+    // ainsi que les bits C et B
     // et de réordonement des accès mémoire sur les mmios
-    _mmu_set_kernel_identity_mapping(_page_table,
+    _mmu_identity_mapping(_page_table,
         IO_REG_START, IO_REG_END,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_NONE);
 
     // map the kernel memory on identity for both user and kernel
-    _mmu_set_kernel_identity_mapping(_page_table,
+    _mmu_identity_mapping(_page_table,
         0x00000000u, 0x00800000,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 

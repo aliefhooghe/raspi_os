@@ -1,6 +1,10 @@
 #ifndef SATAN_MMU_H_
 #define SATAN_MMU_H_
 
+#define MMU_L1_ENTRY_COUNT 0x1000u
+#define MMU_L1_TABLE_ALIGN 0x4000u  // 16.0KiB aligned
+
+
 // mmu level 1 table entry type
 #define MMU_L1_TYPE_MASK          0x03u  //
 #define MMU_L1_TYPE_FAULT         0x00u  // Unmapped entry
