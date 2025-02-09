@@ -136,8 +136,14 @@ const task_context_t *scheduler_switch_task(const task_context_t *current_contex
         _scheduler.current_task = 0u;
     }
 
-    // switch to next task
-    return &_scheduler.tasks[_scheduler.current_task].context;
+    // switch to next task:
+    const task_t *current_task = &_scheduler.tasks[_scheduler.current_task];
+
+    // 1 - select the process translation table
+    mmu_set_translation_table(current_task->translation_table);
+
+    // 2 - return the task context to be restored
+    return &current_task->context;
 }
 
 //
