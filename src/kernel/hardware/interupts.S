@@ -104,6 +104,20 @@ _svc_handler:
 
     push { r5 }             // push user mode stack pointer
 
+    // save syscall number and parameters
+    push {r0-r3}
+
+    // restore kernel translation table
+    bl kernel_restore_translation_table
+
+    // store the current task context
+    mov r0, sp
+    add r0, #12  //  skip r1-r3
+    bl scheduler_save_current_context
+
+    // restore syscall number and parameters
+    pop {r0-r3}
+
     // II - call the C syscall handler
     //  r0 = syscall_num
     //  r1 = arg0
@@ -113,16 +127,12 @@ _svc_handler:
 
     // III - schedule the next task
 
-    // III.1 save syscall status: now there is a task context on the stack
-    push {r0}
+    // III.1 restore supervisor stack pointer: free the saved context
+    // task_context = r1-r12, lr, spsr = 4 * (12 + 2) = 56 bytes
+    add sp, sp, #56
 
-    // III.2 call scheduler: pass the current context, and get the task context to be restored
-    mov r0, sp
+    // III.2 call scheduler: get the task context to be restored
     bl scheduler_switch_task
-
-    // III.3 restore supervisor stack pointer: free the saved context
-    // task_context = r1-r12, lr, spsr, r0 = 4 * (12 + 3) = 60 bytes
-    add sp, sp, #60
 
     // restore the next task context
     b __set_task_context

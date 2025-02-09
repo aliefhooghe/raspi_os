@@ -2,7 +2,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "kernel.h"
 #include "syscalls.h"
 
 #include "scheduler/scheduler.h"
@@ -123,19 +122,18 @@ static syscall_handler_t _syscall_table[SYSCALL_COUNT] =
     [SYSCALL_GETPID] = _syscall__getpid
 };
 
-int32_t kernel_syscall_handler(
+void kernel_syscall_handler(
     syscall_num_t syscall_num,
     uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
-    kernel_restore_translation_table();
-
     if (syscall_num >= SYSCALL_COUNT)
     {
-        return -1;
+        scheduler_cur_proc_set_syscall_status(-1);
     }
     else
     {
         syscall_handler_t handler = _syscall_table[syscall_num];
-        return handler(arg0, arg1, arg2);
+        const int32_t status = handler(arg0, arg1, arg2);
+        scheduler_cur_proc_set_syscall_status(status);
     }
 }
