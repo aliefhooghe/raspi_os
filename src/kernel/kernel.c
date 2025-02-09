@@ -9,6 +9,7 @@
 #include "hardware/io_registers.h"
 #include "hardware/mini_uart.h"
 #include "hardware/mmio.h"
+#include "hardware/mmu.h"
 #include "hardware/watchdog.h"
 
 
@@ -71,6 +72,20 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     // disable aux (mini uart) interuptions (using polling for now)
     mmio_write(REG__IRQ_DISABLE_1, IRQ1_AUX_INT);
+
+
+    mini_uart_puts("[kernel] Ready to start the mmu. Ready ?\r\n");
+    mini_uart_getc();
+
+    mini_uart_puts("[kernel] Really ?\r\n");
+    mini_uart_getc();
+
+    mmu_init();
+
+    for (uint32_t i = 0u; i < 32u; i++)
+    {
+        mini_uart_printf("[kernel] I am alieve with the mmu %u\n\r", i);
+    }
 
     // start user mode
     mini_uart_puts("[kernel] call user mode !\r\n");

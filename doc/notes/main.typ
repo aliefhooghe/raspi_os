@@ -151,9 +151,12 @@ Une région de 1MB mappée directement (typiquement utile pour le mapping identi
     align: (center, left, left),
     table.header([*Offset*], [*Name*], [*Description*]),
     [31:20], [], [Adresse physique des 12 bits les plus significatifs (base de 1 MB alignée).],
-    [19:17], [], [_Should-Be-Zero_],
-    [16],    [*`C`*], [  Active ou non le cache de données pour la section.],
-    [15-12], [*`TEX`*], [ Type Extension
+    [19], [*`NS`*], [ To be documented],
+    [18], [], [ _should-be-zero_ ],
+    [17], [*`nG`*], [ To be documented],
+    [16], [*`S`*], [ To be documented],
+    [15], [*`APX`*], [ To be documented. Impact on AP behavior ],
+    [14-12], [*`TEX`*], [ Type Extension
       - Dans la convention la plus répandue pour les sections, on utilise 3 bits TEX occupant les bits 14-12.
       - Le rôle du champ TEX est d'étendre la définition des attributs mémoire.
       - En combinaison avec le bit C (Cacheable) et le bit B (Bufferable, qui viendra plus bas), la triplette (TEX, C, B) permet de définir le type exact de mémoire.
@@ -171,17 +174,18 @@ Une région de 1MB mappée directement (typiquement utile pour le mapping identi
           columns: (auto, auto, auto, auto),
           stroke: none,
           table.header([*`AP[1]`*], [*`AP[0]`*], [*Mode Privilégié*], [*Mode Non-Privilégié*]),
-          [0], [0],	[Lecture/Écriture], [Aucun accès],
-          [0], [1],	[Lecture/Écriture], [Lecture uniquement],
-          [1], [0],	[Lecture/Écriture], [Lecture/Écriture],
-          [1], [1],	[Lecture uniquement], [Aucun accès],
+          [0], [0],	[Aucun accès], [Aucun accès],
+          [0], [1],	[Lecture/Écriture], [Aucun accès],
+          [1], [0],	[Lecture/Écriture], [Lecture uniquement],
+          [1], [1],	[Lecture/Écriture], [Lecture/Écriture],
       )
     ],
-    [11:10], [*`domain`*], [
+    [8:5], [*`domain`*], [
       - Ces bits spécifient le numéro de domaine (0-15) auquel appartient la section.
       - Le registre DACR (Domain Access Control Register) du processeur détermine les droits d'accès globaux pour chaque domaine.
     ],
-    [4:3], [], [_Should-Be-Zero_],
+    [4], [*`XN`*], [ To be documented],
+    [3], [*`C`*], [ To be documented],
     [2], [*`B`*], [Ce bit indique si les écritures dans la mémoire de la section sont bufferisées.],
     [1:0], [*`type`*], [ `0b10` pour une section]
   ),
@@ -250,7 +254,7 @@ Chaque entrée correspond à une section de 1 MB.
 Différent registres sont necessaire pour mettre configurer et activer la mmu.
 
 ==== Translation Table Base Register 0 (TTBR0)
-Le registre pointe vers la table de niveau 1 (alignée sur 16 KB): il contient l'addresse physique de la table.
+Le registre pointe vers la table de niveau 1 (alignée sur 16 KB): il contient l'addresse physique de la table. Ce registre doit être modifié via l'instruction `mcr` (_Move to Coprocessor from ARM Register_).
 
 #figure(
   table(
