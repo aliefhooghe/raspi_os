@@ -33,7 +33,11 @@ uint32_t *translation_table_allocator_alloc(void)
     if (table_index < 0)
         return NULL;
     else
-        return _translation_table_allocator.memory_section_base + table_index * MMU_L1_ENTRY_COUNT;
+    {
+        uint32_t *translation_table = _translation_table_allocator.memory_section_base + table_index * MMU_L1_ENTRY_COUNT;
+        _memset(translation_table, 0, sizeof(uint32_t) * MMU_L1_ENTRY_COUNT);
+        return translation_table;
+    }
 }
 
 void translation_table_allocator_free(uint32_t *translation_table)

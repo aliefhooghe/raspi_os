@@ -3,15 +3,18 @@
 #include <stdint.h>
 
 #include "kernel.h"
-#include "hardware/cpu.h"
-#include "memory/translation_table_allocator.h"
-
-#include "lib/str.h"
 
 #include "scheduler.h"
 #include "task_context.h"
-#include "vfs/vfs.h"
 
+#include "hardware/cpu.h"
+#include "hardware/mmu.h"
+
+#include "lib/str.h"
+
+#include "memory/translation_table_allocator.h"
+
+#include "vfs/vfs.h"
 
 /**
  *  task structure
@@ -172,6 +175,9 @@ static void scheduler_task_init(
 
     // setup a virtual memory region.
     new_task->translation_table = translation_table_allocator_alloc();
+    translation_table_add_identity_mapping(new_task->translation_table,
+        0x00000000u, 0x00800000,
+        MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 
     // setup stdin/stdout
     const file_descriptor_t tty_fd = vfs_get_tty_file_descriptor();

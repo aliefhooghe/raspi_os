@@ -12,8 +12,8 @@ extern void _mmu_enable(void);
 static uint32_t _page_table[MMU_L1_ENTRY_COUNT] __attribute__((aligned(MMU_L1_TABLE_ALIGN))); // 16 KB alignée
 
 
-void _mmu_identity_mapping(
-    uint32_t *l1_table,
+void translation_table_add_identity_mapping(
+    uint32_t *translation_table,
     uint32_t start_address,
     uint32_t end_address,
     uint32_t mem_protection)
@@ -23,7 +23,7 @@ void _mmu_identity_mapping(
         section_address += MMU_SECTION_SIZE)
     {
         const uint32_t section_index = section_address >> 20;
-        l1_table[section_index] = section_address  |
+        translation_table[section_index] = section_address  |
             mem_protection |
             MMU_L1_TYPE_SECTION;
     }
@@ -38,13 +38,13 @@ void mmu_init(void)
     // TODO: set le TEX et cie car nous ne voulons pas de mise en cache
     // ainsi que les bits C et B
     // et de réordonement des accès mémoire sur les mmios
-    _mmu_identity_mapping(_page_table,
+    translation_table_add_identity_mapping(_page_table,
         IO_REG_START, IO_REG_END,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_NONE);
 
     // map the kernel memory on identity for both user and kernel
-    _mmu_identity_mapping(_page_table,
-        0x00000000u, 0x00800000,
+    translation_table_add_identity_mapping(_page_table,
+        0x00000000u, 0x04800000,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 
     // set the page table physical address to TTBR0

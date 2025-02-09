@@ -1,6 +1,8 @@
 #ifndef SATAN_MMU_H_
 #define SATAN_MMU_H_
 
+#include <stdint.h>
+
 #define MMU_L1_ENTRY_COUNT 0x1000u
 #define MMU_L1_TABLE_ALIGN 0x4000u  // 16.0KiB aligned
 
@@ -25,5 +27,14 @@
  *  Enable the Memory Management Unit
  */
 void mmu_init(void);
+
+/**
+ *  Translation table configuration
+ */
+void translation_table_add_identity_mapping(
+    uint32_t *translation_table,
+    uint32_t start_address,
+    uint32_t end_address,
+    uint32_t mem_protection);
 
 #endif
