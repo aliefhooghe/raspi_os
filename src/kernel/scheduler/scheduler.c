@@ -5,6 +5,7 @@
 #include "kernel.h"
 
 #include "scheduler.h"
+#include "memory/section_allocator.h"
 #include "task_context.h"
 
 #include "hardware/cpu.h"
@@ -24,34 +25,20 @@ typedef struct {
     //
     //  Process management
     //
-    task_context_t context;     // saved task context (register and processor status)
-    int32_t id;                 // process id: pid
+    task_context_t context;         // saved task context (register and processor status)
+    int32_t id;                     // process id: pid
 
     //
     //  Memory management
     //
-    uint32_t *translation_table;
+    uint32_t *translation_table;    // process translation table.
+    void *memory_section;           // for now 1 memory section per process.
 
     //
     //  Virtual file system interfaces
     //
-
-    // on voudrais ici un array des fichier ouverts
-    // modèle de polymorphisme sans doute à revoir.
-    // est ce que certaines choses ne sont pas stocké dans le vfs ?
     file_descriptor_t file_descriptors[2];  // stdin, stdout
     uint32_t fd_count;
-
-    // comment gérer un appel open ? Notion de path coté vfs. Stocker le fd: coté process ?
-    /**
-
-        fd = vfs.open(path)
-        task.fds.push(fd)
-
-     */
-
-     // qui initialize stdin/stdout pour un process ?
-
 } task_t; // a renommer => process
 
 
@@ -95,6 +82,7 @@ void scheduler_start(void)
 static void _cleanup_task(task_t* task)
 {
     translation_table_allocator_free(task->translation_table);
+    section_allocator_free(task->memory_section);
 }
 
 const task_context_t *scheduler_switch_task(const task_context_t *current_context)
@@ -179,8 +167,21 @@ static void scheduler_task_init(
         &new_task->context,
         stack_address, proc_address, param);
 
-    // setup a virtual memory region.
+    // setup the process virtual memory space
+
+    // 1 - allocate a memory section for the process
+    new_task->memory_section = section_allocator_alloc();
+    if (new_task->memory_section == NULL)
+    {
+        kernel_fatal_error("failed to allocate a process memory section");
+    }
+
+    // 2 - setup the process address translation table.
     new_task->translation_table = translation_table_allocator_alloc();
+    if (new_task->translation_table == NULL)
+    {
+        kernel_fatal_error("failed to allocate a process transaction table");
+    }
 
     // setup stdin/stdout
     const file_descriptor_t tty_fd = vfs_get_tty_file_descriptor();
