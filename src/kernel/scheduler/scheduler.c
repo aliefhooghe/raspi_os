@@ -71,8 +71,11 @@ void scheduler_init(void)
 
 void scheduler_start(void)
 {
+    // HORRIBLE
     if (_scheduler.task_count > 0u) {
-        __set_task_context(&_scheduler.tasks[0].context);
+        task_t *task = &_scheduler.tasks[0];
+        mmu_set_translation_table(task->translation_table);
+        __set_task_context(&task->context);
     }
     else {
         kernel_fatal_error("no task to be started");
@@ -168,6 +171,7 @@ static void scheduler_task_init(
         stack_address, proc_address, param);
 
     // setup the process virtual memory space
+    //
 
     // 1 - allocate a memory section for the process
     new_task->memory_section = section_allocator_alloc();
@@ -182,6 +186,13 @@ static void scheduler_task_init(
     {
         kernel_fatal_error("failed to allocate a process transaction table");
     }
+
+    // 2.1 - map the kernel code and data + heap
+    translation_table_add_identity_mapping(new_task->translation_table,
+        0x00000000u, 0x00800000u,
+        MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
+
+    // --
 
     // setup stdin/stdout
     const file_descriptor_t tty_fd = vfs_get_tty_file_descriptor();

@@ -26,6 +26,21 @@
 extern const char *__satan_welcome_banner;
 extern const char *__satan_fatal_error_banner;
 
+//  +-----------------+--------------------+----------------------+
+//  | section         | size               | position             |
+//  +-----------------+--------------------+----------------------+
+//  | ◘ FIR stack     | 00001000 = 4.0KiB  | 00000000 -> 00001000 |
+//  | ◘ IRQ stack     | 00001000 = 4.0KiB  | 00001000 -> 00002000 |
+//  | ◘ SVC stack     | 00001000 = 4.0KiB  | 00002000 -> 00003000 |
+//  | ◘ KERNEL        | 00018000 = 96.0KiB | 00008000 -> 00020000 |
+//  | ◘ KERNEL HEAP   | 00700000 = 7.0MiB  | 00100000 -> 00800000 |
+//  | ◘ DYN SECTIONS  | 04000000 = 64.0MiB | 00800000 -> 04800000 |
+//  +-----------------+--------------------+----------------------+
+//  | TOTAL           | 72.0MiB            |
+//  +-----------------+--------------------+
+
+//  KERNEL CODE + DATA = 0x00000000 - 0x00100000
+//                     = the first section of 1Mb
 
 #define KERNEL_HEAP_BEGIN           0x00100000u
 #define KERNEL_HEAP_END             0x00800000u
@@ -33,7 +48,23 @@ extern const char *__satan_fatal_error_banner;
 #define KERNEL_DYN_SECTIONS_BEGIN   0x00800000u
 #define KERNEL_DYN_SECTIONS_END     0x04800000u
 
+static uint32_t *kernel_translation_table;
 
+static void kernel_init_translation_table(uint32_t *table)
+{
+    // map the kernel code+data / heap / dynamic sections
+    translation_table_add_identity_mapping(table,
+        0x00000000u, KERNEL_DYN_SECTIONS_END,
+        MMU_L1_SECTION_AP_KERNEL_RW_USER_NONE);
+
+    // map IO registers for the kernel
+    // TODO: set le TEX et cie car nous ne voulons pas de mise en cache
+    // ainsi que les bits C et B
+    // et de réordonement des accès mémoire sur les mmios
+    translation_table_add_identity_mapping(table,
+        IO_REG_START, IO_REG_END,
+        MMU_L1_SECTION_AP_KERNEL_RW_USER_NONE);
+}
 
 static void kernel_init(void)
 {
@@ -45,8 +76,11 @@ static void kernel_init(void)
     translation_table_allocator_init(process_translation_tables_section);
 
     // Initialize the kernel translation table
-    uint32_t *kernel_translation_table = translation_table_allocator_alloc();
-    mmu_set_translation_table(kernel_translation_table);
+    kernel_translation_table = translation_table_allocator_alloc();
+    kernel_init_translation_table(kernel_translation_table);
+
+    // Enable and initialize the MMU with the kernel translation table
+    kernel_restore_translation_table();
     mmu_set_dacr(0x55555555);
     mmu_enable();
 
@@ -58,6 +92,11 @@ static void kernel_init(void)
 
     // Initialize the Virtual File System
     vfs_init();
+}
+
+void kernel_restore_translation_table(void)
+{
+    mmu_set_translation_table(kernel_translation_table);
 }
 
 void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
@@ -93,14 +132,6 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     // enable irq globaly
     cpu_irq_enable();
-
-    // disable aux (mini uart) interuptions (using polling for now)
-    mmio_write(REG__IRQ_DISABLE_1, IRQ1_AUX_INT);
-
-    for (uint32_t i = 0u; i < 32u; i++)
-    {
-        mini_uart_printf("[kernel] I am alieve with the mmu %u\n\r", i);
-    }
 
     // start user mode
     mini_uart_puts("[kernel] call user mode !\r\n");

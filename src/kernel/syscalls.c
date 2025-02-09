@@ -2,11 +2,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "scheduler/scheduler.h"
+#include "kernel.h"
 #include "syscalls.h"
 
+#include "scheduler/scheduler.h"
 #include "hardware/watchdog.h"
-
 #include "memory/allocator.h"
 
 #include "vfs/vfs.h"
@@ -131,6 +131,8 @@ int32_t kernel_syscall_handler(
     syscall_num_t syscall_num,
     uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
+    kernel_restore_translation_table();
+
     if (syscall_num >= SYSCALL_COUNT)
     {
         return -1;
