@@ -1,11 +1,11 @@
 
 
 table = {
-    'FIR stack': (0x00000000, 0x00001000),
-    'IRQ stack': (0x00001000, 0x00002000),
-    'SVC stack': (0x00002000, 0x00003000),
-    'KERNEL'   : (0x00008000, 0x00010000),
-    'HEAP'     : (0x00080000, 0x00800000)
+    'FIR stack'   : (0x00000000, 0x00001000),
+    'IRQ stack'   : (0x00001000, 0x00002000),
+    'SVC stack'   : (0x00002000, 0x00003000),
+    'KERNEL'      : (0x00008000, 0x00020000),
+    'KERNEL HEAP' : (0x00080000, 0x00800000)
 }
 
 # total mem
@@ -26,16 +26,20 @@ def ll(step: int):
 
     line_pos = 0
     line_size = 64
-    print("sizes:")
-    idx = 1
 
+    idx = 1
+    print("+--------------+--------------------+----------------------+")
+    print(f"\033[1m| section      | size               | position             |\033[0m")
+    print("+--------------+--------------------+----------------------+")
     for name, (a, b) in table.items():
         sz = sizeof_fmt(b-a)
         name = colorize(idx, f'{name:12}')
-        print(f"{name} | {b-a:08x} = {sz:8}| {a:08x} -> {b:08x}")
+        print(f"| {name} | {b-a:08x} = {sz:8}| {a:08x} -> {b:08x} |")
         idx = idx + 1
     sz = sizeof_fmt(size)
-    print(f"\nTOTAL        | {sz:8}")
+    print("+--------------+--------------------+----------------------+")
+    print(f"| TOTAL        | {sz:8}           |")
+    print("+--------------+--------------------+")
 
     print()
 
