@@ -35,7 +35,11 @@ uint32_t *translation_table_allocator_alloc(void)
     else
     {
         uint32_t *translation_table = _translation_table_allocator.memory_section_base + table_index * MMU_L1_ENTRY_COUNT;
+
+        // Initialize the translation table with the default kernel mapping
         _memset(translation_table, 0, sizeof(uint32_t) * MMU_L1_ENTRY_COUNT);
+        translation_table_add_kernel_mapping(translation_table);
+
         return translation_table;
     }
 }

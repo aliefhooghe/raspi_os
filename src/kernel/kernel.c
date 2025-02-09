@@ -33,6 +33,8 @@ extern const char *__satan_fatal_error_banner;
 #define KERNEL_DYN_SECTIONS_BEGIN   0x00800000u
 #define KERNEL_DYN_SECTIONS_END     0x04800000u
 
+
+
 static void kernel_init(void)
 {
     // Initialize the section allocator
@@ -41,6 +43,12 @@ static void kernel_init(void)
     // Initialize the translation table allocator
     void *process_translation_tables_section = section_allocator_alloc();
     translation_table_allocator_init(process_translation_tables_section);
+
+    // Initialize the kernel translation table
+    uint32_t *kernel_translation_table = translation_table_allocator_alloc();
+    mmu_set_translation_table(kernel_translation_table);
+    mmu_set_dacr(0x55555555);
+    mmu_enable();
 
     // Initialize the memory allocator: to be removed
     memory_allocator_init(KERNEL_HEAP_BEGIN, KERNEL_HEAP_END);
@@ -88,15 +96,6 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     // disable aux (mini uart) interuptions (using polling for now)
     mmio_write(REG__IRQ_DISABLE_1, IRQ1_AUX_INT);
-
-
-    mini_uart_puts("[kernel] Ready to start the mmu. Ready ?\r\n");
-    mini_uart_getc();
-
-    mini_uart_puts("[kernel] Really ?\r\n");
-    mini_uart_getc();
-
-    mmu_init();
 
     for (uint32_t i = 0u; i < 32u; i++)
     {

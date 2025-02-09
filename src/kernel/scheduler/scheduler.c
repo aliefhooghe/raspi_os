@@ -175,9 +175,6 @@ static void scheduler_task_init(
 
     // setup a virtual memory region.
     new_task->translation_table = translation_table_allocator_alloc();
-    translation_table_add_identity_mapping(new_task->translation_table,
-        0x00000000u, 0x00800000,
-        MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 
     // setup stdin/stdout
     const file_descriptor_t tty_fd = vfs_get_tty_file_descriptor();

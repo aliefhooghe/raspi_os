@@ -4,12 +4,8 @@
 #include "hardware/io_registers.h"
 #include "lib/str.h"
 
-extern void _mmu_set_ttbr0(uint32_t table_addr);
-extern void _mmu_set_dacr(uint32_t dacr_value);
-extern void _mmu_enable(void);
 
 
-static uint32_t _page_table[MMU_L1_ENTRY_COUNT] __attribute__((aligned(MMU_L1_TABLE_ALIGN))); // 16 KB alignée
 
 
 void translation_table_add_identity_mapping(
@@ -29,30 +25,19 @@ void translation_table_add_identity_mapping(
     }
 }
 
-void mmu_init(void)
+void translation_table_add_kernel_mapping(
+    uint32_t *translation_table)
 {
-    // initialize an identity mapping
-    _memset(_page_table, 0, sizeof(uint32_t) * 4096);
-
     // map IO registers for the kernel
     // TODO: set le TEX et cie car nous ne voulons pas de mise en cache
     // ainsi que les bits C et B
     // et de réordonement des accès mémoire sur les mmios
-    translation_table_add_identity_mapping(_page_table,
+    translation_table_add_identity_mapping(translation_table,
         IO_REG_START, IO_REG_END,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_NONE);
 
     // map the kernel memory on identity for both user and kernel
-    translation_table_add_identity_mapping(_page_table,
+    translation_table_add_identity_mapping(translation_table,
         0x00000000u, 0x04800000,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
-
-    // set the page table physical address to TTBR0
-    _mmu_set_ttbr0((uint32_t)_page_table);
-
-    // set all domain to client mode. TODO: refine this
-    _mmu_set_dacr(0x55555555);
-
-    // enable the mmu
-    _mmu_enable();
 }

@@ -23,10 +23,9 @@
 //
 #define MMU_SECTION_SIZE 0x00100000u
 
-/**
- *  Enable the Memory Management Unit
- */
-void mmu_init(void);
+extern void mmu_set_dacr(uint32_t dacr_value);
+extern void mmu_enable(void);
+extern void mmu_set_translation_table(const uint32_t *table_addr);
 
 /**
  *  Translation table configuration
@@ -36,5 +35,11 @@ void translation_table_add_identity_mapping(
     uint32_t start_address,
     uint32_t end_address,
     uint32_t mem_protection);
+
+/**
+ * Translation table default configuration
+ */
+void translation_table_add_kernel_mapping(
+    uint32_t *translation_table);
 
 #endif
