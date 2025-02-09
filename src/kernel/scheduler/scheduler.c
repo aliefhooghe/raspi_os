@@ -17,6 +17,8 @@
 
 #include "vfs/vfs.h"
 
+#define PROCESS_SECTION_VIRTUAL_ADDRRESS   0x00800000u
+
 /**
  *  task structure
  */
@@ -188,8 +190,15 @@ static void scheduler_task_init(
     }
 
     // 2.1 - map the kernel code and data + heap
-    translation_table_add_identity_mapping(new_task->translation_table,
+    translation_table_add_identity_mapping(
+        new_task->translation_table,
         0x00000000u, 0x00800000u,
+        MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
+
+    translation_table_add_single_section(
+        new_task->translation_table,
+        new_task->memory_section,
+        PROCESS_SECTION_VIRTUAL_ADDRRESS,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 
     // --

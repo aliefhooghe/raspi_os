@@ -28,7 +28,7 @@ extern void mmu_enable(void);
 extern void mmu_set_translation_table(const uint32_t *table_addr);
 
 /**
- *  Translation table configuration
+ *  Add an identity mappping on the translation table on a given range with permissions.
  */
 void translation_table_add_identity_mapping(
     uint32_t *translation_table,
@@ -37,9 +37,12 @@ void translation_table_add_identity_mapping(
     uint32_t mem_protection);
 
 /**
- * Translation table default configuration
+ * Add a single virtual memory section to the translation table
  */
-void translation_table_add_kernel_mapping(
-    uint32_t *translation_table);
+void translation_table_add_single_section(
+   uint32_t *translation_table,
+   void *memory_section,
+   uint32_t virtual_section_address,
+   uint32_t mem_protection);
 
 #endif
