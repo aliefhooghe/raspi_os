@@ -147,12 +147,12 @@ const task_context_t *scheduler_switch_task(const task_context_t *current_contex
 static void scheduler_task_context_init(
     task_context_t *context,
     uintptr_t stack_address,
-    uintptr_t proc_address,
+    void *proc_address,
     uint32_t param)
 {
     context->r0 = param;
     context->sp = stack_address;
-    context->lr = proc_address;
+    context->lr = (uint32_t)proc_address;
     context->spsr =
         CPU_CPSR_MODE_USER |
         CPU_CPSR_DISABLE_IRQ |
@@ -161,7 +161,7 @@ static void scheduler_task_context_init(
 
 static void scheduler_task_init(
     task_t *new_task, uint32_t task_id,
-    uintptr_t proc_address, uint32_t param)
+    void *proc_address, uint32_t param)
 {
     _memset(new_task, 0, sizeof(task_t));
 
@@ -214,7 +214,7 @@ static void scheduler_task_init(
 }
 
 int32_t scheduler_add_task(
-    uintptr_t proc_address,
+    void *proc_address,
     uint32_t param)
 {
     if (_scheduler.task_count >= SCHEDULER_MAX_TASK_COUNT)
@@ -237,6 +237,13 @@ int32_t scheduler_add_task(
 //
 //  Current process management
 //
+
+void* scheduler_cur_proc_get_kernel_address(uintptr_t process_virtual_address)
+{
+    return mmu_translate_virtual_address(
+        _scheduler.tasks[_scheduler.current_task].translation_table,
+        process_virtual_address);
+}
 
 void scheduler_cur_proc_exit(void)
 {

@@ -40,7 +40,8 @@ static int32_t _syscall__spawn(uint32_t proc_address, uint32_t param, uint32_t a
 {
     (void)arg2;
 
-    const int32_t pid = scheduler_add_task(proc_address, param);
+    void *kernel_proc_address = scheduler_cur_proc_get_kernel_address(proc_address);
+    const int32_t pid = scheduler_add_task(kernel_proc_address, param);
     if (pid < 0)
     {
         return SYSCALL_STATUS_ERR;
@@ -64,7 +65,7 @@ static int32_t _syscall__exit(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 static int32_t _syscall__read(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     const int32_t fd = arg0;
-    void* data = (void*)arg1;
+    void* data = scheduler_cur_proc_get_kernel_address(arg1);
     const size_t size = arg2;
 
     file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
@@ -81,7 +82,7 @@ static int32_t _syscall__read(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 static int32_t _syscall__write(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     const int32_t fd = arg0;
-    const void* data = (const void*)arg1;
+    const void* data = scheduler_cur_proc_get_kernel_address(arg1);
     const size_t size = arg2;
 
     file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);

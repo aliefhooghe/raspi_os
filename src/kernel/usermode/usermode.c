@@ -26,6 +26,10 @@ void user_function(void)
         fprintf(stdout, "[%u] lucifer ~ ", pid);
         gets_s(line, LINE_SIZE);
 
+        const size_t len = strlen(line);
+        if (len == 0)
+            continue;
+
         if (strcmp(line, "reboot") == 0)
         {
             fprintf(stdout, "[%u] reboot now !\n", pid);
@@ -52,7 +56,7 @@ void user_function(void)
         }
         else
         {
-            fprintf(stdout, "[%u] lucifer: '%s' command not found\n", pid, line);
+            fprintf(stdout, "[%u] lucifer: %s: command not found\n", pid, line);
         }
     }
 

@@ -27,6 +27,15 @@ extern void mmu_set_dacr(uint32_t dacr_value);
 extern void mmu_enable(void);
 extern void mmu_set_translation_table(const uint32_t *table_addr);
 
+
+/**
+ *  Emulate the mmu logic and translate a virtual address to a physical
+ *  address using a translation table
+ */
+void *mmu_translate_virtual_address(
+    uint32_t *translation_table,
+    uintptr_t virtual_addresss);
+
 /**
  *  Add an identity mappping on the translation table on a given range with permissions.
  */
