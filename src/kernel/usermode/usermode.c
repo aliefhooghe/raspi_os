@@ -6,6 +6,8 @@
 #include "usermode/libc/stdio.h"
 #include "usermode/libc/string.h"
 
+#include "hardware/mini_uart.h"
+
 
 #define LINE_SIZE 128
 
@@ -13,6 +15,8 @@ void user_function(void)
 {
     char line[LINE_SIZE] = "";
     const int32_t pid = usr_syscall_getpid();
+
+    // mini_uart_printf("FUCK LE (S APPELS) SYSTèME !\r\n");
 
     FILE *stdout = get_stdout();
 

@@ -31,14 +31,6 @@ typedef struct {
 
 } task_t; // a renommer => process
 
-typedef struct {
-    task_t tasks[SCHEDULER_MAX_TASK_COUNT]; // process table.
-    uint32_t current_task;
-    uint32_t task_count;
-    uint32_t id_gen;
-    uint32_t stop_current_task;
-} scheduler_t;
-
 
 void scheduler_init(void);
 void scheduler_start(void);

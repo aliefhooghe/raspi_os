@@ -1,7 +1,6 @@
 
 #include <stdint.h>
 
-#include "kernel.h"
 #include "hardware/mini_uart.h"
 
 #include "vfs/vfs.h"
@@ -9,9 +8,18 @@
 #include "lib/str.h"
 
 /**
- *  global kernel state
+ *  vfs
  */
-extern kernel_state_t __kernel_state;
+typedef struct {
+    file_handle_t file_table[1];
+    uint32_t file_count;
+} vfs_t;
+
+
+/**
+ *  global vfs
+ */
+static vfs_t _vfs;
 
 //
 // DRAFT: mini uart tty infrastructure
@@ -91,18 +99,16 @@ static file_descriptor_t _create_desciptor(file_handle_t *handle)
 //
 void vfs_init(void)
 {
-    vfs_t *vfs = &__kernel_state.vfs;
-    _memset(vfs, 0, sizeof(vfs_t));
+    _memset(&_vfs, 0, sizeof(vfs_t));
 
     // init the tty as the single opened file
-    vfs->file_count = 1u;
-    vfs->file_table[0] = tty_init_virtual_file();
+    _vfs.file_count = 1u;
+    _vfs.file_table[0] = tty_init_virtual_file();
 }
 
 file_descriptor_t vfs_get_tty_file_descriptor(void)
 {
-    vfs_t *vfs = &__kernel_state.vfs;
-    return _create_desciptor(&vfs->file_table[0u]);
+    return _create_desciptor(&_vfs.file_table[0u]);
 }
 
 //

@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "kernel.h"
+#include "scheduler/scheduler.h"
 #include "syscalls.h"
 
 #include "hardware/watchdog.h"

@@ -17,10 +17,6 @@ typedef struct  {
     // todo: add r/w mode here
 } file_descriptor_t;
 
-typedef struct {
-    file_handle_t file_table[1];
-    uint32_t file_count;
-} vfs_t;
 
 // vfs interface
 void vfs_init(void);

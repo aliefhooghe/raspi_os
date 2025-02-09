@@ -14,23 +14,26 @@
 
 
 #include "memory/allocator.h"
+#include "memory/section_allocator.h"
 #include "scheduler/scheduler.h"
+
 
 #include "usermode/usermode.h"
 #include "vfs/vfs.h"
 
 extern const char *__satan_welcome_banner;
 extern const char *__satan_fatal_error_banner;
-/**
- * Global kernel state
- */
-kernel_state_t __kernel_state;
 
-#define KERNEL_HEAP_BEGIN 0x00080000u
-#define KERNEL_HEAP_END   0x00800000u
+
+#define KERNEL_HEAP_BEGIN           0x00100000u
+#define KERNEL_HEAP_END             0x00800000u
+
+#define KERNEL_DYN_SECTIONS_BEGIN   0x00800000u
+#define KERNEL_DYN_SECTIONS_END     0x04800000u
 
 static void kernel_init(void)
 {
+    section_allocator_init(KERNEL_DYN_SECTIONS_BEGIN);
     memory_allocator_init(KERNEL_HEAP_BEGIN, KERNEL_HEAP_END);
     scheduler_init();
     vfs_init();

@@ -1,39 +1,30 @@
-
-
-#include "kernel.h"
-#include "allocator.h"
-
 #include <stdint.h>
 
+#include "allocator.h"
 
-/**
- *  global kernel state
- */
-extern kernel_state_t __kernel_state;
+memory_allocator_t _allocator;
 
 
 void memory_allocator_init(
     uint32_t base,
     uint32_t limit)
 {
-    memory_allocator_t *allocator = &__kernel_state.allocator;
-    allocator->base = base;
-    allocator->limit = limit;
-    allocator->cursor = base;
+    _allocator.base = base;
+    _allocator.limit = limit;
+    _allocator.cursor = base;
 }
 
 void *mem_alloc(size_t size)
 {
-    memory_allocator_t *allocator = &__kernel_state.allocator;
-    const uint32_t new_cursor = allocator->cursor + size;
-    if (new_cursor > allocator->limit)
+    const uint32_t new_cursor = _allocator.cursor + size;
+    if (new_cursor > _allocator.limit)
     {
         return NULL;
     }
     else
     {
-        const uint32_t result = allocator->cursor;
-        allocator->cursor = new_cursor;
+        const uint32_t result = _allocator.cursor;
+        _allocator.cursor = new_cursor;
         return (void*)result;
     }
 }
