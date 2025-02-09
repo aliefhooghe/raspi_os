@@ -4,12 +4,53 @@
 
 #include "kernel.h"
 #include "hardware/cpu.h"
+#include "memory/translation_table_allocator.h"
 
 #include "lib/str.h"
 
 #include "scheduler.h"
 #include "task_context.h"
 #include "vfs/vfs.h"
+
+
+/**
+ *  task structure
+ */
+typedef struct {
+
+    //
+    //  Process management
+    //
+    task_context_t context;     // saved task context (register and processor status)
+    int32_t id;                 // process id: pid
+
+    //
+    //  Memory management
+    //
+    uint32_t *translation_table;
+
+    //
+    //  Virtual file system interfaces
+    //
+
+    // on voudrais ici un array des fichier ouverts
+    // modèle de polymorphisme sans doute à revoir.
+    // est ce que certaines choses ne sont pas stocké dans le vfs ?
+    file_descriptor_t file_descriptors[2];  // stdin, stdout
+    uint32_t fd_count;
+
+    // comment gérer un appel open ? Notion de path coté vfs. Stocker le fd: coté process ?
+    /**
+
+        fd = vfs.open(path)
+        task.fds.push(fd)
+
+     */
+
+     // qui initialize stdin/stdout pour un process ?
+
+} task_t; // a renommer => process
+
 
 /**
  *  scheduler structure
@@ -28,7 +69,7 @@ typedef struct {
 extern void __set_task_context(task_context_t *current_context);
 
 /**
- *  global kernel state
+ *  global scheduler state
  */
 static scheduler_t _scheduler;
 
@@ -48,11 +89,19 @@ void scheduler_start(void)
     }
 }
 
+static void _cleanup_task(task_t* task)
+{
+    translation_table_allocator_free(task->translation_table);
+}
+
 const task_context_t *scheduler_switch_task(const task_context_t *current_context)
 {
     if (_scheduler.stop_current_task)
     {
         _scheduler.stop_current_task = 0u;
+
+        // free task related resources
+        _cleanup_task(&_scheduler.tasks[_scheduler.current_task]);
 
         // remove the current task. No state to save
         _memmove(
@@ -88,6 +137,24 @@ const task_context_t *scheduler_switch_task(const task_context_t *current_contex
     return &_scheduler.tasks[_scheduler.current_task].context;
 }
 
+//
+//  Task initialization
+//
+
+static void scheduler_task_context_init(
+    task_context_t *context,
+    void *stack_address, uintptr_t proc_address,
+    uint32_t param)
+{
+    context->r0 = param;
+    context->sp = (uint32_t)stack_address;
+    context->lr = proc_address;
+    context->spsr =
+        CPU_CPSR_MODE_USER |
+        CPU_CPSR_DISABLE_IRQ |
+        CPU_CPSR_DISABLE_FIQ;
+}
+
 static void scheduler_task_init(
     task_t *new_task, uint32_t task_id,
     void *stack_address, uintptr_t proc_address,
@@ -99,13 +166,12 @@ static void scheduler_task_init(
     new_task->id = task_id;
 
     // set initial task context
-    new_task->context.r0 = param;
-    new_task->context.sp = (uint32_t)stack_address;
-    new_task->context.lr = proc_address;
-    new_task->context.spsr =
-        CPU_CPSR_MODE_USER |
-        CPU_CPSR_DISABLE_IRQ |
-        CPU_CPSR_DISABLE_FIQ;
+    scheduler_task_context_init(
+        &new_task->context,
+        stack_address, proc_address, param);
+
+    // setup a virtual memory region.
+    new_task->translation_table = translation_table_allocator_alloc();
 
     // setup stdin/stdout
     const file_descriptor_t tty_fd = vfs_get_tty_file_descriptor();
@@ -135,6 +201,10 @@ int32_t scheduler_add_task(
 
     return new_task_id;
 }
+
+//
+//  Current process management
+//
 
 void scheduler_cur_proc_exit(void)
 {

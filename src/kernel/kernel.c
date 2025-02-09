@@ -15,6 +15,8 @@
 
 #include "memory/allocator.h"
 #include "memory/section_allocator.h"
+#include "memory/translation_table_allocator.h"
+
 #include "scheduler/scheduler.h"
 
 
@@ -33,9 +35,20 @@ extern const char *__satan_fatal_error_banner;
 
 static void kernel_init(void)
 {
+    // Initialize the section allocator
     section_allocator_init(KERNEL_DYN_SECTIONS_BEGIN);
+
+    // Initialize the translation table allocator
+    void *process_translation_tables_section = section_allocator_alloc();
+    translation_table_allocator_init(process_translation_tables_section);
+
+    // Initialize the memory allocator: to be removed
     memory_allocator_init(KERNEL_HEAP_BEGIN, KERNEL_HEAP_END);
+
+    // Initialize the scheduler
     scheduler_init();
+
+    // Initialize the Virtual File System
     vfs_init();
 }
 

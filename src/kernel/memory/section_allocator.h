@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 void section_allocator_init(uint32_t sections_base);
-void *section_allocator_alloc_section(void);
+void *section_allocator_alloc(void);
 void section_allocator_free(void *section);
 
 #endif
