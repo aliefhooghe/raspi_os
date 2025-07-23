@@ -23,11 +23,6 @@ int32_t usr_syscall_reboot(void)
     return syscall(SYSCALL_REBOOT, 0, 0, 0);
 }
 
-int32_t usr_syscall_spawn(void* proc_address, uint32_t param)
-{
-    return syscall(SYSCALL_SPAWN, (uint32_t)proc_address, param, 0);
-}
-
 int32_t usr_syscall_exit(int32_t status)
 {
     return syscall(SYSCALL_EXIT, status, 0, 0);

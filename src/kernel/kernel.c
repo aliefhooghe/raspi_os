@@ -5,20 +5,16 @@
 #include "kernel.h"
 
 #include "hardware/cpu.h"
-#include "hardware/interupts.h"
 #include "hardware/io_registers.h"
 #include "hardware/mini_uart.h"
-#include "hardware/mmio.h"
 #include "hardware/mmu.h"
 #include "hardware/watchdog.h"
-
 
 #include "memory/allocator.h"
 #include "memory/section_allocator.h"
 #include "memory/translation_table_allocator.h"
 
 #include "scheduler/scheduler.h"
-
 
 #include "usermode/usermode.h"
 #include "vfs/vfs.h"
@@ -137,8 +133,7 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     mini_uart_puts("[kernel] call user mode !\r\n");
 
     // bad: duplicated code
-    scheduler_add_task((void*)user_function, 0);
-    scheduler_start();
+    scheduler_start((void*)user_function);
 }
 
 void kernel_fatal_error(const char *reason)

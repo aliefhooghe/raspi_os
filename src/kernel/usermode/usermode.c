@@ -30,15 +30,6 @@ void user_function(void)
             fprintf(stdout, "[%u] reboot now !\n", pid);
             usr_syscall_reboot();
         }
-        else if (strcmp(line, "spawn") == 0)
-        {
-            fprintf(stdout, "[%u] spwan a new process\n", pid);
-            const int32_t new_pid = usr_syscall_spawn((void*)user_function, 0);
-            if (new_pid < 0)
-                fprintf(stdout, "\n[%u] failed to spawn a task\n", pid);
-            else
-                fprintf(stdout, "\n[%u] spawned task: pid=%u\n", pid, new_pid);
-        }
         else if (strcmp(line, "switch") == 0)
         {
             fprintf(stdout, "[%u] switch to next process\n", pid);
@@ -54,5 +45,4 @@ void user_function(void)
             fprintf(stdout, "[%u] lucifer: %s: command not found\n", pid, line);
         }
     }
-
 }

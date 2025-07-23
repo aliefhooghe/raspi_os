@@ -6,7 +6,6 @@
 typedef enum {
     SYSCALL_YIELD = 0,
     SYSCALL_REBOOT,
-    SYSCALL_SPAWN,
     SYSCALL_EXIT,
 
     SYSCALL_READ,

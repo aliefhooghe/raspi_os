@@ -35,22 +35,6 @@ static int32_t _syscall__reboot(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     return 0;
 }
 
-static int32_t _syscall__spawn(uint32_t proc_address, uint32_t param, uint32_t arg2)
-{
-    (void)arg2;
-
-    void *kernel_proc_address = scheduler_cur_proc_get_kernel_address(proc_address);
-    const int32_t pid = scheduler_add_task(kernel_proc_address, param);
-    if (pid < 0)
-    {
-        return SYSCALL_STATUS_ERR;
-    }
-    else
-    {
-        return pid;
-    }
-}
-
 static int32_t _syscall__exit(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     (void)arg1;
@@ -112,7 +96,6 @@ static syscall_handler_t _syscall_table[SYSCALL_COUNT] =
 {
     [SYSCALL_YIELD] = _syscall__yield,
     [SYSCALL_REBOOT] = _syscall__reboot,
-    [SYSCALL_SPAWN] = _syscall__spawn,
     [SYSCALL_EXIT] = _syscall__exit,
     [SYSCALL_READ] = _syscall__read,
     [SYSCALL_WRITE] = _syscall__write,
