@@ -2,20 +2,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "hardware/mini_uart.h"
-#include "kernel.h"
-
-#include "scheduler.h"
-#include "memory/section_allocator.h"
-#include "task_context.h"
-
 #include "hardware/cpu.h"
 #include "hardware/mmu.h"
 
+#include "kernel.h"
 #include "lib/str.h"
 
+#include "memory/section_allocator.h"
 #include "memory/translation_table_allocator.h"
 
+#include "scheduler.h"
+#include "task_context.h"
 #include "vfs/vfs.h"
 
 #define PROCESS_SECTION_VIRTUAL_ADDRRESS  0x00800000u  // section 0x00800000u -> 0x00900000u = 1Mb
@@ -54,7 +51,6 @@ typedef struct {
     uint32_t current_task;
     uint32_t task_count;
     uint32_t id_gen;
-    uint32_t stop_current_task;
 } scheduler_t;
 
 /**
@@ -101,37 +97,10 @@ void scheduler_save_current_context(const task_context_t *current_context)
         sizeof(task_context_t));
 }
 
-
 const task_context_t *scheduler_switch_task(void)
 {
-
-    if (_scheduler.stop_current_task)
-    {
-        // HORRIBLE TRICK SHOULD NOT BE REQUIRED
-        _scheduler.stop_current_task = 0u;
-
-        // free task related resources
-        _cleanup_task(&_scheduler.tasks[_scheduler.current_task]);
-
-        // remove the current task. No state to save
-        _memmove(
-            &_scheduler.tasks[_scheduler.current_task],
-            &_scheduler.tasks[_scheduler.current_task + 1],
-            sizeof(task_t) * (_scheduler.task_count - (_scheduler.current_task + 1)));
-        _scheduler.task_count--;
-
-        // index stay the same
-    }
-    else {
-        // compute the next task index
-        _scheduler.current_task = _scheduler.current_task + 1;
-    }
-
-    // round robin
-    if (_scheduler.task_count == 0u)
-    {
-        kernel_fatal_error("the last running task was stopped");
-    }
+    // compute the next task index: round robin
+    _scheduler.current_task = _scheduler.current_task + 1;
     if (_scheduler.current_task == _scheduler.task_count)
     {
         _scheduler.current_task = 0u;
@@ -312,7 +281,28 @@ int32_t scheduler_cur_proc_fork(void)
 
 void scheduler_cur_proc_exit(void)
 {
-    _scheduler.stop_current_task = 1u;
+    // free task related resources
+    _cleanup_task(&_scheduler.tasks[_scheduler.current_task]);
+
+    // delete task
+    _memmove(
+        &_scheduler.tasks[_scheduler.current_task],
+        &_scheduler.tasks[_scheduler.current_task + 1],
+        sizeof(task_t) * (_scheduler.task_count - (_scheduler.current_task + 1)));
+
+    // update task count.
+    _scheduler.task_count--;
+    if (_scheduler.task_count == 0u)
+    {
+        kernel_fatal_error("the last running task was stopped");
+    }
+
+    // If last task was current, goto task 0
+    // TODO: implement __aeabi_uidivmod in order to use % operator
+    if (_scheduler.current_task == _scheduler.task_count)
+    {
+        _scheduler.current_task = 0u;
+    }
 }
 
 int32_t scheduler_cur_proc_get_id(void)
