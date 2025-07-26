@@ -25,7 +25,7 @@ typedef struct {
     uint32_t r11;
     uint32_t r12;
 
-    uint32_t lr;    // return address register
+    uint32_t lr;    // return address register. Actually lr_svc
 } task_context_t;
 
 

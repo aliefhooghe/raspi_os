@@ -1,84 +1,80 @@
+#include <stddef.h>
 #include <stdint.h>
 
 #include "usermode/usermode.h"
 #include "usermode/usr_syscalls.h"
+#include "usermode/libc/stdio.h"
+#include "usermode/libc/string.h"
 
-#include "hardware/cpu.h"
-#include "hardware/mini_uart.h"
+
+#define LINE_SIZE 128
 
 
-static void print_cpu_mode(uint32_t id)
+static void test_fork(int32_t pid, FILE *stdout)
 {
-    const uint16_t cpu_mode = cpu_get_execution_mode();
-    mini_uart_printf("[%u] cpu mode: 0x%x", id, cpu_mode);
+    fprintf(stdout, "[%u] process is about to fork !\n", pid);
+    const uint32_t status = usr_syscall_fork();
 
+    if (status == 0u)
+    {
+        const uint32_t cpid = usr_syscall_getpid();
+        fprintf(stdout, "we are in the child pid=%u, ppid=%u\n", cpid, pid);
+
+        for (uint32_t i = 0u; i < 4u; i++)
+        {
+            fprintf(stdout, "[%u] child process is working iteration=%u\n", cpid, i);
+        }
+
+        fprintf(stdout, "[%u] exit child process.\n", cpid);
+        usr_syscall_exit(0u);
+    }
+    else
+    {
+        const uint32_t ppid = usr_syscall_getpid();
+        fprintf(stdout, "we are in the parent ppid=%u, pid_arg=%u, child pid=%u\n", ppid, pid, status);
+    }
 }
-
-#define CONTINUE car='\r';continue
-
 
 void user_function(void)
 {
-    int32_t pid = usr_syscall_getpid();
+    DECLARE_STDOUT;
 
-    // starting user mode
-    mini_uart_printf("[%u] welcome in user mode\r\n", pid);
-    print_cpu_mode(pid);
+    char line[LINE_SIZE] = "";
+    const int32_t pid = usr_syscall_getpid();
+    fprintf(stdout, "[%u] start usermode function", pid);
 
-    const char msg[] = "Hello from stdout\r\n";
-    const int32_t status = usr_syscall_write(1, msg, 19);
-    mini_uart_printf("[%u] status = %x\r\n", pid, status);
+    for (;;)
+    {
+        fprintf(stdout, "[%u] lucifer ~ ", pid);
+        gets_s(line, LINE_SIZE);
 
+        const size_t len = strlen(line);
+        if (len == 0)
+            continue;
 
-    //
-    char car = '\r';
-    do {
-
-        switch (car) {
-
-            case '\r':
-                mini_uart_printf("\r\n[%u] satan ~ ", pid);
-                break;
-
-            case 'x':
-                mini_uart_printf("\r\n[%u] quit task now !!\r\n", pid);
-                usr_syscall_exit(0);
-                while (1); // hang.
-
-            case 's':
-            {
-                mini_uart_printf("\r\n[%u] syscall YIELD\r\n", pid);
-                const int32_t status = usr_syscall_yield();
-                mini_uart_printf("[%u] syscall status: %x", pid, status);
-                CONTINUE;
-            }
-
-            case 'p':
-                print_cpu_mode(pid);
-                CONTINUE;
-
-            case 'q':
-                mini_uart_printf("\r\n[%u] reboot now !!\r\n", pid);
-                usr_syscall_reboot();
-                while (1); // hang.
-
-            case 'z':
-            {
-                mini_uart_printf("\r\n[%u] spawn new task\r\n", pid);
-                const int32_t new_pid = usr_syscall_spawn((void*)user_function, 0);
-                if (new_pid < 0)
-                    mini_uart_printf("\r\n[%u] failed to spawn a task\r\n", pid);
-                else
-                    mini_uart_printf("\r\n[%u] spawned task: pid=%u\r\n", pid, new_pid);
-            }
-                break;
-
-            default:
-                mini_uart_putc(car);
-                break;
-
+        if (strcmp(line, "reboot") == 0)
+        {
+            fprintf(stdout, "[%u] reboot now !\n", pid);
+            usr_syscall_reboot();
         }
-
-        car = mini_uart_getc();
-    } while (1);
+        else if (strcmp(line, "switch") == 0)
+        {
+            fprintf(stdout, "[%u] switch to next process\n", pid);
+            usr_syscall_yield();
+        }
+        else if (strcmp(line, "exit") == 0)
+        {
+            fprintf(stdout, "[%u] exit current process\n", pid);
+            usr_syscall_exit(0u);
+        }
+        else if (strcmp(line, "fork") == 0)
+        {
+            fprintf(stdout, "[%u] call fork test procedure:\n", pid);
+            test_fork(pid, stdout);
+        }
+        else
+        {
+            fprintf(stdout, "[%u] lucifer: %s: command not found\n", pid, line);
+        }
+    }
 }

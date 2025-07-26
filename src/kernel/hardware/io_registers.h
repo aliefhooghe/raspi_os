@@ -1,6 +1,11 @@
 #ifndef SATAN_HARDWARE_REGISTER_H_
 #define SATAN_HARDWARE_REGISTER_H_
 
+// mmio range: 0x20000000 - 0x20FFFFFF
+#define IO_REG_START 0x20000000u
+#define IO_REG_END   0x21000000u
+
+
 /**
  *  memory mapped registers adresses
  */

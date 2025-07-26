@@ -3,21 +3,20 @@
 
 #include <stdint.h>
 
-#include "memory/allocator.h"
-#include "scheduler/scheduler.h"
-#include "vfs/vfs.h"
-
-typedef struct {
-    memory_allocator_t allocator;
-    scheduler_t scheduler;
-    vfs_t vfs;
-} kernel_state_t;
-
-// kernel entry point. Called from reset handler
+/**
+ *  kernel entry point. Called from reset handler
+ */
 void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags);
-void kernel_fatal_error(const char *reason);
 
-// kernel state interface: called from svc handler
-const task_context_t *kernel_switch_task(const task_context_t *current_context);
+/**
+ *  configure the mmu to use the kernel translation table.
+ *  called from the svc handler.
+ */
+void kernel_restore_translation_table(void);
+
+// fatal error handler
+void kernel_fatal_error(const char *reason);
+void kernel_unhandled_interupt_fatal_error(void);
+
 
 #endif

@@ -3,28 +3,24 @@
 
 #include <stdint.h>
 
+// Syscall names
+#define FOREACH_SYSCALL(SYSCALL) \
+  SYSCALL(YIELD)                 \
+  SYSCALL(REBOOT)                \
+  SYSCALL(EXIT)                  \
+  SYSCALL(READ)                  \
+  SYSCALL(WRITE)                 \
+  SYSCALL(FORK)                  \
+  SYSCALL(GETPPID)                 \
+  SYSCALL(GETPID)
+
+// pour un shell dup, dup2, exec, fork, getppid (parent pid), wait
+
+
+#define GENERATE_ENUM(ENUM) SYSCALL__##ENUM,
 typedef enum {
-    SYSCALL_YIELD = 0,
-    SYSCALL_REBOOT,
-    SYSCALL_SPAWN,
-    SYSCALL_EXIT,
-
-    SYSCALL_READ,
-    SYSCALL_WRITE,
-    // SYSCALL_OPEN,
-    // SYSCALL_CLOSE,
-
-    // pour un shell dup, dup2, exec, fork, getppid (parent pid), wait
-
-    // SYSCALL_EXEC,
-    // SYSCALL_FORK,
-    // SYSCALL_WAIT
-
-
-    SYSCALL_GETPID,
-    // SYSCALL_GETPPID,
-
-    SYSCALL_COUNT
+  FOREACH_SYSCALL(GENERATE_ENUM)
+  SYSCALL_COUNT
 } syscall_num_t;
 
 #define SYSCALL_STATUS_OK   0

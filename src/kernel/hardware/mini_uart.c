@@ -95,23 +95,11 @@ uint32_t mini_uart_recv(uint8_t *data, uint32_t size)
     return size;
 }
 
-int32_t mini_uart_write(const void *data, size_t size)
-{
-    const uint8_t *bdata = (const uint8_t*)data;
-    for (uint32_t i = 0u; i < size; i++)
-    {
-        mini_uart_putc(bdata[i]);
-    }
-    return size;
-}
+/**
+ * Kernel Log interface
+ */
 
-int32_t mini_uart_read(void *data, size_t size)
-{
-    (void)data, (void)size;
-    return 0;
-}
-
-void mini_uart_puts(const char* str)
+void mini_uart_kernel_puts(const char* str)
 {
     char c;
     while ((c = *(str++)) != '\0')
@@ -120,11 +108,54 @@ void mini_uart_puts(const char* str)
     }
 }
 
-void mini_uart_printf(const char *restrict format, ...)
+static void _mini_uart_put_uint(uint32_t x)
+{
+    char result[11] = "";
+    int index = 10;
+
+    do {
+        result[--index] = '0' + (x % 10);
+        x /= 10;
+    } while (x > 0);
+
+    mini_uart_kernel_puts(result + index);
+}
+
+static void _mini_uart_put_uint_hex(uint32_t x)
+{
+    static const char cars[] = "0123456789abcdef";
+    char result[9] = "";
+    int index = 8;
+
+    do {
+        result[--index] = cars[x & 0xf];
+        x >>= 4;
+    } while (x > 0);
+
+    mini_uart_kernel_puts(result + index);
+}
+
+static void _mini_uart_put_uint_bin(uint32_t x)
+{
+    char result[33] = "";
+    int index = 32;
+
+    do {
+        result[--index] = '0' + (x & 0x1);
+        x >>= 1;
+    } while (x > 0);
+
+    mini_uart_kernel_puts(result + index);
+}
+
+void mini_uart_kernel_log(const char *restrict format, ...)
 {
     va_list ap;
     int escape = 0;
     char c;
+
+    // use a distinct color and prefix for kernel logs
+    mini_uart_kernel_puts("\x1b[2;34m[kernel] ");
 
     va_start(ap, format);
     while ((c = *(format++)) != '\0') {
@@ -133,25 +164,25 @@ void mini_uart_printf(const char *restrict format, ...)
                 case 'u':
                     {
                         const uint32_t value = va_arg(ap, uint32_t);
-                        mini_uart_put_uint(value);
+                        _mini_uart_put_uint(value);
                     }
                     break;
                 case 'x':
                     {
                         const uint32_t value = va_arg(ap, uint32_t);
-                        mini_uart_put_uint_hex(value);
+                        _mini_uart_put_uint_hex(value);
                     }
                     break;
                 case 'b':
                     {
                         const uint32_t value = va_arg(ap, uint32_t);
-                        mini_uart_put_uint_bin(value);
+                        _mini_uart_put_uint_bin(value);
                     }
                     break;
                 case 's':
                     {
                         const char *str = va_arg(ap, const char*);
-                        mini_uart_puts(str);
+                        mini_uart_kernel_puts(str);
                     }
                     break;
                 case 'c':
@@ -175,45 +206,7 @@ void mini_uart_printf(const char *restrict format, ...)
             mini_uart_putc((unsigned char)c);
         }
     }
+    
     va_end(ap);
-}
-
-void mini_uart_put_uint(uint32_t x)
-{
-    char result[11] = "";
-    int index = 10;
-
-    do {
-        result[--index] = '0' + (x % 10);
-        x /= 10;
-    } while (x > 0);
-
-    mini_uart_puts(result + index);
-}
-
-void mini_uart_put_uint_hex(uint32_t x)
-{
-    static const char cars[] = "0123456789abcdef";
-    char result[9] = "";
-    int index = 8;
-
-    do {
-        result[--index] = cars[x & 0xf];
-        x >>= 4;
-    } while (x > 0);
-
-    mini_uart_puts(result + index);
-}
-
-void mini_uart_put_uint_bin(uint32_t x)
-{
-    char result[33] = "";
-    int index = 32;
-
-    do {
-        result[--index] = '0' + (x & 0x1);
-        x >>= 1;
-    } while (x > 0);
-
-    mini_uart_puts(result + index);
+    mini_uart_kernel_puts("\x1b[0m\r\n");
 }

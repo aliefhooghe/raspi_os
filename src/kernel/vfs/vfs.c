@@ -7,6 +7,19 @@
 
 #include "lib/str.h"
 
+/**
+ *  vfs
+ */
+typedef struct {
+    file_handle_t file_table[1];
+    uint32_t file_count;
+} vfs_t;
+
+
+/**
+ *  global vfs
+ */
+static vfs_t _vfs;
 
 //
 // DRAFT: mini uart tty infrastructure
@@ -15,14 +28,48 @@ static int32_t _tty_mini_uart_read(struct file_handle* handle, void *data, size_
 {
     (void)handle;
     (void)offset;
-    return mini_uart_read(data, size);
+
+    uint8_t *bdata = (uint8_t*)data;
+
+    for (uint32_t i = 0u; i < size; i++)
+    {
+        const uint8_t car = mini_uart_getc();
+        mini_uart_putc(car);
+
+        if (car == '\r')
+        {
+            mini_uart_putc('\n');
+            bdata[i] = '\n';
+            return i + 1;
+        }
+
+        //
+        //  TODO: place the tty infrastructure where it belong to
+        //          handle backspace
+        //
+        // echo the car onto the tty terminal
+
+        bdata[i] = car;
+    }
+
+    return size;
 }
 
 static int32_t _tty_mini_uart_write(struct file_handle *handle, const void *data, size_t offset, size_t size)
 {
     (void)handle;
     (void)offset;
-    return mini_uart_write(data, size);
+
+    const uint8_t *bdata = (const uint8_t*)data;
+
+    for (uint32_t i = 0u; i < size; i++)
+    {
+        if (bdata[i] == '\n')
+            mini_uart_putc('\r');
+        mini_uart_putc(bdata[i]);
+    }
+
+    return size;
 }
 
 
@@ -50,18 +97,18 @@ static file_descriptor_t _create_desciptor(file_handle_t *handle)
 //
 // vfs interface
 //
-void vfs_init(vfs_t *vfs)
+void vfs_init(void)
 {
-    _memset(vfs, 0, sizeof(vfs_t));
+    _memset(&_vfs, 0, sizeof(vfs_t));
 
     // init the tty as the single opened file
-    vfs->file_count = 1u;
-    vfs->file_table[0] = tty_init_virtual_file();
+    _vfs.file_count = 1u;
+    _vfs.file_table[0] = tty_init_virtual_file();
 }
 
-file_descriptor_t vfs_get_tty_file_descriptor(vfs_t *vfs)
+file_descriptor_t vfs_get_tty_file_descriptor(void)
 {
-    return _create_desciptor(&vfs->file_table[0u]);
+    return _create_desciptor(&_vfs.file_table[0u]);
 }
 
 //
