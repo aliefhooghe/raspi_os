@@ -21,6 +21,7 @@
 /**
  *  task structure
  */
+#define MAX_FILE_DESCRIPTOR_COUNT (4u)
 typedef struct {
 
     //
@@ -39,14 +40,16 @@ typedef struct {
     //
     //  Virtual file system interfaces
     //
-    file_descriptor_t file_descriptors[2];  // stdin, stdout
+    file_descriptor_t file_descriptors[MAX_FILE_DESCRIPTOR_COUNT];
     uint32_t fd_count;
+
 } task_t; // a renommer => process
 
 
 /**
  *  scheduler structure
  */
+#define SCHEDULER_MAX_TASK_COUNT 0x80u
 typedef struct {
     task_t tasks[SCHEDULER_MAX_TASK_COUNT]; // process table.
     uint32_t current_task;
@@ -168,7 +171,7 @@ void scheduler_start(void *init_proc)
 
 
     // setup stdin/stdout
-    const file_descriptor_t tty_fd = vfs_get_tty_file_descriptor();
+    const file_descriptor_t tty_fd = vfs_file_descriptor_open("/tty", 0u, 0u);
     init_task->fd_count = 2u;
     init_task->file_descriptors[0] = tty_fd;
     init_task->file_descriptors[1] = tty_fd;
@@ -328,6 +331,17 @@ int32_t scheduler_cur_proc_get_parent_id(void)
         return _scheduler.tasks[_scheduler.current_task].parent_id;
     else
         return -1;
+}
+
+int32_t scheduler_cur_proc_add_fd(file_descriptor_t descriptor)
+{
+    task_t *current_task = &_scheduler.tasks[_scheduler.current_task];
+    if (current_task->fd_count == MAX_FILE_DESCRIPTOR_COUNT)
+        kernel_fatal_error("maximum fd count was reached");
+
+    int32_t fd = current_task->fd_count++;
+    current_task->file_descriptors[fd] = descriptor;
+    return fd;
 }
 
 file_descriptor_t *scheduler_cur_proc_get_fd(int32_t fd)

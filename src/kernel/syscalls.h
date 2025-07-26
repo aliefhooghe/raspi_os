@@ -8,10 +8,11 @@
   SYSCALL(YIELD)                 \
   SYSCALL(REBOOT)                \
   SYSCALL(EXIT)                  \
+  SYSCALL(OPEN)                  \
   SYSCALL(READ)                  \
   SYSCALL(WRITE)                 \
   SYSCALL(FORK)                  \
-  SYSCALL(GETPPID)                 \
+  SYSCALL(GETPPID)               \
   SYSCALL(GETPID)
 
 // pour un shell dup, dup2, exec, fork, getppid (parent pid), wait

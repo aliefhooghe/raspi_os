@@ -110,7 +110,7 @@ void vfs_init(void)
 
     root_node->name[0] = '\0';
     root_node->parent = NULL;
-    // root_node->handler =      
+    // root_node->handler
     root_node->type = VFS_NODE_DIRECTORY;
 
     // create an only child: /tty
@@ -127,7 +127,7 @@ void vfs_init(void)
     tty_node->file_backend = NULL;  // no backend state for tty
 }
 
-file_descriptor_t vfs_get_tty_file_descriptor(void)
+static file_descriptor_t vfs_get_tty_file_descriptor(void)
 {
     return _create_descriptor(&_vfs.root_node->directory.childs[0]->handler);
 }
@@ -135,12 +135,24 @@ file_descriptor_t vfs_get_tty_file_descriptor(void)
 //
 //  File Descriptor interface
 //
-int32_t file_descriptor_read(file_descriptor_t *fd, void *data, size_t size)
+file_descriptor_t vfs_file_descriptor_open(const char *path, uint32_t flags, uint32_t mode)
+{
+    (void)flags;
+    (void)mode;
+
+
+    if (_strcmp("/tty", path) == 0)
+        return vfs_get_tty_file_descriptor();
+
+    kernel_fatal_error("could not open file: unknown path");
+}
+
+int32_t vfs_file_descriptor_read(file_descriptor_t *fd, void *data, size_t size)
 {
     return fd->handle->ops.read(fd->handle->backend, fd->fd_ctx, data, size);
 }
 
-int32_t file_descriptor_write(file_descriptor_t *fd, const void *data, size_t size)
+int32_t vfs_file_descriptor_write(file_descriptor_t *fd, const void *data, size_t size)
 {
     return fd->handle->ops.write(fd->handle->backend, fd->fd_ctx, data, size);
 }

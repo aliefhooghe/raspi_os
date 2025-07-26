@@ -1,6 +1,7 @@
 #ifndef SATAN_STD_STR_H_
 #define SATAN_STD_STR_H_
 
+#include <stdint.h>
 #include <stddef.h>
 
 /**
@@ -25,5 +26,9 @@ void *_memmove(
 char *_strcpy(
     char *dst,
     const char *src);
+
+int32_t _strcmp(
+    const char *s1,
+    const char *s2);
 
 #endif
