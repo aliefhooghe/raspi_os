@@ -143,3 +143,8 @@ void kernel_fatal_error(const char *reason)
     mini_uart_getc();
     watchdog_init(0x0);
 }
+
+void kernel_unhandled_interupt_fatal_error(void)
+{
+    kernel_fatal_error("unhandled interupt"); 
+}

@@ -16,7 +16,7 @@ void kernel_restore_translation_table(void);
 
 // fatal error handler
 void kernel_fatal_error(const char *reason);
-
+void kernel_unhandled_interupt_fatal_error(void);
 
 
 #endif

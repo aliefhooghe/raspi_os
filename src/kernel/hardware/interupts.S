@@ -151,5 +151,6 @@ _prefetch_abort:
 _data_abort:
 _reserved_handler:
 _fiq_handler:
-    // Default handler: hang
+    // Default handler: fatal error
+    bl kernel_unhandled_interupt_fatal_error
     b .
