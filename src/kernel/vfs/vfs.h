@@ -8,9 +8,7 @@ typedef struct file_handle file_handle_t;
 
 typedef struct  {
     file_handle_t *handle;
-    uint32_t offset;
-
-    // todo: add r/w mode here
+    void *fd_ctx;
 } file_descriptor_t; 
 
 // vfs interface

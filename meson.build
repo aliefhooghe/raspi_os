@@ -86,6 +86,9 @@ kernel_sources = files(
   'src/kernel/usermode/libc/string.h',
   'src/kernel/vfs/vfs.h',
   'src/kernel/vfs/vfs.c',
+  'src/kernel/vfs/vfs_handler.h',
+  'src/kernel/vfs/dev/tty.h',
+  'src/kernel/vfs/dev/tty.c'
 )
 kernel_linker_script = files(
   'src/kernel/linker.ld'

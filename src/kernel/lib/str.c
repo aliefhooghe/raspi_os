@@ -53,3 +53,10 @@ void *_memmove(
 
     return destination;
 }
+
+char *_strcpy(char *dst, const char *src)
+{
+    char *const ret = dst;
+    while ((*dst++ = *src++));
+    return ret;  
+}

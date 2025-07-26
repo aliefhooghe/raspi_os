@@ -8,8 +8,8 @@
 
 #include "lib/str.h"
 
-
-#define SECTION_ALLOCATOR_BITFIELD_COUNT 8u // 8 * 8 = 64 bits. Can manage up to 64 sections = 64 Mb
+// 8 * 8 = 64 bits. Can manage up to 64 sections = 64 Mb
+#define SECTION_ALLOCATOR_BITFIELD_COUNT 8u 
 
 typedef struct {
     uint8_t alloc_bitfields[SECTION_ALLOCATOR_BITFIELD_COUNT];

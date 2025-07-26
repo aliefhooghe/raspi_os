@@ -5,10 +5,10 @@
 //
 // DRAFT: mini uart tty infrastructure
 //
-static int32_t _tty_mini_uart_read(struct file_handle* handle, void *data, size_t offset, size_t size)
+static int32_t _tty_mini_uart_read(void *_back, void *_ctx, void *data, size_t size)
 {
-    (void)handle;
-    (void)offset;
+    (void)_back;
+    (void)_ctx;
 
     uint8_t *bdata = (uint8_t*)data;
 
@@ -36,10 +36,10 @@ static int32_t _tty_mini_uart_read(struct file_handle* handle, void *data, size_
     return size;
 }
 
-static int32_t _tty_mini_uart_write(struct file_handle *handle, const void *data, size_t offset, size_t size)
+static int32_t _tty_mini_uart_write(void *_back, void *_ctx, const void *data, size_t size)
 {
-    (void)handle;
-    (void)offset;
+    (void)_back;
+    (void)_ctx;
 
     const uint8_t *bdata = (const uint8_t*)data;
 
@@ -56,8 +56,11 @@ static int32_t _tty_mini_uart_write(struct file_handle *handle, const void *data
 file_handle_t tty_init_virtual_file(void)
 {
     const file_handle_t result = {
-        .read = _tty_mini_uart_read,
-        .write = _tty_mini_uart_write
+        .backend = NULL,
+        .ops = {
+            .read = _tty_mini_uart_read,
+            .write = _tty_mini_uart_write
+        }
     };
     return result;
 }

@@ -4,9 +4,14 @@
 #include <stdint.h>
 #include <stddef.h>
 
+typedef struct {
+    int32_t (*read)(void *backend, void *ctx, void *data, size_t size);
+    int32_t (*write)(void *backend, void *ctx, const void *data, size_t size);
+} file_ops_t;
+
 struct file_handle {
-    int32_t (*read)(struct file_handle*, void *data, size_t offset, size_t size);
-    int32_t (*write)(struct file_handle*, const void *data, size_t offset, size_t size);
+    void *backend;
+    file_ops_t ops;
 };
 
 #endif

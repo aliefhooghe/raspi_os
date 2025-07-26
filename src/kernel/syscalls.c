@@ -56,7 +56,6 @@ static int32_t _syscall__EXIT(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 static int32_t _syscall__READ(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     const int32_t fd = arg0;
-    const uint32_t pid = scheduler_cur_proc_get_id();
     void* data = scheduler_cur_proc_get_kernel_address(arg1);
     const size_t size = arg2;
   

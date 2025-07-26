@@ -22,4 +22,8 @@ void *_memmove(
     const void *source,
     size_t size);
 
+char *_strcpy(
+    char *dst,
+    const char *src);
+
 #endif
