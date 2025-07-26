@@ -1,4 +1,3 @@
-
 #include <stddef.h>
 #include <stdint.h>
 #include "kernel.h"
@@ -19,24 +18,26 @@
 extern const char *__satan_welcome_banner;
 extern const char *__satan_fatal_error_banner;
 
-//  +-----------------+--------------------+----------------------+
-//  | section         | size               | position             |
-//  +-----------------+--------------------+----------------------+
-//  | ◘ FIR stack     | 00001000 = 4.0KiB  | 00000000 -> 00001000 |
-//  | ◘ IRQ stack     | 00001000 = 4.0KiB  | 00001000 -> 00002000 |
-//  | ◘ SVC stack     | 00001000 = 4.0KiB  | 00002000 -> 00003000 |
-//  | ◘ KERNEL        | 00018000 = 96.0KiB | 00008000 -> 00020000 |
-//  | ◘ KERNEL HEAP   | 00700000 = 7.0MiB  | 00100000 -> 00800000 |
-//  | ◘ DYN SECTIONS  | 04000000 = 64.0MiB | 00800000 -> 04800000 |
-//  +-----------------+--------------------+----------------------+
-//  | TOTAL           | 72.0MiB            |
-//  +-----------------+--------------------+
 
-//  KERNEL CODE + DATA = 0x00000000 - 0x00100000
-//                     = the first section of 1Mb
+// +-----------------+--------------------+----------------------+
+// | section         | size               | position             |
+// +-----------------+--------------------+----------------------+
+// | ◘ FIR stack     | 00001000 = 4.00KiB | 00000000 -> 00001000 |
+// | ◘ IRQ stack     | 00001000 = 4.00KiB | 00001000 -> 00002000 |
+// | ◘ SVC stack     | 00001000 = 4.00KiB | 00002000 -> 00003000 |
+// | ◘ Kernel Code   | 007f8000 = 7.97MiB | 00008000 -> 00800000 |
+// | ◘ Dyn Sections  | 04000000 = 64.0MiB | 00800000 -> 04800000 |
+// +-----------------+--------------------+----------------------+
+// | TOTAL           | 72.00MiB           |
+// +-----------------+--------------------+
+//
+//
+//  1 SECTION          = 0x00100000
+//  KERNEL CODE + DATA = 0x00000000 - 0x00800000
+//                     = the 8 first sections of 1Mb
 
-#define KERNEL_HEAP_BEGIN           0x00100000u
-#define KERNEL_HEAP_END             0x00800000u
+#define KERNEL_CODE_START           0x00008000u
+#define KERNEL_CODE_END             0x00800000u
 
 #define KERNEL_DYN_SECTIONS_BEGIN   0x00800000u
 #define KERNEL_DYN_SECTIONS_END     0x04800000u

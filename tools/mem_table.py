@@ -11,16 +11,14 @@ table = {
     'FIR stack'    : (0x00000000, 0x00001000),
     'IRQ stack'    : (0x00001000, 0x00002000),
     'SVC stack'    : (0x00002000, 0x00003000),
-    'KERNEL'       : (0x00008000, 0x00020000),
-    'KERNEL HEAP'  : (0x00100000, 0x00800000),
-
-    'DYN SECTIONS' : (0x00800000, 0x04800000)
+    'Kernel Code'  : (0x00008000, 0x00800000),
+    'Dyn Sections' : (0x00800000, 0x04800000)
 }
 
 def sizeof_fmt(num: float, suffix: str ="B") -> str:
     for unit in ("", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"):
         if abs(num) < 1024.0:
-            return f"{num:3.1f}{unit}{suffix}"
+            return f"{num:3.2f}{unit}{suffix}"
         num /= 1024.0
     return f"{num:.1f}Yi{suffix}"
 
@@ -68,7 +66,8 @@ def ll(step: int, line_size: int):
 
         line_pos = line_pos + 1
         if line_pos == line_size:
-            print(' ', sizeof_fmt(offset + step))
+            next_pos = offset + step
+            print(f' {sizeof_fmt(next_pos)} {next_pos:08x}')
             line_pos = 0
 
 
