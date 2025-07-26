@@ -11,11 +11,11 @@
 #define SERIAL_LOADER_END_ACK  0xFDu
 
 // Memory layout
-#define KERNEL_START_ADRESS    0x8000u
-#define KERNEL_MAX_SIZE        0x18000u // 96.0KiB
+#define LOADER_START_ADDRESS   0x007000u
+#define LOADER_MAX_SIZE        0x001000u
 
-#define LOADER_START_ADDRESS   0x7000u
-#define LOADER_MAX_SIZE        0x1000u
+#define KERNEL_START_ADRESS    0x008000u
+#define KERNEL_MAX_SIZE        0x7f8000u // 7.97MiB
 
 static uint32_t serial_load(uint8_t *buffer, uint32_t max_size)
 {
@@ -51,12 +51,8 @@ static uint32_t serial_load(uint8_t *buffer, uint32_t max_size)
 
 
 // arguments for AArch32
-void loader_main(uint32_t r0, uint32_t r1, uint32_t atags)
+void loader_main(void)
 {
-    (void)r0,
-    (void)r1,
-    (void)atags;
-
     // Get the current program counter
     uint32_t pc;
     asm volatile ("adr %0, ." : "=r" (pc));

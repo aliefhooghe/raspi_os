@@ -16,9 +16,11 @@ build:
 clean:
     rm -rf {{build_dir}}
 
-# emulation
+kernel_size: build
+    @echo "kernel size: $((0x$(arm-none-eabi-objdump -t build/kernel.elf | grep '_end' | sort  | cut -f1 -d' ' | sed 's/^0*//') - 0x8000))"
 
-run_kernel: build
+# emulation
+run_kernel: build kernel_size
     @echo "Press ctrl+A X to quit emulation"
     qemu-system-arm -display none -m 512 -M raspi0 -kernel {{build_dir}}/kernel.elf -d guest_errors -serial null -serial mon:stdio -s
 
