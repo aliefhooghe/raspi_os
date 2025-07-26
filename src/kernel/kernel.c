@@ -1,7 +1,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-
 #include "kernel.h"
 
 #include "hardware/cpu.h"
@@ -9,8 +8,6 @@
 #include "hardware/mini_uart.h"
 #include "hardware/mmu.h"
 #include "hardware/watchdog.h"
-
-#include "memory/allocator.h"
 #include "memory/section_allocator.h"
 #include "memory/translation_table_allocator.h"
 
@@ -80,9 +77,6 @@ static void kernel_init(void)
     mmu_set_dacr(0x55555555);
     mmu_enable();
 
-    // Initialize the memory allocator: to be removed
-    memory_allocator_init(KERNEL_HEAP_BEGIN, KERNEL_HEAP_END);
-
     // Initialize the scheduler
     scheduler_init();
 
@@ -108,38 +102,37 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     mini_uart_init();
 
     // wait a first input
-    mini_uart_puts(
-        "[kernel] starting satan OS...\r\n"
-            "[kernel] press a key...\r\n"
-    );
+    mini_uart_kernel_log("starting satan OS...");
+    mini_uart_kernel_log("press a key...");
     mini_uart_getc();
 
     // print a welcome message ;)
-    mini_uart_puts(__satan_welcome_banner);
+    mini_uart_kernel_puts(__satan_welcome_banner);
 
     const uint16_t cpu_mode = cpu_get_execution_mode();
-    mini_uart_puts("\r\n[kernel] System informations:\r\n");
-    mini_uart_puts("[kernel] OS   : SATAN\r\n");
-    mini_uart_puts("[kernel] CPU  : arm1176jzf-s\r\n");
-    mini_uart_puts("[kernel] GPU  : RTX 6090 Satanic Edition\r\n");
-    mini_uart_puts("[kernel] RAM  : 42 Go\r\n");
-    mini_uart_puts("[kernel] Temp : 666°C\r\n");
-    mini_uart_printf("[kernel] Mode : 0x%x\r\n", cpu_mode);
+    mini_uart_kernel_log("System informations:");
+    mini_uart_kernel_log("OS   : SATAN");
+    mini_uart_kernel_log("CPU  : arm1176jzf-s");
+    mini_uart_kernel_log("GPU  : RTX 6090 Satanic Edition");
+    mini_uart_kernel_log("RAM  : 42 Go");
+    mini_uart_kernel_log("Temp : 666°C");
+    mini_uart_kernel_log("Mode : 0x%x", cpu_mode);
 
     // enable irq globaly
     cpu_irq_enable();
 
     // start user mode
-    mini_uart_puts("[kernel] call user mode !\r\n");
+    mini_uart_kernel_log("call user mode !");
 
-    // bad: duplicated code
+    // duplicated code
     scheduler_start((void*)user_function);
 }
 
 void kernel_fatal_error(const char *reason)
 {
-    mini_uart_puts(__satan_fatal_error_banner);
-    mini_uart_printf("[kernel] Fatal Satan failure:  %s\n\n[kernel] press a key...\r\n", reason);
+    mini_uart_kernel_puts(__satan_fatal_error_banner);
+    mini_uart_kernel_log("Fatal Satan failure:  %s", reason);
+    mini_uart_kernel_log("press a key...");
     mini_uart_getc();
     watchdog_init(0x0);
 }

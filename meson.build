@@ -61,8 +61,6 @@ kernel_sources = files(
   'src/kernel/lib/eabi_rt.c',
   'src/kernel/lib/str.c',
   'src/kernel/lib/str.h',
-  'src/kernel/memory/allocator.h',
-  'src/kernel/memory/allocator.c',
   'src/kernel/memory/bitfield.h',
   'src/kernel/memory/bitfield.c',
   'src/kernel/memory/section_allocator.h',

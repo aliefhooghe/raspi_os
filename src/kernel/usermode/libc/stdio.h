@@ -14,7 +14,8 @@ typedef struct {
 } FILE;
 
 // stub the libc initialization
-FILE *get_stdout(void);
+#define DECLARE_STDOUT FILE stdoutfd; FILE *stdout = &stdoutfd; get_stdout(stdout)
+void get_stdout(FILE *);
 
 
 // files manipulations

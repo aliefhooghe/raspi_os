@@ -71,9 +71,6 @@ _reset_handler:
     bl kernel_main
 hang: b hang
 
-
-
-
 _svc_handler:
     // svc number         : from lr (not used for now)
     // syscall number     : r0

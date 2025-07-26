@@ -5,7 +5,6 @@
 #include <stdint.h>
 
 #include "usermode/libc/stdio.h"
-#include "memory/allocator.h"
 #include "usermode/libc/string.h"
 #include "lib/str.h"
 #include "usermode/usr_syscalls.h"
@@ -41,12 +40,10 @@
 //
 //  STDIO initialization stub
 //
-FILE *get_stdout(void)
+void get_stdout(FILE *fd)
 {
-    FILE *fd = mem_alloc(sizeof(FILE));
     fd->fd = 1;
     fd->write_buffer_cursor = 0u;
-    return fd;
 }
 
 //

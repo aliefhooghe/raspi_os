@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "hardware/cpu.h"
+#include "hardware/mini_uart.h"
 #include "hardware/mmu.h"
 
 #include "kernel.h"
@@ -28,6 +29,7 @@ typedef struct {
     //
     task_context_t context;         // saved task context (register and processor status)
     int32_t id;                     // process id: pid
+    int32_t parent_id;              // parent process id: ppid, 0 for init process (whose pid is 1)
 
     //
     //  Memory management
@@ -98,12 +100,14 @@ static void _scheduler_task_context_init(
 
 static void _scheduler_task_init(
     task_t *new_task,
-    uint32_t task_id)
+    uint32_t task_id,
+    uint32_t parent_task_id)
 {
     _memset(new_task, 0, sizeof(task_t));
 
     // set pid
     new_task->id = task_id;
+    new_task->parent_id = parent_task_id;
 
     // 1 - allocate a memory section for the process
     new_task->memory_section = section_allocator_alloc();
@@ -118,58 +122,6 @@ static void _scheduler_task_init(
     {
         kernel_fatal_error("failed to allocate a process transaction table");
     }
-}
-
-static int32_t _scheduler_set_init_proc(void *proc_address)
-{
-    if (_scheduler.task_count >= SCHEDULER_MAX_TASK_COUNT)
-    {
-        return -1;
-    }
-
-    // initialize the new task
-    const int32_t new_task_id = _scheduler.id_gen++;
-    const uint32_t new_index = _scheduler.task_count++;
-    if (new_task_id != 0u || _scheduler.task_count > 1u)
-    {
-        kernel_fatal_error(
-            "an init proc was added whereas some processes were already running");
-    }
-
-    task_t *new_task = &_scheduler.tasks[new_index];
-    _scheduler_task_init(new_task, new_task_id);
-
-    //
-    // setup the translation table
-    //
-
-    // map the kernel code and data + heap
-    translation_table_add_identity_mapping(
-        new_task->translation_table,
-        0x00000000u, 0x00800000u,
-        MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
-
-    // map the process section
-    translation_table_add_single_section(
-        new_task->translation_table,
-        new_task->memory_section,
-        PROCESS_SECTION_VIRTUAL_ADDRRESS,
-        MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
-
-    //
-    // set initial task context
-    //
-    _scheduler_task_context_init(
-        &new_task->context,
-        PROCESS_STACK_VIRTUAL_ADDRRESS,
-        proc_address, 0u);
-
-    // setup stdin/stdout
-    const file_descriptor_t tty_fd = vfs_get_tty_file_descriptor();
-    new_task->fd_count = 2u;
-    new_task->file_descriptors[0] = tty_fd;
-    new_task->file_descriptors[1] = tty_fd;
-    return new_task_id;
 }
 
 ///////////////////////////////////////////////////////////
@@ -189,18 +141,48 @@ void scheduler_init(void)
 
 void scheduler_start(void *init_proc)
 {
-    // HORRIBLE
-    // may not be so horrible, as we need an entry point.
+    //
+    // setup the init process
     // 
-    _scheduler_set_init_proc(init_proc);
+    _scheduler.current_task = 0u;
+    _scheduler.task_count = 1u;
     
-    if (_scheduler.task_count == 0u) {
-        kernel_fatal_error("no task to be started");
-    }
-    
-    task_t *task = &_scheduler.tasks[0];
-    mmu_set_translation_table(task->translation_table);
-    __set_task_context(&task->context);
+    // init task: pid, memory section alloc
+    const int32_t init_process_pid = ++_scheduler.id_gen;
+    task_t *init_task = &_scheduler.tasks[0u];
+    _scheduler_task_init(init_task, init_process_pid, 0u /* no parent id */);
+
+    // setup the process translation table: 
+    // - map the kernel code and data + heap: TODO: protect kernel from user
+    // - map the process section
+    translation_table_add_identity_mapping(
+        init_task->translation_table,
+        0x00000000u, 0x00800000u,
+        MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
+    translation_table_add_single_section(
+        init_task->translation_table,
+        init_task->memory_section,
+        PROCESS_SECTION_VIRTUAL_ADDRRESS,
+        MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
+
+    // initialize task context: registers
+    _scheduler_task_context_init(
+        &init_task->context,
+        PROCESS_STACK_VIRTUAL_ADDRRESS,
+        init_proc, 0u);
+
+
+    // setup stdin/stdout
+    const file_descriptor_t tty_fd = vfs_get_tty_file_descriptor();
+    init_task->fd_count = 2u;
+    init_task->file_descriptors[0] = tty_fd;
+    init_task->file_descriptors[1] = tty_fd;
+
+    //
+    // jump to the init process
+    //
+    mmu_set_translation_table(init_task->translation_table);
+    __set_task_context(&init_task->context);
 }
 
 //
@@ -218,12 +200,16 @@ void scheduler_save_current_context(const task_context_t *current_context)
 
 const task_context_t *scheduler_switch_task(void)
 {
+    const uint32_t old_task_id = _scheduler.current_task;
+    
     // compute the next task index: round robin
     _scheduler.current_task = _scheduler.current_task + 1;
     if (_scheduler.current_task == _scheduler.task_count)
     {
         _scheduler.current_task = 0u;
     }
+
+    mini_uart_kernel_log("switch task %u => %u", old_task_id, _scheduler.current_task);
 
     // switch to next task:
     const task_t *current_task = &_scheduler.tasks[_scheduler.current_task];
@@ -256,50 +242,55 @@ void* scheduler_cur_proc_get_kernel_address(uintptr_t process_virtual_address)
 
 int32_t scheduler_cur_proc_fork(void)
 {
-    //  TODO: we need to have some shared code with scheduler add task
-    // but actually lets be realistic: there will not be add task, as the fork will
-    // be the only way to create a task
-    // 
     if (_scheduler.task_count >= SCHEDULER_MAX_TASK_COUNT)
     {
         return -1;
     }
 
+    const task_t *current_task = &_scheduler.tasks[_scheduler.current_task];
+    mini_uart_kernel_log("forking from task: index=%u pid=%u",
+        _scheduler.current_task, current_task->id);
+    if (_scheduler.current_task != 0)
+    {
+        kernel_fatal_error("not forking from init");
+    }
+
     // initialize the new task id
-    const int32_t new_task_id = _scheduler.id_gen++;
+    const int32_t new_task_id = ++_scheduler.id_gen;
     const uint32_t new_index = _scheduler.task_count++;
+    mini_uart_kernel_log("fork: create new task: index=%u pid=%u", new_index, new_task_id);
 
     // init task: allocate its own section and translation table
     task_t *new_task = &_scheduler.tasks[new_index];
-    _scheduler_task_init(new_task, new_task_id);
+    _scheduler_task_init(new_task, new_task_id, _scheduler.tasks[_scheduler.current_task].id);
 
     // fork the current task
-    const task_t *current_task = &_scheduler.tasks[_scheduler.current_task];
 
-    // fork: copy the context
+    // fork: copy the context (cpu registers)
     _memcpy(
         &new_task->context,
         &current_task->context,
         sizeof(task_context_t));
+    new_task->context.r0 = 0u; // fork should return 0 to the child process
 
-    // fork: copy the memory section
+    // fork: copy the memory section content (physically)
     _memcpy(
-        &new_task->memory_section,
-        &current_task->memory_section,
+        new_task->memory_section,
+        current_task->memory_section,
         MMU_SECTION_SIZE);
 
     // fork: copy oppened file descriptors
     new_task->fd_count = current_task->fd_count;
     _memcpy(
-        &new_task->file_descriptors,
-        &current_task->file_descriptors,
+        new_task->file_descriptors,
+        current_task->file_descriptors,
         sizeof(file_descriptor_t) * current_task->fd_count);
 
     // fork: copy the translation table, patch the virtual process section
-    // todo: copy and write. Handle several sections.
+    // todo: copy on write. Handle several sections.
     _memcpy(
-        &new_task->translation_table,
-        &current_task->translation_table,
+        new_task->translation_table,
+        current_task->translation_table,
         sizeof(uint32_t) * MMU_L1_ENTRY_COUNT);
     translation_table_add_single_section(
         new_task->translation_table,
@@ -307,11 +298,13 @@ int32_t scheduler_cur_proc_fork(void)
         PROCESS_SECTION_VIRTUAL_ADDRRESS,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 
-    return new_task_id;
+    return new_task_id; // will be returned to the parent process
 }
 
 void scheduler_cur_proc_exit(void)
 {
+    mini_uart_kernel_log("exiting task %u/%u", _scheduler.current_task, _scheduler.task_count);
+        
     // free task related resources
     _cleanup_task(&_scheduler.tasks[_scheduler.current_task]);
 
