@@ -57,3 +57,8 @@ int32_t usr_syscall_getpid(void)
 {
     return syscall(SYSCALL__GETPID, 0, 0, 0);
 }
+
+int32_t usr_syscall_getppid(void)
+{
+    return syscall(SYSCALL__GETPPID, 0, 0, 0);
+}

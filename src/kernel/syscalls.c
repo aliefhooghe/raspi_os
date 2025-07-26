@@ -99,6 +99,14 @@ static int32_t _syscall__FORK(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     return scheduler_cur_proc_fork();
 }
 
+static int32_t _syscall__GETPPID(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+    (void)arg0;
+    (void)arg1;
+    (void)arg2;
+    return scheduler_cur_proc_get_parent_id();
+}
+
 static int32_t _syscall__GETPID(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     (void)arg0;
@@ -127,7 +135,9 @@ void kernel_syscall_handler(
     else
     {
         const uint32_t pid = scheduler_cur_proc_get_id();
-        mini_uart_kernel_log("handle syscall %s for process pid=%u", _syscall_names[syscall_num], pid);
+        mini_uart_kernel_log(
+            "handle syscall %s for process pid=%u",
+            _syscall_names[syscall_num], pid);
         syscall_handler_t handler = _syscall_table[syscall_num];
         const int32_t status = handler(arg0, arg1, arg2);
         mini_uart_kernel_log("syscall return status=%u", status);

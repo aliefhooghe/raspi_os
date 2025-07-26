@@ -24,6 +24,7 @@ void* scheduler_cur_proc_get_kernel_address(uintptr_t process_virtual_address);
 int32_t scheduler_cur_proc_fork(void);
 
 int32_t scheduler_cur_proc_get_id(void);
+int32_t scheduler_cur_proc_get_parent_id(void);
 file_descriptor_t *scheduler_cur_proc_get_fd(int32_t fd);
 
 #endif

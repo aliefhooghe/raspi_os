@@ -1,4 +1,3 @@
-
 #include <stddef.h>
 #include <stdint.h>
 
@@ -112,16 +111,12 @@ static void _scheduler_task_init(
     // 1 - allocate a memory section for the process
     new_task->memory_section = section_allocator_alloc();
     if (new_task->memory_section == NULL)
-    {
         kernel_fatal_error("failed to allocate a process memory section");
-    }
 
     // 2 - allocate the process address translation table.
     new_task->translation_table = translation_table_allocator_alloc();
     if (new_task->translation_table == NULL)
-    {
         kernel_fatal_error("failed to allocate a process transaction table");
-    }
 }
 
 ///////////////////////////////////////////////////////////
@@ -205,9 +200,7 @@ const task_context_t *scheduler_switch_task(void)
     // compute the next task index: round robin
     _scheduler.current_task = _scheduler.current_task + 1;
     if (_scheduler.current_task == _scheduler.task_count)
-    {
         _scheduler.current_task = 0u;
-    }
 
     mini_uart_kernel_log("switch task %u => %u", old_task_id, _scheduler.current_task);
 
@@ -243,17 +236,13 @@ void* scheduler_cur_proc_get_kernel_address(uintptr_t process_virtual_address)
 int32_t scheduler_cur_proc_fork(void)
 {
     if (_scheduler.task_count >= SCHEDULER_MAX_TASK_COUNT)
-    {
         return -1;
-    }
 
     const task_t *current_task = &_scheduler.tasks[_scheduler.current_task];
     mini_uart_kernel_log("forking from task: index=%u pid=%u",
         _scheduler.current_task, current_task->id);
     if (_scheduler.current_task != 0)
-    {
         kernel_fatal_error("not forking from init");
-    }
 
     // initialize the new task id
     const int32_t new_task_id = ++_scheduler.id_gen;
@@ -317,28 +306,28 @@ void scheduler_cur_proc_exit(void)
     // update task count.
     _scheduler.task_count--;
     if (_scheduler.task_count == 0u)
-    {
         kernel_fatal_error("the last running task was stopped");
-    }
 
     // If last task was current, goto task 0
     // TODO: implement __aeabi_uidivmod in order to use % operator
     if (_scheduler.current_task == _scheduler.task_count)
-    {
         _scheduler.current_task = 0u;
-    }
 }
 
 int32_t scheduler_cur_proc_get_id(void)
 {
     if (_scheduler.current_task < _scheduler.task_count)
-    {
         return _scheduler.tasks[_scheduler.current_task].id;
-    }
     else
-    {
         return -1;
-    }
+}
+
+int32_t scheduler_cur_proc_get_parent_id(void)
+{
+    if (_scheduler.current_task < _scheduler.task_count)
+        return _scheduler.tasks[_scheduler.current_task].parent_id;
+    else
+        return -1;
 }
 
 file_descriptor_t *scheduler_cur_proc_get_fd(int32_t fd)
