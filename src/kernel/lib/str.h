@@ -23,6 +23,9 @@ void *_memmove(
     const void *source,
     size_t size);
 
+size_t _strlen(
+    const char *s);
+
 char *_strcpy(
     char *dst,
     const char *src);
@@ -30,5 +33,14 @@ char *_strcpy(
 int32_t _strcmp(
     const char *s1,
     const char *s2);
+
+int32_t _strncmp(
+    const char* s1,
+    const char* s2,
+    size_t count);
+
+const char* _strchr(
+    const char* str,
+    char ch);
 
 #endif

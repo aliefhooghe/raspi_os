@@ -1,6 +1,7 @@
 
 
 #include "vfs/vfs.h"
+#include "hardware/mini_uart.h"
 #include "kernel.h"
 #include "memory/bitfield.h"
 #include "vfs/vfs_handler.h"
@@ -63,15 +64,24 @@ static vfs_t _vfs;
 //
 // vfs internals
 //
-static file_descriptor_t _create_descriptor(file_handle_t *handle)
+static file_descriptor_t _create_null_descriptor(void)
+{
+    const file_descriptor_t null_fd = {
+        .handle = NULL
+    };
+    return null_fd;
+}
+
+static file_descriptor_t _create_descriptor(const vfs_node_t *node)
 {
     const file_descriptor_t fd = {
-        .handle = handle,
-        .fd_ctx = NULL // TODO
+        .handle = &node->handler,
+        .fd_ctx = NULL // TODO: construct a ctx
     };
     return fd;
 }
 
+// node allocation
 // TODO: reusable allocator
 static vfs_node_t *_vfs_node_allocator_alloc(void)
 {
@@ -88,6 +98,47 @@ static void _vfs_node_allocator_free(vfs_node_t *node)
 {
     const uint32_t node_index = node - (vfs_node_t*)_vfs.memory_section;
     bitfield_clear(_vfs.node_alloc_bitfield, node_index);
+}
+
+// node lookup
+static const vfs_node_t *_vfs_child_by_name(
+    const vfs_node_t *parent,
+    const char *child_name,
+    uint32_t child_name_len)
+{
+    for (size_t index = 0u; index < parent->directory.child_count; index++)
+    {
+        const vfs_node_t *child = parent->directory.childs[index];
+        if (0 == _strncmp(child_name, child->name, child_name_len))
+            return child;
+    }
+    return NULL;
+}
+
+static const vfs_node_t *_vfs_node_lookup_rec(
+    const char *path,
+    const vfs_node_t *root)
+{
+    const char *next_separator = _strchr(path, '/');
+    if (next_separator == NULL) {
+        // then path itself is the last segment
+        const uint32_t child_name_len = _strlen(path);
+        return _vfs_child_by_name(root, path, child_name_len);
+    }
+    else {
+        const uint32_t child_name_len = next_separator - path;
+        const vfs_node_t *child = _vfs_child_by_name(root, path, child_name_len);
+        if (child == NULL || child->type == VFS_NODE_FILE)
+            return NULL;
+        return _vfs_node_lookup_rec(path + child_name_len + 1, child);
+    }
+}
+
+static const vfs_node_t *_vfs_node_lookup(const char *path)
+{
+    if (path[0] != '/')
+        return NULL;
+    return _vfs_node_lookup_rec(path + 1, _vfs.root_node);
 }
 
 //
@@ -127,24 +178,25 @@ void vfs_init(void)
     tty_node->file_backend = NULL;  // no backend state for tty
 }
 
-static file_descriptor_t vfs_get_tty_file_descriptor(void)
-{
-    return _create_descriptor(&_vfs.root_node->directory.childs[0]->handler);
-}
-
 //
 //  File Descriptor interface
 //
+int32_t vfs_file_descriptor_is_null(const file_descriptor_t *desc)
+{
+    return desc == NULL || desc->handle == NULL;
+}
+
 file_descriptor_t vfs_file_descriptor_open(const char *path, uint32_t flags, uint32_t mode)
 {
     (void)flags;
     (void)mode;
+    mini_uart_kernel_log("vfs: open %s", path);
 
+    const vfs_node_t *node = _vfs_node_lookup(path);
+    if (node == NULL)
+        return _create_null_descriptor();
 
-    if (_strcmp("/tty", path) == 0)
-        return vfs_get_tty_file_descriptor();
-
-    kernel_fatal_error("could not open file: unknown path");
+    return _create_descriptor(node); 
 }
 
 int32_t vfs_file_descriptor_read(file_descriptor_t *fd, void *data, size_t size)

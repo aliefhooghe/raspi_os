@@ -54,6 +54,13 @@ void *_memmove(
     return destination;
 }
 
+size_t _strlen(const char *s)
+{
+    size_t size = 0u;
+    while (*s++) size++;
+    return size;
+}
+
 char *_strcpy(char *dst, const char *src)
 {
     char *const ret = dst;
@@ -65,4 +72,21 @@ int32_t _strcmp(const char *s1, const char *s2)
 {
     while (*s1 != '\0' && (*s1 == *s2)) {s1++; s2++;}
     return (*(unsigned char *)s1 - *(unsigned char *)s2);
+}
+
+int32_t _strncmp(const char* s1, const char* s2, size_t count)
+{
+    size_t index = 0u;
+    while (index++ < count && *s1 != '\0' && (*s1 == *s2)) {s1++; s2++;}
+    return (*(unsigned char *)s1 - *(unsigned char *)s2);
+}
+
+const char* _strchr(const char* str, char ch)
+{
+    char cur;
+    while ((cur = *str++)) {
+        if (cur == ch)
+            return str;
+    }
+    return NULL;
 }

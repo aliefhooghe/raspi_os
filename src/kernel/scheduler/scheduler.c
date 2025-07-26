@@ -169,7 +169,6 @@ void scheduler_start(void *init_proc)
         PROCESS_STACK_VIRTUAL_ADDRRESS,
         init_proc, 0u);
 
-
     // setup stdin/stdout
     const file_descriptor_t tty_fd = vfs_file_descriptor_open("/tty", 0u, 0u);
     init_task->fd_count = 2u;

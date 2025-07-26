@@ -5,7 +5,7 @@
 #include "syscalls.h"
 
 #include "hardware/mini_uart.h"
-#include "kernel.h"
+// #include "kernel.h"
 #include "scheduler/scheduler.h"
 #include "hardware/watchdog.h"
 
@@ -59,9 +59,12 @@ static int32_t _syscall__OPEN(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     const char *path = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
     const uint32_t flags = arg1;
     const uint32_t mode = arg2;
-    // TODO: handle error here ?
+
     const file_descriptor_t descriptor = vfs_file_descriptor_open(path, flags, mode);
-    const int32_t fd = scheduler_cur_proc_add_fd(descriptor);
+    if (vfs_file_descriptor_is_null(&descriptor))
+        return SYSCALL_STATUS_ERR;
+
+    return scheduler_cur_proc_add_fd(descriptor);
 }
 
 static int32_t _syscall__READ(uint32_t arg0, uint32_t arg1, uint32_t arg2)
@@ -72,13 +75,9 @@ static int32_t _syscall__READ(uint32_t arg0, uint32_t arg1, uint32_t arg2)
   
     file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
     if (descriptor == NULL)
-    {
         return SYSCALL_STATUS_ERR;
-    }
-    else
-    {
-        return vfs_file_descriptor_read(descriptor, data, size);
-    }
+
+    return vfs_file_descriptor_read(descriptor, data, size);
 }
 
 static int32_t _syscall__WRITE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
@@ -88,15 +87,10 @@ static int32_t _syscall__WRITE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     const size_t size = arg2;
 
     file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
-
     if (descriptor == NULL)
-    {
         return SYSCALL_STATUS_ERR;
-    }
-    else
-    {
-        return vfs_file_descriptor_write(descriptor, data, size);
-    }
+
+    return vfs_file_descriptor_write(descriptor, data, size);
 }
 
 static int32_t _syscall__FORK(uint32_t arg0, uint32_t arg1, uint32_t arg2)
