@@ -148,12 +148,12 @@ void scheduler_start(void *init_proc)
     _scheduler_task_init(init_task, init_process_pid, 0u /* no parent id */);
 
     // setup the process translation table: 
-    // - map the kernel code and data + heap: TODO: protect kernel from user
-    // - map the process section
+    // - map the kernel code and data: read-only for user
+    // - map the process section: read write
     translation_table_add_identity_mapping(
         init_task->translation_table,
         0x00000000u, 0x00800000u,
-        MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
+        MMU_L1_SECTION_AP_KERNEL_RW_USER_RO);
     translation_table_add_single_section(
         init_task->translation_table,
         init_task->memory_section,
