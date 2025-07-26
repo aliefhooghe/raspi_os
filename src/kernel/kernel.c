@@ -102,21 +102,15 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     mini_uart_init();
 
     // wait a first input
-    mini_uart_kernel_log("starting satan OS...");
-    mini_uart_kernel_log("press a key...");
+    mini_uart_kernel_puts("starting satan OS...\r\n");
+    mini_uart_kernel_puts("press a key...\r\n");
     mini_uart_getc();
 
     // print a welcome message ;)
     mini_uart_kernel_puts(__satan_welcome_banner);
 
     const uint16_t cpu_mode = cpu_get_execution_mode();
-    mini_uart_kernel_log("System informations:");
-    mini_uart_kernel_log("OS   : SATAN");
-    mini_uart_kernel_log("CPU  : arm1176jzf-s");
-    mini_uart_kernel_log("GPU  : RTX 6090 Satanic Edition");
-    mini_uart_kernel_log("RAM  : 42 Go");
-    mini_uart_kernel_log("Temp : 666°C");
-    mini_uart_kernel_log("Mode : 0x%x", cpu_mode);
+    mini_uart_kernel_log("cpu mode: 0x%x", cpu_mode);
 
     // enable irq globaly
     cpu_irq_enable();
@@ -131,8 +125,9 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 void kernel_fatal_error(const char *reason)
 {
     mini_uart_kernel_puts(__satan_fatal_error_banner);
-    mini_uart_kernel_log("Fatal Satan failure:  %s", reason);
-    mini_uart_kernel_log("press a key...");
+    mini_uart_kernel_puts("Fatal Satan failure:  ");
+    mini_uart_kernel_puts(reason);
+    mini_uart_kernel_puts("\r\npress a key...");
     mini_uart_getc();
     watchdog_init(0x0);
 }

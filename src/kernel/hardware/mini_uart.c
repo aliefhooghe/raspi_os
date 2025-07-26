@@ -150,6 +150,10 @@ static void _mini_uart_put_uint_bin(uint32_t x)
 
 void mini_uart_kernel_log(const char *restrict format, ...)
 {
+#ifndef KERNEL_ENABLE_LOG
+    return;
+#endif
+
     va_list ap;
     int escape = 0;
     char c;

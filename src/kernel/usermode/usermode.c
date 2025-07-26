@@ -41,7 +41,7 @@ void user_function(void)
 
     char line[LINE_SIZE] = "";
     const int32_t pid = usr_syscall_getpid();
-    fprintf(stdout, "[%u] start usermode function", pid);
+    fprintf(stdout, "[%u] start usermode function\n", pid);
 
     for (;;)
     {
