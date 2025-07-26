@@ -11,7 +11,7 @@ configure:
     meson setup {{build_dir}} --cross-file {{cross_file}}
 
 build:
-    meson compile -C {{build_dir}}
+    meson compile -C {{build_dir}} -v
 
 clean:
     rm -rf {{build_dir}}
