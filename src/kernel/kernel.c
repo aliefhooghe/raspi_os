@@ -1,5 +1,8 @@
 #include <stddef.h>
 #include <stdint.h>
+
+#include <stdnoreturn.h>
+
 #include "kernel.h"
 
 #include "hardware/cpu.h"
@@ -7,12 +10,14 @@
 #include "hardware/mini_uart.h"
 #include "hardware/mmu.h"
 #include "hardware/watchdog.h"
+
 #include "memory/section_allocator.h"
 #include "memory/translation_table_allocator.h"
 
 #include "scheduler/scheduler.h"
 
 #include "usermode/usermode.h"
+
 #include "vfs/vfs.h"
 
 extern const char *__satan_welcome_banner;
@@ -123,7 +128,7 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     scheduler_start((void*)user_function);
 }
 
-void kernel_fatal_error(const char *reason)
+noreturn void kernel_fatal_error(const char *reason)
 {
     mini_uart_kernel_puts(__satan_fatal_error_banner);
     mini_uart_kernel_puts("Fatal Satan failure:  ");
@@ -131,9 +136,12 @@ void kernel_fatal_error(const char *reason)
     mini_uart_kernel_puts("\r\npress a key...");
     mini_uart_getc();
     watchdog_init(0x0);
+
+    // hang. The watchdog will reset
+    for (;;);
 }
 
-void kernel_unhandled_interupt_fatal_error(void)
+noreturn void kernel_unhandled_interupt_fatal_error(void)
 {
     kernel_fatal_error("unhandled interupt"); 
 }

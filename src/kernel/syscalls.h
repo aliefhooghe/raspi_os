@@ -12,10 +12,11 @@
   SYSCALL(READ)                  \
   SYSCALL(WRITE)                 \
   SYSCALL(FORK)                  \
+  SYSCALL(WAITPID)               \
   SYSCALL(GETPPID)               \
   SYSCALL(GETPID)
 
-// pour un shell dup, dup2, exec, fork, getppid (parent pid), wait
+// pour un shell dup, dup2, exec, wait
 
 
 #define GENERATE_ENUM(ENUM) SYSCALL__##ENUM,

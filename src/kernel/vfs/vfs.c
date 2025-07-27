@@ -10,7 +10,6 @@
 #include "memory/section_allocator.h"
 #include "lib/str.h"
 
-
 /**
  *  vfs
  */
@@ -49,9 +48,11 @@ _Static_assert(
 );
 
 typedef struct {
-    void *memory_section;    // 1Mb
-    uint8_t node_alloc_bitfield[NODE_ALLOCATOR_BITFIELD_COUNT];
+    // memory management
+    void *memory_section;                                       // 1Mb
+    uint8_t node_alloc_bitfield[NODE_ALLOCATOR_BITFIELD_COUNT]; // 8 kb = 1 section / 128
 
+    // tree structure
     vfs_node_t *root_node;
 } vfs_t;
 

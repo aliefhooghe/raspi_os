@@ -13,20 +13,55 @@ static inline int32_t syscall(uint32_t syscall_num, uint32_t arg0, uint32_t arg1
     return status;
 }
 
+// --
+
 int32_t usr_syscall_yield(void)
 {
-    return syscall(SYSCALL__YIELD, 0, 0, 0);
+    return syscall(SYSCALL__YIELD, 0u, 0u, 0u);
 }
 
 int32_t usr_syscall_reboot(void)
 {
-    return syscall(SYSCALL__REBOOT, 0, 0, 0);
+    return syscall(SYSCALL__REBOOT, 0u, 0u, 0u);
 }
 
 int32_t usr_syscall_exit(int32_t status)
 {
-    return syscall(SYSCALL__EXIT, status, 0, 0);
+    return syscall(SYSCALL__EXIT, status, 0u, 0u);
 }
+
+// --
+
+int32_t usr_syscall_fork(void)
+{
+    return syscall(SYSCALL__FORK, 0u, 0u, 0u);
+}
+int32_t usr_syscall_getpid(void)
+{
+    return syscall(SYSCALL__GETPID, 0u, 0u, 0u);
+}
+
+int32_t usr_syscall_getppid(void)
+{
+    return syscall(SYSCALL__GETPPID, 0u, 0u, 0u);
+}
+
+int32_t usr_syscall_waitpid(int32_t pid, int32_t *wstatus)
+{
+    return syscall(SYSCALL__WAITPID, pid, (uint32_t)wstatus, 0u);
+}
+
+// --
+
+int32_t usr_syscall_open(const char *path, int32_t flags, int32_t mode)
+{
+    return syscall(SYSCALL__OPEN, (uint32_t)path, flags, mode);
+}
+
+// // int32_t usr_syscall_close(void)
+// {
+
+// }
 
 size_t usr_syscall_read(int32_t fd, void *data, size_t size)
 {
@@ -36,29 +71,4 @@ size_t usr_syscall_read(int32_t fd, void *data, size_t size)
 size_t usr_syscall_write(int32_t fd, const void *data, size_t size)
 {
     return syscall(SYSCALL__WRITE, fd, (uint32_t)data, size);
-}
-
-int32_t usr_syscall_fork(void)
-{
-    return syscall(SYSCALL__FORK, 0u, 0u, 0u);
-}
-
-// // int32_t usr_syscall_open(void)
-// {
-
-// }
-
-// // int32_t usr_syscall_close(void)
-// {
-
-// }
-
-int32_t usr_syscall_getpid(void)
-{
-    return syscall(SYSCALL__GETPID, 0, 0, 0);
-}
-
-int32_t usr_syscall_getppid(void)
-{
-    return syscall(SYSCALL__GETPPID, 0, 0, 0);
 }

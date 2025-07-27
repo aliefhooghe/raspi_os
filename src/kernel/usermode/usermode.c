@@ -18,21 +18,30 @@ static void test_fork(int32_t pid, FILE *stdout)
     if (status == 0u)
     {
         const uint32_t cpid = usr_syscall_getpid();
-        fprintf(stdout, "we are in the child pid=%u, ppid=%u\n", cpid, pid);
+        fprintf(stdout, "[%u] we are in the child pid=%u, ppid=%u\n", cpid, cpid, pid);
 
-        for (uint32_t i = 0u; i < 4u; i++)
+        for (uint32_t i = 0u; i < 16u; i++)
         {
             fprintf(stdout, "[%u] child process is working iteration=%u\n", cpid, i);
         }
 
         fprintf(stdout, "[%u] exit child process.\n", cpid);
-        usr_syscall_exit(0u);
+        usr_syscall_exit(42u);
     }
     else
     {
-        const uint32_t ppid = usr_syscall_getpid();
-        fprintf(stdout, "we are in the parent ppid=%u, pid_arg=%u, child pid=%u\n", ppid, pid, status);
+        pid = usr_syscall_getpid();
+
+        fprintf(stdout, "[%u] we are in the parent pid=%u, child pid=%u\n", pid, pid, status);
+        fprintf(stdout, "[%u] wait child: pid=%u\n", pid, status);
+
+        int32_t wstatus = 0u;
+        const int32_t ret = usr_syscall_waitpid(status, &wstatus);
+
+        fprintf(stdout, "[%u] waitpid returned %u. child exited with status=%u\n", pid, ret, wstatus);
     }
+
+    fprintf(stdout, "[%u] exit fork test function\n", usr_syscall_getpid());
 }
 
 void user_function(void)

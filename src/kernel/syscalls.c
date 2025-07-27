@@ -5,7 +5,7 @@
 #include "syscalls.h"
 
 #include "hardware/mini_uart.h"
-// #include "kernel.h"
+#include "kernel.h"
 #include "scheduler/scheduler.h"
 #include "hardware/watchdog.h"
 
@@ -41,6 +41,7 @@ static int32_t _syscall__REBOOT(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg1;
     (void)arg2;
     watchdog_init(0x100);
+    for (;;);  // hang: avoid executing something before reboot
     return 0;
 }
 
@@ -49,8 +50,7 @@ static int32_t _syscall__EXIT(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg1;
     (void)arg2;
     const int32_t status = arg0;
-    (void)status; // TODO: handle the status.
-    scheduler_cur_proc_exit();
+    scheduler_cur_proc_exit(status);
     return SYSCALL_STATUS_OK;
 }
 
@@ -103,6 +103,14 @@ static int32_t _syscall__FORK(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     return scheduler_cur_proc_fork();
 }
 
+static int32_t _syscall__WAITPID(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+    (void)arg2;
+    const int32_t pid = arg0;
+    uint32_t *const wstatus = (uint32_t*)scheduler_cur_proc_get_kernel_address(arg1);
+    return scheduler_cur_proc_wait_id(pid, wstatus);
+}
+
 static int32_t _syscall__GETPPID(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     (void)arg0;
@@ -134,17 +142,26 @@ void kernel_syscall_handler(
 {
     if (syscall_num >= SYSCALL_COUNT)
     {
+        mini_uart_kernel_log("invalid syscall number: %u", syscall_num);
         scheduler_cur_proc_set_syscall_status(-1);
     }
     else
     {
-        const uint32_t pid = scheduler_cur_proc_get_id();
+        // find calling process
+        const int32_t calling_pid = scheduler_cur_proc_get_id();
         mini_uart_kernel_log(
             "handle syscall %s for process pid=%u",
-            _syscall_names[syscall_num], pid);
+            _syscall_names[syscall_num], calling_pid);
+
+        // call the relevant syscall handler
         syscall_handler_t handler = _syscall_table[syscall_num];
         const int32_t status = handler(arg0, arg1, arg2);
-        mini_uart_kernel_log("syscall return status=%u", status);
-        scheduler_cur_proc_set_syscall_status(status);
+
+        // if the calling process was removed: do not write status
+        if (calling_pid == scheduler_cur_proc_get_id())
+        {
+            // if the process was not descheduled
+            scheduler_cur_proc_set_syscall_status(status);
+        }
     }
 }

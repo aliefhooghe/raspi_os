@@ -16,13 +16,13 @@ void scheduler_save_current_context(const task_context_t *current_context);
 const task_context_t *scheduler_switch_task(void);
 
 // syscall handler api: Current process management
-// 
 void scheduler_cur_proc_set_syscall_status(int32_t status);
 
-void scheduler_cur_proc_exit(void);
+void scheduler_cur_proc_exit(int32_t status);
 void* scheduler_cur_proc_get_kernel_address(uintptr_t process_virtual_address);
 
 int32_t scheduler_cur_proc_fork(void);
+int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus);
 int32_t scheduler_cur_proc_get_id(void);
 int32_t scheduler_cur_proc_get_parent_id(void);
 

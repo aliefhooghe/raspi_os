@@ -16,7 +16,7 @@ void mini_uart_wait_tx_idle(void);
 
 // kernel log interface
 
-#define KERNEL_ENABLE_LOG
+// #define KERNEL_ENABLE_LOG
 
 void mini_uart_kernel_puts(const char* str);
 void mini_uart_kernel_log(const char *restrict format, ...);

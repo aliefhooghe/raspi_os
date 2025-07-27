@@ -49,6 +49,21 @@ void get_stdout(FILE *fd)
 //
 //  files manipulation
 //
+
+
+// FILE *fopen(const char *restrict path, const char *restrict mode)
+// {
+//     const int fd = usr_syscall_open(path, 0, 0);
+//     if (fd < 0)
+//         return NULL;
+//     const FILE file = {
+//         .fd = fd,
+//         .write_buffer_cursor = 0u
+//     };
+
+//     // require dynamic allocation
+// }
+
 int fflush(FILE *stream)
 {
     if (stream->write_buffer_cursor > 0)
