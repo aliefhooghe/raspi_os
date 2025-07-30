@@ -9,6 +9,7 @@
   SYSCALL(REBOOT)                \
   SYSCALL(EXIT)                  \
   SYSCALL(OPEN)                  \
+  SYSCALL(CLOSE)                  \
   SYSCALL(READ)                  \
   SYSCALL(WRITE)                 \
   SYSCALL(FORK)                  \

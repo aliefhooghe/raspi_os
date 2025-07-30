@@ -17,11 +17,9 @@ typedef struct {
 #define DECLARE_STDOUT FILE stdoutfd; FILE *stdout = &stdoutfd; get_stdout(stdout)
 void get_stdout(FILE *);
 
-
 // files manipulations
 
 // FILE *fopen(const char *restrict path, const char *restrict mode);
-
 int fflush(FILE *stream);
 size_t fread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream);
 size_t fwrite(const void *restrict ptr, size_t size, size_t n, FILE *restrict stream);

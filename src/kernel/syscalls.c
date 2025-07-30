@@ -67,6 +67,19 @@ static int32_t _syscall__OPEN(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     return scheduler_cur_proc_add_fd(descriptor);
 }
 
+static int32_t _syscall__CLOSE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+    const int32_t fd = arg0;
+    (void)arg1;
+    (void)arg2;
+
+    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
+    vfs_file_descriptor_close(descriptor);
+
+    // TODO: remove the (null) file descriptor from scheduler
+    return 0;
+}
+
 static int32_t _syscall__READ(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     const int32_t fd = arg0;

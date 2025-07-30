@@ -53,11 +53,13 @@ static int32_t _tty_mini_uart_write(void *_back, void *_ctx, const void *data, s
     return size;
 }
 
-file_handle_t tty_init_virtual_file(void)
+file_handle_t tty_create_handler(void)
 {
     const file_handle_t result = {
         .backend = NULL,
         .ops = {
+            .create_ctx = NULL,
+            .close_ctx = NULL,
             .read = _tty_mini_uart_read,
             .write = _tty_mini_uart_write
         }

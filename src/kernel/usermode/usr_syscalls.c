@@ -13,7 +13,7 @@ static inline int32_t syscall(uint32_t syscall_num, uint32_t arg0, uint32_t arg1
     return status;
 }
 
-// --
+// -- SYSTEM
 
 int32_t usr_syscall_yield(void)
 {
@@ -30,7 +30,7 @@ int32_t usr_syscall_exit(int32_t status)
     return syscall(SYSCALL__EXIT, status, 0u, 0u);
 }
 
-// --
+// --  PROCESSES
 
 int32_t usr_syscall_fork(void)
 {
@@ -51,17 +51,17 @@ int32_t usr_syscall_waitpid(int32_t pid, int32_t *wstatus)
     return syscall(SYSCALL__WAITPID, pid, (uint32_t)wstatus, 0u);
 }
 
-// --
+// --  FILES
 
 int32_t usr_syscall_open(const char *path, int32_t flags, int32_t mode)
 {
     return syscall(SYSCALL__OPEN, (uint32_t)path, flags, mode);
 }
 
-// // int32_t usr_syscall_close(void)
-// {
-
-// }
+int32_t usr_syscall_close(int32_t fd)
+{
+    return syscall(SYSCALL__CLOSE, (uint32_t)fd, 0u, 0u);
+}
 
 size_t usr_syscall_read(int32_t fd, void *data, size_t size)
 {

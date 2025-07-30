@@ -4,7 +4,7 @@
 #include "vfs/vfs.h"
 #include "vfs/vfs_handler.h"
 
-file_handle_t tty_init_virtual_file(void);
+file_handle_t tty_create_handler(void);
 
 #endif
 

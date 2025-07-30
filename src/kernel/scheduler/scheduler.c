@@ -68,6 +68,7 @@ typedef struct {
     //
     // Virtual file system interfaces
     //
+    // TODO: handle removal here. For now descriptor is set to null
     file_descriptor_t file_descriptors[MAX_FILE_DESCRIPTOR_COUNT];
     uint32_t fd_count;
 

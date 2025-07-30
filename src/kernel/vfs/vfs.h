@@ -16,8 +16,9 @@ void vfs_init(void);
 // file_descriptor_t vfs_get_tty_file_descriptor(void);
 
 // file descriptor interface: used by SYSCALLs
-int32_t vfs_file_descriptor_is_null(const file_descriptor_t *desc);
+int32_t vfs_file_descriptor_is_null(const file_descriptor_t *fd);
 file_descriptor_t vfs_file_descriptor_open(const char *path, uint32_t flags, uint32_t mode);
+int32_t vfs_file_descriptor_close(file_descriptor_t *fd);
 int32_t vfs_file_descriptor_read(file_descriptor_t *fd, void *data, size_t size);
 int32_t vfs_file_descriptor_write(file_descriptor_t *fd, const void *data, size_t size);
 
