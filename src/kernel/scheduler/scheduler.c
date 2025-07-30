@@ -15,13 +15,20 @@
 #include "task_context.h"
 #include "vfs/vfs.h"
 
-#define INIT_TASK_PID   1u
 
+///
+//  Process memory mapping
+// 
 #define PROCESS_SECTION_VIRTUAL_ADDRRESS  0x00800000u  // section 0x00800000u -> 0x00900000u = 1Mb
 #define PROCESS_STACK_VIRTUAL_ADDRRESS    0x00880000u  // stack at the midle of section (= a 512 kb stack)
 
+//
+//  Process structure
+// 
 #define MAX_FILE_DESCRIPTOR_COUNT (4u)
 #define SCHEDULER_MAX_TASK_COUNT  (32u)
+
+#define INIT_TASK_PID   1u
 
 // worst case: all childs belong to init
 #define MAX_EXITED_CHILD_TASK     SCHEDULER_MAX_TASK_COUNT 
@@ -183,6 +190,7 @@ static void _scheduler_task_init(
     new_task->memory_section = section_allocator_alloc();
     if (new_task->memory_section == NULL)
         kernel_fatal_error("failed to allocate a process memory section");
+    _memset(new_task->memory_section, 0u, MMU_SECTION_SIZE);
 
     // 2 - allocate the process address translation table.
     new_task->translation_table = translation_table_allocator_alloc();
@@ -236,6 +244,7 @@ void scheduler_start(void *init_proc)
     _scheduler.taskss_count = 1u;
     
     // init task: pid, memory section alloc
+    mini_uart_kernel_log("scheduler: initialize init process");
     const int32_t init_process_pid = ++_scheduler.id_gen;
     if (init_process_pid != INIT_TASK_PID)
         kernel_fatal_error("scheduler: unexpected init process pid");
@@ -272,6 +281,7 @@ void scheduler_start(void *init_proc)
     //
     // jump to the init process
     //
+    mini_uart_kernel_log("call init process !");
     mmu_set_translation_table(init_task->translation_table);
     __set_task_context(&init_task->context);
 }

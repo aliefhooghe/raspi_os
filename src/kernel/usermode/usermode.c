@@ -26,10 +26,10 @@ static void test_fork(int32_t pid, FILE *stdout)
         }
 
         // VFS tests
-        int fd = usr_syscall_open("/tty", 0u, 0u);
-        FILE file = { .fd = fd, .write_buffer_cursor = 0u };
-        fprintf(&file, "[%u] WRITE TO TTY\n", cpid);
-        fflush(&file);
+        FILE *file = fopen("/tty", "w");
+        fprintf(file, "[%u] WRITE TO TTY\n", cpid);
+        fflush(file);
+        fclose(file);
 
         //
         int fd2 = usr_syscall_open("/toto/tata.txt", 0u, 0u);
@@ -63,8 +63,8 @@ static void test_fork(int32_t pid, FILE *stdout)
 
 void user_function(void)
 {
-    DECLARE_STDOUT;
-
+    FILE *stdout = fdopen(1, "w");
+    
     char line[LINE_SIZE] = "";
     const int32_t pid = usr_syscall_getpid();
     fprintf(stdout, "[%u] start usermode function\n", pid);

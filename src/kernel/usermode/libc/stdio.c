@@ -5,64 +5,60 @@
 #include <stdint.h>
 
 #include "usermode/libc/stdio.h"
+#include "usermode/libc/stdlib.h"
 #include "usermode/libc/string.h"
 #include "lib/str.h"
 #include "usermode/usr_syscalls.h"
 
-
-// void mini_uart_put_uint_hex(uint32_t x)
-// {
-//     static const char cars[] = "0123456789abcdef";
-//     char result[9] = "";
-//     int index = 8;
-
-//     do {
-//         result[--index] = cars[x & 0xf];
-//         x >>= 4;
-//     } while (x > 0);
-
-//     mini_uart_puts(result + index);
-// }
-
-// void mini_uart_put_uint_bin(uint32_t x)
-// {
-//     char result[33] = "";
-//     int index = 32;
-
-//     do {
-//         result[--index] = '0' + (x & 0x1);
-//         x >>= 1;
-//     } while (x > 0);
-
-//     mini_uart_puts(result + index);
-// }
-
 //
-//  STDIO initialization stub
+// File Structure
 //
-void get_stdout(FILE *fd)
-{
-    fd->fd = 1;
-    fd->write_buffer_cursor = 0u;
-}
+#define WRITE_BUFFER_SIZE 128u
+
+struct FILE {
+    int fd;
+    size_t write_buffer_cursor;
+    uint8_t write_buffer[WRITE_BUFFER_SIZE];
+};
 
 //
 //  files manipulation
 //
 
+FILE *fdopen(int fd, const char *mode)
+{
+    (void)mode;
+    FILE *file = (FILE*)malloc(sizeof(FILE));
+    if (file == NULL)
+        return NULL;
+    file->fd = fd;
+    file->write_buffer_cursor = 0u;
+    return file;
+}
 
-// FILE *fopen(const char *restrict path, const char *restrict mode)
-// {
-//     const int fd = usr_syscall_open(path, 0, 0);
-//     if (fd < 0)
-//         return NULL;
-//     const FILE file = {
-//         .fd = fd,
-//         .write_buffer_cursor = 0u
-//     };
+FILE *fopen(const char *restrict path, const char *restrict mode)
+{
+    const int fd = usr_syscall_open(path, 0, 0);
+    if (fd < 0)
+        return NULL;
+    
+    FILE *desc = fdopen(fd, mode);
+    if (desc == NULL) {
+        usr_syscall_close(fd);
+        return NULL;
+    }
 
-//     // require dynamic allocation
-// }
+    return desc;
+}
+
+int fclose(FILE* file)
+{
+    const int status = usr_syscall_close(file->fd);
+    if (status != 0)
+        return status;
+    free(file);
+    return 0;
+}
 
 int fflush(FILE *stream)
 {

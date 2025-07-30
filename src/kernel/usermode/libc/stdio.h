@@ -5,26 +5,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define WRITE_BUFFER_SIZE 128u
 
-typedef struct {
-    int fd;
-    size_t write_buffer_cursor;
-    uint8_t write_buffer[WRITE_BUFFER_SIZE];
-} FILE;
-
-// stub the libc initialization
-#define DECLARE_STDOUT FILE stdoutfd; FILE *stdout = &stdoutfd; get_stdout(stdout)
-void get_stdout(FILE *);
+typedef struct FILE FILE;
 
 // files manipulations
+FILE *fopen(const char *restrict path, const char *restrict mode);
+FILE *fdopen(int fd, const char *mode);
+int fclose(FILE* file);
 
 // FILE *fopen(const char *restrict path, const char *restrict mode);
 int fflush(FILE *stream);
 size_t fread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream);
 size_t fwrite(const void *restrict ptr, size_t size, size_t n, FILE *restrict stream);
 
-// STDIO
 // int putchar(int c);
 
 int fputs(const char *restrict s, FILE *restrict stream);
