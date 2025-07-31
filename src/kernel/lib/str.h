@@ -4,9 +4,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/**
- * tiny kernel pseudo libc
- */
+// 
+// tiny kernel pseudo libc
+// 
 
 void *_memcpy(
     void *restrict destination,

@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-/**
- * task register which must be saved and restored when switching context
- */
+// 
+// Cpu registers which must be saved and restored when switching context
+// 
 typedef struct {
     uint32_t r0;    // syscall return status
 
@@ -27,7 +27,5 @@ typedef struct {
 
     uint32_t lr;    // return address register. Actually lr_svc
 } task_context_t;
-
-
 
 #endif

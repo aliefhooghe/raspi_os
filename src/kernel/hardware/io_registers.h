@@ -6,16 +6,15 @@
 #define IO_REG_END   0x21000000u
 
 
-/**
- *  memory mapped registers adresses
- */
-
-// WARNING: this file contains physical addresses
+// 
+//  memory mapped IO registers adresses (physical addresses)
+// 
 
 
-/**
- * IRQ: hardware interupts
- */
+// --------------------------------------------------------------------------------
+// 
+// IRQ: hardware interupts
+// 
 #define REG__IRQ_BASE               0x2000B000u  // The base address for the ARM interrupt register
 #define REG__IRQ_PEND_BASE          0x2000B200u  // IRQ basic pending
 #define REG__IRQ_PEND_1             0x2000B204u  // IRQ pending 1
@@ -38,10 +37,9 @@
 //
 
 // --------------------------------------------------------------------------------
-
-/**
- * PM: power management / watchdog
- */
+// 
+// PM: power management / watchdog
+// 
 
 #define REG__PM_BASE                0x20100000u  //
 #define REG__PM_RSTC                0x2010001Cu  //
@@ -50,10 +48,9 @@
 
 
 // --------------------------------------------------------------------------------
-
-/**
- * GPIO: registers
- */
+// 
+// GPIO: registers
+// 
 #define REG__GPFSEL1                0x20200004u  // GPIO Function Select Register
 #define REG__GPFSEL3                0x2020000Cu  //
 #define REG__GPFSEL4                0x20200010u  //
@@ -64,10 +61,9 @@
 #define REG__GPPUDCLK0              0x20200098u  // GPIO Pull-up/down Clock Register
 
 // --------------------------------------------------------------------------------
-
-/**
- *  AUX_MU: Registers for the mini UART
- */
+// 
+//  AUX_MU: Registers for the mini UART
+// 
 #define REG__AUX_ENABLES            0x20215004u  // Enables auxiliary peripherals (SPI1, SPI2, mini UART)
 #define REG__AUX_MU_IO_REG          0x20215040u  // Data register (read/write for mini UART)
 #define REG__AUX_MU_IER_REG         0x20215044u  // Interrupt enable register
@@ -81,9 +77,10 @@
 #define REG__AUX_MU_STAT_REG        0x20215064u  // Mini UART status register
 #define REG__AUX_MU_BAUD_REG        0x20215068u  // Baud rate register
 
-/**
- *  ARM_TIMER: TODO
- */
+// --------------------------------------------------------------------------------
+// 
+//  ARM_TIMER: TODO
+// 
 #define REG__ARM_TIMER_LOD          0x2000B400u
 #define REG__ARM_TIMER_VAL          0x2000B404u
 #define REG__ARM_TIMER_CTL          0x2000B408u

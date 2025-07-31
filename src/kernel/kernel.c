@@ -21,10 +21,16 @@
 
 #include "vfs/vfs.h"
 
+//
+// Kernel banners
+// 
 extern const char *__satan_welcome_banner;
 extern const char *__satan_fatal_error_banner;
 
-
+//
+// # Kernel Memory Layout:
+// 
+// 
 // +-----------------+--------------------+----------------------+
 // | section         | size               | position             |
 // +-----------------+--------------------+----------------------+
@@ -110,7 +116,6 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     // initialize the kernel
     kernel_init();
-
 
     // wait a first input
     mini_uart_kernel_puts("starting satan OS...\r\n");
