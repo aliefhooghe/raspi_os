@@ -11,6 +11,7 @@
 #include "hardware/mmu.h"
 #include "hardware/watchdog.h"
 
+#include "memory/memory_allocator.h"
 #include "memory/section_allocator.h"
 #include "memory/translation_table_allocator.h"
 
@@ -67,8 +68,14 @@ static void kernel_init_translation_table(uint32_t *table)
 
 static void kernel_init(void)
 {
+    // initialize the mini UART
+    mini_uart_init();
+
     // Initialize the section allocator
     section_allocator_init(KERNEL_DYN_SECTIONS_BEGIN);
+
+    // Initialize the general purpose memory allocator
+    memory_allocator_init();
 
     // Initialize the translation table allocator
     void *process_translation_tables_section = section_allocator_alloc();
@@ -104,8 +111,6 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     // initialize the kernel
     kernel_init();
 
-    // initialize the mini UART
-    mini_uart_init();
 
     // wait a first input
     mini_uart_kernel_puts("starting satan OS...\r\n");

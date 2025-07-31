@@ -66,6 +66,8 @@ kernel_sources = files(
   'src/kernel/memory/bitfield.c',
   'src/kernel/memory/section_allocator.h',
   'src/kernel/memory/section_allocator.c',
+  'src/kernel/memory/memory_allocator.h',
+  'src/kernel/memory/memory_allocator.c',
   'src/kernel/memory/translation_table_allocator.h',
   'src/kernel/memory/translation_table_allocator.c',
   'src/kernel/scheduler/scheduler.c',
