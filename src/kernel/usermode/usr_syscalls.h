@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "kernel_types.h"
+
 //// User Mode syscall wrappers 
 
 //
@@ -28,5 +30,6 @@ int32_t usr_syscall_open(const char *path, int32_t flags, int32_t mode);
 int32_t usr_syscall_close(int32_t fd);
 size_t usr_syscall_read(int32_t fd, void *data, size_t size);
 size_t usr_syscall_write(int32_t fd, const void *data, size_t size);
+off_t usr_syscall_lseek(int fd, off_t offset, int whence);
 
 #endif

@@ -6,6 +6,7 @@
 
 #include "hardware/mini_uart.h"
 #include "kernel.h"
+#include "kernel_types.h"
 #include "scheduler/scheduler.h"
 #include "hardware/watchdog.h"
 
@@ -104,6 +105,19 @@ static int32_t _syscall__WRITE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
         return SYSCALL_STATUS_ERR;
 
     return vfs_file_descriptor_write(descriptor, data, size);
+}
+
+static int32_t _syscall__LSEEK(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+    const int32_t fd = arg0;
+    const off_t offset = arg1;
+    const int whence = arg2;
+
+    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
+    if (descriptor == NULL)
+        return SYSCALL_STATUS_ERR;
+    
+    return vfs_file_descriptor_lseek(descriptor, offset, whence);
 }
 
 static int32_t _syscall__FORK(uint32_t arg0, uint32_t arg1, uint32_t arg2)

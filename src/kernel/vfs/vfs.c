@@ -17,7 +17,7 @@
 /**
  *  vfs
  */
-#define NODE_NAME_MAX_SIZE (56u)
+#define NODE_NAME_MAX_SIZE (52u)
 #define MAX_CHILD_COUNT    (10u)
 
 typedef enum {
@@ -61,9 +61,9 @@ typedef struct {
 } vfs_t;
 
 
-/**
- *  global vfs
- */
+//
+// global vfs
+//
 static vfs_t _vfs;
 
 //
@@ -333,4 +333,12 @@ int32_t vfs_file_descriptor_read(file_descriptor_t *fd, void *data, size_t size)
 int32_t vfs_file_descriptor_write(file_descriptor_t *fd, const void *data, size_t size)
 {
     return fd->handle->ops.write(fd->handle->backend, fd->fd_ctx, data, size);
+}
+
+int32_t vfs_file_descriptor_lseek(file_descriptor_t *fd, int32_t offset, int32_t whence)
+{
+    // seek is allowed to not be implemented by the handler
+    if (fd->handle->ops.seek == NULL)
+        return -1;
+    return fd->handle->ops.seek(fd->handle->backend, fd->fd_ctx, offset, whence);
 }

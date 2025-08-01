@@ -9,6 +9,7 @@ typedef struct {
     void (*close_ctx)(void *backend, void* ctx);
     int32_t (*read)(void *backend, void *ctx, void *data, size_t size);
     int32_t (*write)(void *backend, void *ctx, const void *data, size_t size);
+    int32_t (*seek)(void *backend, void *ctx, int32_t offset, int32_t whence);
 } file_ops_t;
 
 struct file_handle {

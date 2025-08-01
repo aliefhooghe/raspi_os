@@ -61,7 +61,8 @@ file_handle_t tty_create_handler(void)
             .create_ctx = NULL,
             .close_ctx = NULL,
             .read = _tty_mini_uart_read,
-            .write = _tty_mini_uart_write
+            .write = _tty_mini_uart_write,
+            .seek = NULL
         }
     };
     return result;

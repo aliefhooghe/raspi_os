@@ -21,5 +21,6 @@ file_descriptor_t vfs_file_descriptor_open(const char *path, uint32_t flags, uin
 int32_t vfs_file_descriptor_close(file_descriptor_t *fd);
 int32_t vfs_file_descriptor_read(file_descriptor_t *fd, void *data, size_t size);
 int32_t vfs_file_descriptor_write(file_descriptor_t *fd, const void *data, size_t size);
+int32_t vfs_file_descriptor_lseek(file_descriptor_t *fd, int32_t offset, int32_t whence);
 
 #endif

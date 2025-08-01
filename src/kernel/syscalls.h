@@ -14,6 +14,7 @@
   SYSCALL(CLOSE)                 \
   SYSCALL(READ)                  \
   SYSCALL(WRITE)                 \
+  SYSCALL(LSEEK)                 \
   SYSCALL(FORK)                  \
   SYSCALL(WAITPID)               \
   SYSCALL(GETPPID)               \

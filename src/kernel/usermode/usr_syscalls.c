@@ -72,3 +72,8 @@ size_t usr_syscall_write(int32_t fd, const void *data, size_t size)
 {
     return syscall(SYSCALL__WRITE, fd, (uint32_t)data, size);
 }
+
+off_t usr_syscall_lseek(int fd, off_t offset, int whence)
+{
+    return syscall(SYSCALL__LSEEK, fd, (uint32_t)offset, whence);
+}
