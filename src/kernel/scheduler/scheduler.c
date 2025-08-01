@@ -273,7 +273,9 @@ void scheduler_start(void *init_proc)
         init_proc, 0u);
 
     // setup stdin/stdout
-    const file_descriptor_t tty_fd = vfs_file_descriptor_open("/tty", 0u, 0u);
+    const file_descriptor_t tty_fd = vfs_file_descriptor_open("/dev/tty", 0u, 0u);
+    if (vfs_file_descriptor_is_null(&tty_fd))
+        kernel_fatal_error("failed to open tty device at /dev/tty");
     init_task->fd_count = 2u;
     init_task->file_descriptors[0] = tty_fd;
     init_task->file_descriptors[1] = tty_fd;

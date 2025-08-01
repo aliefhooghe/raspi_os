@@ -26,7 +26,7 @@ static void test_fork(int32_t pid, FILE *stdout)
         }
 
         // VFS tests
-        FILE *file = fopen("/tty", "w");
+        FILE *file = fopen("/dev/tty", "w");
         fprintf(file, "[%u] WRITE TO TTY\n", cpid);
         fflush(file);
         fclose(file);

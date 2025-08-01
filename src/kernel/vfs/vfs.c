@@ -12,6 +12,7 @@
 
 #include "vfs/dev/tty.h"
 #include "vfs/vfs.h"
+#include "vfs/dev/zero.h"
 #include "vfs/vfs_handler.h"
 
 /**
@@ -163,16 +164,18 @@ static const vfs_node_t *_vfs_node_lookup_rec(
     const char *path,
     const vfs_node_t *root)
 {
-    mini_uart_kernel_log("vfs: node lookup: look for %s in node %s", path, root->name);
+    mini_uart_kernel_log(
+        "vfs: node lookup: look for relative path '%s' in node %s",
+        path, root->name);
     const char *next_separator = _strchr(path, '/');
-    if (next_separator == NULL) {
+    if (*next_separator == '\0') {
         // then path itself is the last segment
         const uint32_t child_name_len = _strlen(path);
         return _vfs_child_by_name(root, path, child_name_len);
     }
     else {
         const uint32_t child_name_len = next_separator - path;
-        const vfs_node_t *child = _vfs_child_by_name(root, path, child_name_len);
+        const vfs_node_t *child = _vfs_child_by_name(root, path, child_name_len);       
         if (child == NULL || child->type == VFS_NODE_FILE)
             return NULL;
         return _vfs_node_lookup_rec(path + child_name_len + 1, child);
@@ -183,6 +186,8 @@ static const vfs_node_t *_vfs_node_lookup(const char *path)
 {
     if (path[0] != '/')
         return NULL;
+    const size_t path_len = _strlen(path);
+    mini_uart_kernel_log("node lookup: path='%s', len=%u", path, path_len);
     return _vfs_node_lookup_rec(path + 1, _vfs.root_node);
 }
 
@@ -307,14 +312,28 @@ void vfs_init(void)
     // create root descriptor
     vfs_node_t *root = _vfs_create_directory_node(NULL, "root");
 
-    // create the device
-    file_handle_t tty_handler = tty_create_handler();
-    vfs_node_t *tty = _vfs_node_create("tty", root, VFS_NODE_FILE, &tty_handler);
+    //
+    // create the /dev node
+    //
+    vfs_node_t *dev = _vfs_create_directory_node(root, "dev");
+    
 
-    // add the device to the root
+    // zero device
+    file_handle_t zero_handler = vfs_dev_zero_create_handler();
+    vfs_node_t *zero = _vfs_node_create("zero", dev, VFS_NODE_FILE, &zero_handler);
+    
+
+    // tty device
+    file_handle_t tty_handler = vfs_dev_tty_create_handler();
+    vfs_node_t *tty = _vfs_node_create("tty", dev, VFS_NODE_FILE, &tty_handler);
+
+    // hierarchy
     root->directory.child_count = 1u;
-    root->directory.childs[0] = tty;
+    root->directory.childs[0] = dev;
 
+    dev->directory.child_count = 2u;
+    dev->directory.childs[0] = tty;
+    dev->directory.childs[1] = zero;
 
     // set the vfs root
     _vfs.root_node = root;

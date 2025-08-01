@@ -78,15 +78,15 @@ int32_t _strncmp(const char* s1, const char* s2, size_t count)
 {
     size_t index = 0u;
     while (index++ < count && *s1 != '\0' && (*s1 == *s2)) {s1++; s2++;}
-    return (*(unsigned char *)s1 - *(unsigned char *)s2);
+    return (*(unsigned char *)(s1-1) - *(unsigned char *)(s2-1));
 }
 
 const char* _strchr(const char* str, char ch)
 {
-    char cur;
-    while ((cur = *str++)) {
-        if (cur == ch)
+    str--;
+    while (*++str) {
+        if (*str == ch)
             return str;
     }
-    return NULL;
+    return str;
 }

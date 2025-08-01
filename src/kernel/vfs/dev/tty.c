@@ -53,7 +53,7 @@ static int32_t _tty_mini_uart_write(void *_back, void *_ctx, const void *data, s
     return size;
 }
 
-file_handle_t tty_create_handler(void)
+file_handle_t vfs_dev_tty_create_handler(void)
 {
     const file_handle_t result = {
         .backend = NULL,
