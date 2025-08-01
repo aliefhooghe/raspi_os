@@ -190,8 +190,6 @@ static const vfs_node_t *_vfs_node_lookup(const char *path)
 // Directory handlers
 // 
 
-#define DIRENT_S sizeof(struct dirent)
-
 typedef struct {
     uint32_t cur;
 } vfs_directory_fd_context_t;
@@ -228,7 +226,8 @@ static int32_t _vfs_directory_handler_read(void *backend, void *ctx, void *data,
         _strcpy(entities[fd_ctx->cur].d_name, vfs_entity->name);
         entities[fd_ctx->cur].d_type = (vfs_entity->type == VFS_NODE_DIRECTORY);
     }
-    
+
+    // note: if cur after end, return 0 => unix compliant
     return total_buffer_size - size;
 }
 
@@ -242,6 +241,35 @@ static int32_t _vfs_directory_handler_write(void *backend, void *ctx, const void
     return -1;
 }
 
+static int32_t _vfs_directory_handler_seek(void *backend, void *ctx, int32_t offset, int32_t whence)
+{
+    _Static_assert(
+        sizeof(dirent) == 32,
+        "sizeof(dirent) is expected to be 32");
+
+    vfs_directory_fd_context_t *fd_ctx = (vfs_directory_fd_context_t*)ctx;
+    vfs_directory_t *directory = (void*)backend;
+
+    int32_t index_ref;
+    switch (whence) {
+        case SEEK_SET: index_ref = 0u; break;
+        case SEEK_CUR: index_ref = fd_ctx->cur; break;
+        case SEEK_END: index_ref = directory->child_count; break;
+        default: return -1;
+    }
+
+    const int32_t index_offset = offset >> 0x5u;
+    const int32_t new_cur = index_ref + index_offset;
+
+    // position before begin is not allowed
+    if (new_cur < 0)
+        return -1;
+
+    // position after end is ok.
+    fd_ctx->cur = new_cur;
+    return new_cur * sizeof(dirent);
+}
+
 static file_handle_t _vfs_directory_create_handler(vfs_directory_t *directory)
 {
     const file_handle_t handler = {
@@ -249,7 +277,8 @@ static file_handle_t _vfs_directory_create_handler(vfs_directory_t *directory)
             .create_ctx = _vfs_directory_handler_create_ctx,
             .close_ctx = _vfs_directory_handler_close_ctx,
             .read = _vfs_directory_handler_read,
-            .write = _vfs_directory_handler_write
+            .write = _vfs_directory_handler_write,
+            .seek = _vfs_directory_handler_seek
         },
         .backend = directory
     };

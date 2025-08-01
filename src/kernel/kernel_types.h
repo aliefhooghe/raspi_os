@@ -16,7 +16,7 @@ typedef int32_t off_t;
 
 // Directory entities
 // 
-#define MAX_DIR_NAME_LEN (32u)
+#define MAX_DIR_NAME_LEN (31u)
 
 #define DT_REG 0u
 #define DT_DIR 1u
