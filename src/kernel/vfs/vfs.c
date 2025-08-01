@@ -7,6 +7,7 @@
 #include "lib/str.h"
 
 #include "memory/bitfield.h"
+#include "memory/memory_allocator.h"
 #include "memory/section_allocator.h"
 
 #include "vfs/dev/tty.h"
@@ -112,11 +113,11 @@ static vfs_node_t *_vfs_node_allocator_alloc(void)
         return (vfs_node_t*)((uint8_t*)_vfs.memory_section + node_index * sizeof(vfs_node_t));
 }
 
-static void _vfs_node_allocator_free(vfs_node_t *node)
-{
-    const uint32_t node_index = node - (vfs_node_t*)_vfs.memory_section;
-    bitfield_clear(_vfs.node_alloc_bitfield, node_index);
-}
+// static void _vfs_node_allocator_free(vfs_node_t *node)
+// {
+//     const uint32_t node_index = node - (vfs_node_t*)_vfs.memory_section;
+//     bitfield_clear(_vfs.node_alloc_bitfield, node_index);
+// }
 
 // node initialization
 static vfs_node_t *_vfs_node_create(
@@ -191,38 +192,52 @@ static const vfs_node_t *_vfs_node_lookup(const char *path)
 
 #define DIRENT_S sizeof(struct dirent)
 
+typedef struct {
+    uint32_t cur;
+} vfs_directory_fd_context_t;
+
 static void *_vfs_directory_handler_create_ctx(void *backend)
 {
-    vfs_directory_t *directory = (void*)backend;
-    (void)directory;
+    (void)backend;
+    const size_t ctx_size = sizeof(vfs_directory_fd_context_t);
+    vfs_directory_fd_context_t *ctx = (vfs_directory_fd_context_t*)memory_alloc(ctx_size);
+    _memset(ctx, 0u, ctx_size);
+    return ctx;
 }
 
-static void _vfs_directory_handler_close_ctx(void *backend, void *_ctx)
+static void _vfs_directory_handler_close_ctx(void *backend, void *ctx)
 {
-    
+    (void)backend;
+    memory_free(ctx);
 }
 
-static int32_t _vfs_directory_handler_read(void *backend, void *_ctx, void *data, size_t size)
+static int32_t _vfs_directory_handler_read(void *backend, void *ctx, void *data, size_t size)
 {
+    vfs_directory_fd_context_t *fd_ctx = (vfs_directory_fd_context_t*)ctx;
     vfs_directory_t *directory = (void*)backend;
+
     struct dirent *entities = (dirent *)data;
     const size_t total_buffer_size = size;
 
     for (
-        size_t i = 0u;
-        size >= sizeof(dirent);
-        i++, size -= sizeof(dirent))
+        ;
+        fd_ctx->cur < directory->child_count && size >= sizeof(dirent);
+        fd_ctx->cur++, size -= sizeof(dirent))
     {
-        const vfs_node_t *vfs_entity = directory->childs[i];
-        _strcpy(entities[i].d_name, vfs_entity->name);
-        entities[i].d_type = (vfs_entity->type == VFS_NODE_DIRECTORY);
+        const vfs_node_t *vfs_entity = directory->childs[fd_ctx->cur];
+        _strcpy(entities[fd_ctx->cur].d_name, vfs_entity->name);
+        entities[fd_ctx->cur].d_type = (vfs_entity->type == VFS_NODE_DIRECTORY);
     }
     
     return total_buffer_size - size;
 }
 
-static int32_t _vfs_directory_handler_write(void *_back, void *_ctx, const void *_data, size_t _size)
+static int32_t _vfs_directory_handler_write(void *backend, void *ctx, const void *data, size_t size)
 {
+    (void)backend;
+    (void)ctx;
+    (void)data;
+    (void)size;
     kernel_fatal_error("write on directory is not implemented");
     return -1;
 }
@@ -307,6 +322,7 @@ file_descriptor_t vfs_file_descriptor_open(const char *path, uint32_t flags, uin
 int32_t vfs_file_descriptor_close(file_descriptor_t *fd)
 {
     _close_descriptor(fd);
+    return 0;
 }
 
 int32_t vfs_file_descriptor_read(file_descriptor_t *fd, void *data, size_t size)
