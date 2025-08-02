@@ -171,6 +171,8 @@ static const vfs_node_t *_vfs_node_lookup_rec(
     if (*next_separator == '\0') {
         // then path itself is the last segment
         const uint32_t child_name_len = _strlen(path);
+        if (child_name_len == 0u)
+            return root;
         return _vfs_child_by_name(root, path, child_name_len);
     }
     else {
@@ -223,13 +225,14 @@ static int32_t _vfs_directory_handler_read(void *backend, void *ctx, void *data,
     const size_t total_buffer_size = size;
 
     for (
-        ;
+        size_t i = 0u;
         fd_ctx->cur < directory->child_count && size >= sizeof(dirent);
-        fd_ctx->cur++, size -= sizeof(dirent))
+        fd_ctx->cur++, i++, size -= sizeof(dirent))
     {
         const vfs_node_t *vfs_entity = directory->childs[fd_ctx->cur];
-        _strcpy(entities[fd_ctx->cur].d_name, vfs_entity->name);
-        entities[fd_ctx->cur].d_type = (vfs_entity->type == VFS_NODE_DIRECTORY);
+        mini_uart_kernel_log("read a dirent cur=%u/%u, name=%s", fd_ctx->cur, directory->child_count, vfs_entity->name);
+        _strcpy(entities[i].d_name, vfs_entity->name);
+        entities[i].d_type = (vfs_entity->type == VFS_NODE_DIRECTORY);
     }
 
     // note: if cur after end, return 0 => unix compliant

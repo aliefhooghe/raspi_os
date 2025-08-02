@@ -2,13 +2,34 @@
 #include <stdint.h>
 
 #include "usermode/usermode.h"
+#include "kernel_types.h"
 #include "usermode/usr_syscalls.h"
 #include "usermode/libc/stdio.h"
 #include "usermode/libc/string.h"
-
+#include "usermode/libc/dirent.h"
 
 #define LINE_SIZE 128
 
+
+static void ls(FILE *stdout, const char *path)
+{
+    fprintf(stdout, "list file in path: %s\n", path);
+    DIR *dir = opendir(path);
+    if (dir == NULL)
+    {
+        fprintf(stdout, "directory %s does not exists\n", path);
+        return;
+    }
+
+    struct dirent *entity = NULL;
+    while ((entity = readdir(dir))) {
+        fprintf(stdout,
+            "- %s (%s)\n",
+            entity->d_name, entity->d_type == DT_DIR ? "dir" : "reg");
+    }
+
+    closedir(dir);
+}
 
 static void test_fork(int32_t pid, FILE *stdout)
 {
@@ -97,6 +118,12 @@ void user_function(void)
         {
             fprintf(stdout, "[%u] call fork test procedure:\n", pid);
             test_fork(pid, stdout);
+        }
+        else if (strcmp(line, "ls") == 0)
+        {
+            fprintf(stdout, "[%u] call ls test procedure:\n", pid);
+            ls(stdout, "/");
+            ls(stdout, "/dev");
         }
         else
         {

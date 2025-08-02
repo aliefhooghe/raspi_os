@@ -60,6 +60,21 @@ int fclose(FILE* file)
     return 0;
 }
 
+int fseek(FILE *stream, long offset, int whence)
+{
+    return -1;    
+}
+
+long ftell(FILE *stream)
+{
+    return -1;
+}
+
+void rewind(FILE *stream)
+{
+    
+}
+
 int fflush(FILE *stream)
 {
     if (stream->write_buffer_cursor > 0)

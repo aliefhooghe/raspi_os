@@ -13,7 +13,7 @@ _Static_assert(sizeof(dirent)==32, "sizeof(dirent)");
 
 DIR *opendir(const char *name)
 {
-    int fd = usr_syscall_open(name, 0u, 0u);
+    int fd = usr_syscall_open(name, 0u, 0u); // todo: mode O_DIRECTORY
     if (fd == -1)
         return NULL;
 
@@ -29,7 +29,7 @@ DIR *opendir(const char *name)
 
 int dirfd(DIR *dirp)
 {
-    return (int)dirp;    
+    return dirp->fd;
 }
 
 struct dirent *readdir(DIR *dirp)
