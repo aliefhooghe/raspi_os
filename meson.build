@@ -36,7 +36,6 @@ custom_target(
 )
 
 # Kernel
-
 kernel_sources = files(
   'src/kernel/banner.c',
   'src/kernel/hardware/boot.S',
@@ -81,6 +80,8 @@ kernel_sources = files(
   'src/kernel/usermode/usr_syscalls.c',
   'src/kernel/usermode/usr_syscalls.h',
   'src/kernel/usermode/usr_syscalls.S',
+  'src/kernel/usermode/libc/dirent.c',
+  'src/kernel/usermode/libc/dirent.h',
   'src/kernel/usermode/libc/stdio.c',
   'src/kernel/usermode/libc/stdio.h',
   'src/kernel/usermode/libc/stdlib.c',
