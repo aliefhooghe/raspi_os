@@ -1,5 +1,6 @@
 
 #include "bitfield.h"
+#include "kernel.h"
 
 int32_t bitfield_acquire_first(uint8_t *bitfields, uint32_t bitfield_count)
 {
@@ -31,4 +32,40 @@ void bitfield_clear(uint8_t *bitfields, uint32_t bit_index)
     const uint32_t bitfield_index = bit_index >> 3u;
     const uint32_t local_bit_index = bit_index & 0x7u;
     bitfields[bitfield_index] &= ~(1u << local_bit_index);
+}
+
+void *bitfield_allocator_alloc(
+    void *base, size_t size,
+    uint8_t *bitfields,
+    uint32_t bitfield_count)
+{
+    const int32_t index = bitfield_acquire_first(
+        bitfields,
+        bitfield_count);
+    if (index < 0)
+        return NULL;
+    else
+        return (void*)((uint8_t*)base + index * size);
+}
+
+
+void bitfield_allocator_free(
+    void *base, size_t size,
+    uint8_t *bitfields, uint32_t bitfield_count,
+    void *ptr)
+{
+    const uint8_t *const u8base = (uint8_t*)base;
+    const uint8_t *const u8ptr = (uint8_t*)ptr;
+
+    if (u8ptr < u8base)
+        kernel_fatal_error(
+            "bitfield allocator: free: tried to free memory before base");
+
+    const size_t u8offset = u8ptr - u8base;
+    const size_t index = u8offset / size;
+
+    if (index > bitfield_count)
+        kernel_fatal_error(
+            "bitfield allocator: free: tried to free memory after base");
+    bitfield_clear(bitfields, index);
 }
