@@ -8,13 +8,13 @@
 #include "kernel.h"
 #include "lib/str.h"
 
+#include "memory/bitfield.h"
 #include "memory/section_allocator.h"
 #include "memory/translation_table_allocator.h"
 
 #include "scheduler.h"
 #include "task_context.h"
 #include "vfs/vfs.h"
-
 
 ///
 //  Process memory mapping
@@ -25,13 +25,22 @@
 //
 //  Process structure
 // 
-#define MAX_FILE_DESCRIPTOR_COUNT (4u)
+#define MAX_FILE_DESCRIPTOR_COUNT (8u)
+#define FD_BITFIELD_COUNT (MAX_FILE_DESCRIPTOR_COUNT / 8)
+
+_Static_assert(
+    MAX_FILE_DESCRIPTOR_COUNT % 8 == 0,
+    "max fd must be a multiple of 8"
+);
+
 #define SCHEDULER_MAX_TASK_COUNT  (32u)
-
-#define INIT_TASK_PID   1u
-
-// worst case: all childs belong to init
 #define MAX_EXITED_CHILD_TASK     SCHEDULER_MAX_TASK_COUNT 
+
+// Unix Standard Constants
+#define INIT_TASK_PID   1u
+#define FD_STDIN  0u
+#define FD_STDOUT 1u
+#define FD_STDERR 2u
 
 typedef struct {
     enum {
@@ -75,15 +84,15 @@ typedef struct {
     //
     // Virtual file system interfaces
     //
-    // TODO: handle removal here. For now descriptor is set to null
     file_descriptor_t file_descriptors[MAX_FILE_DESCRIPTOR_COUNT];
-    uint32_t fd_count;
+    uint8_t fd_bitfield[FD_BITFIELD_COUNT];
 
 } task_t; // a renommer => process
 
 //
 //  scheduler structure
 //
+
 typedef struct {
     // process table
     task_t taskss[SCHEDULER_MAX_TASK_COUNT];
@@ -139,7 +148,7 @@ static void _remove_task(task_t *task)
     }
 }
 
-static task_t *_scheduler_get_current_task(void)
+static task_t *_get_current_task(void)
 {
     if (_scheduler.current_task >= _scheduler.taskss_count)
         kernel_fatal_error(
@@ -147,7 +156,7 @@ static task_t *_scheduler_get_current_task(void)
     return &_scheduler.taskss[_scheduler.current_task];
 }
 
-static task_t *_scheduler_find_task_by_pid(int32_t pid)
+static task_t *_find_task_by_pid(int32_t pid)
 {
     for (size_t i = 0u; i < _scheduler.taskss_count; i++) {
         task_t *task = &_scheduler.taskss[i];
@@ -157,7 +166,7 @@ static task_t *_scheduler_find_task_by_pid(int32_t pid)
     return NULL;
 }
 
-static void _scheduler_task_context_init(
+static void _task_context_init(
     task_context_t *context,
     uintptr_t stack_address,
     void *proc_address,
@@ -172,7 +181,7 @@ static void _scheduler_task_context_init(
         CPU_CPSR_DISABLE_FIQ;
 }
 
-static void _scheduler_task_init(
+static void _task_init(
     task_t *new_task,
     uint32_t task_id,
     uint32_t parent_task_id)
@@ -184,7 +193,7 @@ static void _scheduler_task_init(
     new_task->parent_id = parent_task_id;
     new_task->schedule_state.status = TASK_SCHEDULED;
 
-    /// Resource allocation:
+    /// Dynamic Resource allocation:
 
     // 1 - allocate a memory section for the process
     new_task->memory_section = section_allocator_alloc();
@@ -198,13 +207,43 @@ static void _scheduler_task_init(
         kernel_fatal_error("failed to allocate a process transaction table");
 }
 
-static task_t *_sheduler_select_next_scheduled_task(void)
+int32_t _proc_add_fd(
+    task_t *task,
+    file_descriptor_t descriptor)
+{
+    const int32_t fd = bitfield_acquire_first(
+        task->fd_bitfield, FD_BITFIELD_COUNT);
+    if (fd >= 0)
+        task->file_descriptors[fd] = descriptor;
+    return fd;
+}
+
+void _proc_rem_fd(
+    task_t *task,
+    int32_t fd)
+{
+    bitfield_clear(
+        task->fd_bitfield, FD_BITFIELD_COUNT, fd);
+}
+
+static file_descriptor_t *_proc_get_fd(
+    task_t *task,
+    int32_t fd)
+{
+    if (!bitfield_bit(
+        task->fd_bitfield,
+        FD_BITFIELD_COUNT, fd))
+        return NULL;
+    return &task->file_descriptors[fd];
+}
+
+static task_t *_select_next_scheduled_task(void)
 {
     for (size_t i = 0; i < _scheduler.taskss_count; i++) {
         _scheduler.current_task++;
         if (_scheduler.current_task == _scheduler.taskss_count)
             _scheduler.current_task = 0u;
-        task_t *current_task = _scheduler_get_current_task();
+        task_t *current_task = _get_current_task();
         if (current_task->schedule_state.status == TASK_SCHEDULED)
             return current_task;
     }
@@ -250,7 +289,7 @@ void scheduler_start(void *init_proc)
         kernel_fatal_error("scheduler: unexpected init process pid");
 
     task_t *init_task = &_scheduler.taskss[0u];
-    _scheduler_task_init(
+    _task_init(
         init_task, init_process_pid, 0u /* no parent id */);
 
     // setup the process translation table: 
@@ -267,23 +306,31 @@ void scheduler_start(void *init_proc)
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 
     // initialize task context: registers
-    _scheduler_task_context_init(
+    _task_context_init(
         &init_task->context,
         PROCESS_STACK_VIRTUAL_ADDRRESS,
         init_proc, 0u);
 
     // setup stdin/stdout
+    mini_uart_kernel_log("scheduler: init: setup IOs");
     const file_descriptor_t tty_fd = vfs_file_descriptor_open("/dev/tty", 0u, 0u);
     if (vfs_file_descriptor_is_null(&tty_fd))
         kernel_fatal_error("failed to open tty device at /dev/tty");
-    init_task->fd_count = 2u;
-    init_task->file_descriptors[0] = tty_fd;
-    init_task->file_descriptors[1] = tty_fd;
+
+    // initialize standard ios
+    const int32_t stdin = _proc_add_fd(init_task, tty_fd);
+    const int32_t stdout = _proc_add_fd(init_task, tty_fd);
+    const int32_t stderr = _proc_add_fd(init_task, tty_fd);
+    if (stdin != FD_STDIN ||
+        stdout != FD_STDOUT ||
+        stderr != FD_STDERR)
+        kernel_fatal_error(
+            "scheduler: init: unexpected fd num for standard IOs");
 
     //
     // jump to the init process
     //
-    mini_uart_kernel_log("call init process !");
+    mini_uart_kernel_log("scheduler: call init !");
     mmu_set_translation_table(init_task->translation_table);
     __set_task_context(&init_task->context);
 }
@@ -294,7 +341,7 @@ void scheduler_start(void *init_proc)
 void scheduler_save_current_context(const task_context_t *current_context)
 {
     // save the current task context context
-    task_t *current_task = _scheduler_get_current_task();
+    task_t *current_task = _get_current_task();
     _memcpy(
         &current_task->context,
         current_context,
@@ -304,7 +351,7 @@ void scheduler_save_current_context(const task_context_t *current_context)
 const task_context_t *scheduler_switch_task(void)
 {
     const int32_t old_pid = scheduler_cur_proc_get_id();
-    task_t *next_task = _sheduler_select_next_scheduled_task();
+    task_t *next_task = _select_next_scheduled_task();
 
     mini_uart_kernel_log(
         "scheduler: switch task %u => %u",
@@ -324,13 +371,13 @@ const task_context_t *scheduler_switch_task(void)
 
 void scheduler_cur_proc_set_syscall_status(int32_t status)
 {
-    _scheduler_get_current_task()->context.r0 = status;
+    _get_current_task()->context.r0 = status;
 }
 
 void* scheduler_cur_proc_get_kernel_address(uintptr_t process_virtual_address)
 {
     return mmu_translate_virtual_address(
-        _scheduler_get_current_task()->translation_table,
+        _get_current_task()->translation_table,
         process_virtual_address);
 }
 
@@ -342,7 +389,7 @@ int32_t scheduler_cur_proc_fork(void)
         return -1;
     }
 
-    const task_t *current_task = _scheduler_get_current_task();
+    const task_t *current_task = _get_current_task();
     mini_uart_kernel_log(
         "forking from task: index=%u pid=%u",
         _scheduler.current_task, current_task->id);
@@ -356,7 +403,7 @@ int32_t scheduler_cur_proc_fork(void)
 
     // init task: allocate its own section and translation table
     task_t *new_task = &_scheduler.taskss[new_index];
-    _scheduler_task_init(new_task, new_task_id, current_task->id);
+    _task_init(new_task, new_task_id, current_task->id);
 
     // fork the current task
 
@@ -373,12 +420,15 @@ int32_t scheduler_cur_proc_fork(void)
         current_task->memory_section,
         MMU_SECTION_SIZE);
 
-    // fork: copy oppened file descriptors
-    new_task->fd_count = current_task->fd_count;
+    // fork: copy file descriptors
     _memcpy(
         new_task->file_descriptors,
         current_task->file_descriptors,
-        sizeof(file_descriptor_t) * current_task->fd_count);
+        sizeof(file_descriptor_t) * MAX_FILE_DESCRIPTOR_COUNT);
+    _memcpy(
+        new_task->fd_bitfield,
+        current_task->fd_bitfield,
+        FD_BITFIELD_COUNT);
 
     // fork: copy the translation table, patch the virtual process section
     // todo: copy on write. Handle several sections.
@@ -398,7 +448,7 @@ int32_t scheduler_cur_proc_fork(void)
 int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
 {
     // note: only a direct child can be awaited
-    task_t *current_task = _scheduler_get_current_task();
+    task_t *current_task = _get_current_task();
 
     // TODO: handle case were pid=-1: meaning any child
     if (pid == -1) {
@@ -406,7 +456,7 @@ int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
         return -1;
     }
 
-    task_t *child_task = _scheduler_find_task_by_pid(pid);
+    task_t *child_task = _find_task_by_pid(pid);
 
     // the child task have already been cleaned up
     if (child_task == NULL)
@@ -436,7 +486,7 @@ int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
 
 void scheduler_cur_proc_exit(int32_t status)
 {
-    task_t *current_task = _scheduler_get_current_task();
+    task_t *current_task = _get_current_task();
 
     // init must not be stopped
     if (current_task->id == 1)
@@ -462,7 +512,7 @@ void scheduler_cur_proc_exit(int32_t status)
 
     // reshedule parent if relevant
     // task is not init: parent should exist
-    task_t *parent = _scheduler_find_task_by_pid(current_task->parent_id);
+    task_t *parent = _find_task_by_pid(current_task->parent_id);
     if (parent == NULL)
         kernel_fatal_error("found a task without a parent");
 
@@ -483,29 +533,29 @@ void scheduler_cur_proc_exit(int32_t status)
 
 int32_t scheduler_cur_proc_get_id(void)
 {
-    return _scheduler_get_current_task()->id;
+    return _get_current_task()->id;
 }
 
 int32_t scheduler_cur_proc_get_parent_id(void)
 {
-    return _scheduler_get_current_task()->parent_id;
+    return _get_current_task()->parent_id;
 }
 
 int32_t scheduler_cur_proc_add_fd(file_descriptor_t descriptor)
 {
-    task_t *current_task = _scheduler_get_current_task();
-    if (current_task->fd_count == MAX_FILE_DESCRIPTOR_COUNT)
-        kernel_fatal_error("maximum fd count was reached");
-    int32_t fd = current_task->fd_count++;
-    current_task->file_descriptors[fd] = descriptor;
-    return fd;
+    task_t *current_task = _get_current_task();
+    return _proc_add_fd(current_task, descriptor);
+}
+
+void scheduler_cur_proc_rem_fd(int32_t fd)
+{
+    task_t *current_task = _get_current_task();
+    _proc_rem_fd(current_task, fd);
 }
 
 file_descriptor_t *scheduler_cur_proc_get_fd(int32_t fd)
 {
-    task_t *current_task = _scheduler_get_current_task();
-    if ((uint32_t)fd >= current_task->fd_count)
-        return NULL;
-    return &current_task->file_descriptors[fd];
+    task_t *current_task = _get_current_task();
+    return _proc_get_fd(current_task, fd);
 }
 

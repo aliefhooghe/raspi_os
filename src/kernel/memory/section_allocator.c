@@ -40,5 +40,8 @@ void section_allocator_free(void *section)
     const uint32_t address = (uint32_t)section;
     const uint32_t section_offset = address - _section_allocator.sections_base;
     const uint32_t section_index = section_offset >> 20;
-    bitfield_clear(_section_allocator.alloc_bitfields, section_index);
+    bitfield_clear(
+        _section_allocator.alloc_bitfields,
+        SECTION_ALLOCATOR_BITFIELD_COUNT,
+        section_index);
 }

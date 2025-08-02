@@ -124,8 +124,8 @@ static void _mini_uart_put_uint(uint32_t x)
 static void _mini_uart_put_uint_hex(uint32_t x)
 {
     static const char cars[] = "0123456789abcdef";
-    char result[9] = "";
-    int index = 8;
+    char result[16] = "";
+    int index = 15;
 
     do {
         result[--index] = cars[x & 0xf];

@@ -13,6 +13,12 @@ int32_t bitfield_acquire_first(
 
 void bitfield_clear(
     uint8_t *bitfields,
+    uint32_t bitfield_count,
+    uint32_t bit_index);
+
+int32_t bitfield_bit(
+    uint8_t *bitfields,
+    uint32_t bitfield_count,
     uint32_t bit_index);
 
 //
@@ -35,6 +41,7 @@ void bitfield_allocator_free(
 #define BITFIELD_COUNT(type, count) (count / 8)
 #define BITFIELD_ALLOCATABLE_SIZE(type, count) (sizeof(type) * count)
 
+// Note: allocator structure is supposed to be initialized
 #define DEF_BITFIELD_ALLOCATOR(type, count) \
     _Static_assert( \
         count%8 == 0, \

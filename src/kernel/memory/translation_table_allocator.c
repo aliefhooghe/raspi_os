@@ -44,5 +44,8 @@ void translation_table_allocator_free(uint32_t *translation_table)
 {
     const uint32_t table_offset = translation_table - _translation_table_allocator.memory_section_base;
     const uint32_t table_index = table_offset / MMU_L1_ENTRY_COUNT;
-    bitfield_clear(_translation_table_allocator.alloc_bitfields, table_index);
+    bitfield_clear(
+        _translation_table_allocator.alloc_bitfields,
+        TRANSLATION_TABLE_ALLOCATOR_BITFIELD_COUNT, 
+        table_index);
 }

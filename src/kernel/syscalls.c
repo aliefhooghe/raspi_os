@@ -61,11 +61,15 @@ static int32_t _syscall__OPEN(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     const uint32_t flags = arg1;
     const uint32_t mode = arg2;
 
-    const file_descriptor_t descriptor = vfs_file_descriptor_open(path, flags, mode);
+    file_descriptor_t descriptor = vfs_file_descriptor_open(path, flags, mode);
     if (vfs_file_descriptor_is_null(&descriptor))
         return SYSCALL_STATUS_ERR;
 
-    return scheduler_cur_proc_add_fd(descriptor);
+    const int fd = scheduler_cur_proc_add_fd(descriptor);
+    if (fd < 0)
+        vfs_file_descriptor_close(&descriptor);
+
+    return fd;
 }
 
 static int32_t _syscall__CLOSE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
@@ -75,9 +79,12 @@ static int32_t _syscall__CLOSE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg2;
 
     file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
-    vfs_file_descriptor_close(descriptor);
+    if (descriptor == NULL)
+        return SYSCALL_STATUS_ERR;
 
-    // TODO: remove the (null) file descriptor from scheduler
+    vfs_file_descriptor_close(descriptor);
+    scheduler_cur_proc_rem_fd(fd);
+
     return 0;
 }
 
@@ -169,7 +176,7 @@ void kernel_syscall_handler(
 {
     if (syscall_num >= SYSCALL_COUNT)
     {
-        mini_uart_kernel_log("invalid syscall number: %u", syscall_num);
+        mini_uart_kernel_log("syscall: invalid number: %u", syscall_num);
         scheduler_cur_proc_set_syscall_status(-1);
     }
     else
@@ -177,12 +184,14 @@ void kernel_syscall_handler(
         // find calling process
         const int32_t calling_pid = scheduler_cur_proc_get_id();
         mini_uart_kernel_log(
-            "handle syscall %s for process pid=%u",
-            _syscall_names[syscall_num], calling_pid);
+            "syscall: %s pid=%u args=0x%x 0x%x 0x%x",
+            _syscall_names[syscall_num], calling_pid,
+            arg0, arg1, arg2);
 
         // call the relevant syscall handler
         syscall_handler_t handler = _syscall_table[syscall_num];
         const int32_t status = handler(arg0, arg1, arg2);
+        mini_uart_kernel_log("syscall: status=0x%x", status);
 
         // if the calling process was removed: do not write status
         if (calling_pid == scheduler_cur_proc_get_id())

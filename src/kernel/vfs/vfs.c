@@ -44,18 +44,20 @@ _Static_assert(
     "vfs node size is assumed to be 128");
 
 // 8 * 8 = 64 bits. Can manage up to 64 vfs nodes
-#define NODE_ALLOCATOR_BITFIELD_COUNT 8u 
-#define NODE_ARRAY_SIZE (sizeof(vfs_node_t) * NODE_ALLOCATOR_BITFIELD_COUNT * 8u)
+// #define NODE_ALLOCATOR_BITFIELD_COUNT 8u 
+// #define NODE_ARRAY_SIZE (sizeof(vfs_node_t) * NODE_ALLOCATOR_BITFIELD_COUNT * 8u)
 
+
+// constinit int x = 4;
+DEF_BITFIELD_ALLOCATOR(vfs_node_t, 64)
 _Static_assert(
-    NODE_ARRAY_SIZE == 8192,
-    "node array size is assumed to be 8192 bytes"
+    BITFIELD_ALLOCATABLE_SIZE(vfs_node_t, 64) == 8192,
+    "vfs node array take more than expected"
 );
 
+  
 typedef struct {
-    // memory management
-    void *memory_section;                                       // 1Mb
-    uint8_t node_alloc_bitfield[NODE_ALLOCATOR_BITFIELD_COUNT]; // 8 kb = 1 section / 128
+    vfs_node_t_x_64_bitfield_allocator_t node_allocator; // 8 kb = 1 section / 128
 
     // tree structure
     vfs_node_t *root_node;
@@ -101,25 +103,6 @@ static void _close_descriptor(file_descriptor_t *descriptor)
 // Node management 
 // 
 
-// node allocation
-static vfs_node_t *_vfs_node_allocator_alloc(void)
-{
-    // TODO: reusable allocator
-    const int32_t node_index = bitfield_acquire_first(
-        _vfs.node_alloc_bitfield,
-        NODE_ALLOCATOR_BITFIELD_COUNT);
-    if (node_index < 0)
-        return NULL;
-    else
-        return (vfs_node_t*)((uint8_t*)_vfs.memory_section + node_index * sizeof(vfs_node_t));
-}
-
-// static void _vfs_node_allocator_free(vfs_node_t *node)
-// {
-//     const uint32_t node_index = node - (vfs_node_t*)_vfs.memory_section;
-//     bitfield_clear(_vfs.node_alloc_bitfield, node_index);
-// }
-
 // node initialization
 static vfs_node_t *_vfs_node_create(
     const char *name,
@@ -127,7 +110,7 @@ static vfs_node_t *_vfs_node_create(
     vfs_node_type_t type,
     const file_handle_t *handler)
 {
-    vfs_node_t *node = _vfs_node_allocator_alloc();
+    vfs_node_t *node = vfs_node_t_x_64_bitfield_alloc(&_vfs.node_allocator);
     if (node == NULL)
         kernel_fatal_error("vfs node alloc failed"); 
 
@@ -308,8 +291,8 @@ void vfs_init(void)
     _memset(&_vfs, 0, sizeof(vfs_t));
 
     // allocate memory section for vfs
-    _vfs.memory_section = section_allocator_alloc();
-    if (_vfs.memory_section == NULL)
+    _vfs.node_allocator.base = section_allocator_alloc();
+    if (_vfs.node_allocator.base == NULL)
         kernel_fatal_error("vfs memory section allocation failed");
 
     // create root descriptor

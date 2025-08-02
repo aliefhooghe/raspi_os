@@ -27,11 +27,32 @@ int32_t bitfield_acquire_first(uint8_t *bitfields, uint32_t bitfield_count)
     return -1;
 }
 
-void bitfield_clear(uint8_t *bitfields, uint32_t bit_index)
+void bitfield_clear(
+    uint8_t *bitfields,
+    uint32_t bitfield_count,
+    uint32_t bit_index)
 {
     const uint32_t bitfield_index = bit_index >> 3u;
     const uint32_t local_bit_index = bit_index & 0x7u;
+
+    if (bitfield_index > bitfield_count)
+        return;
+
     bitfields[bitfield_index] &= ~(1u << local_bit_index);
+}
+
+int32_t bitfield_bit(
+    uint8_t *bitfields,
+    uint32_t bitfield_count,
+    uint32_t bit_index)
+{
+    const uint32_t bitfield_index = bit_index >> 3u;
+    const uint32_t local_bit_index = bit_index & 0x7u;
+
+    if (bitfield_index > bitfield_count)
+        return 0;
+
+    return !!(bitfields[bitfield_index] & (1u << local_bit_index));
 }
 
 void *bitfield_allocator_alloc(
@@ -64,8 +85,5 @@ void bitfield_allocator_free(
     const size_t u8offset = u8ptr - u8base;
     const size_t index = u8offset / size;
 
-    if (index > bitfield_count)
-        kernel_fatal_error(
-            "bitfield allocator: free: tried to free memory after base");
-    bitfield_clear(bitfields, index);
+    bitfield_clear(bitfields, bitfield_count, index);
 }
