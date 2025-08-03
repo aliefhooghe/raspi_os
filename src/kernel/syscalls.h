@@ -15,12 +15,17 @@
   SYSCALL(READ)                  \
   SYSCALL(READDIR)               \
   SYSCALL(WRITE)                 \
+  SYSCALL(MOUNT)                 \
+  SYSCALL(MKDIR)                 \
+  SYSCALL(MKNOD)                 \
   SYSCALL(LSEEK)                 \
   SYSCALL(FORK)                  \
   SYSCALL(WAITPID)               \
   SYSCALL(GETPPID)               \
   SYSCALL(GETPID)
-// mkdir(path) / unlink(path)
+
+// TODO: dup unlink(path)
+// 
 #define GENERATE_ENUM(ENUM) SYSCALL__##ENUM,
 typedef enum {
   FOREACH_SYSCALL(GENERATE_ENUM)

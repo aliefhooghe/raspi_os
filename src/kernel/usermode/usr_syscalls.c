@@ -51,7 +51,7 @@ int32_t usr_syscall_waitpid(int32_t pid, int32_t *wstatus)
     return syscall(SYSCALL__WAITPID, pid, (uint32_t)wstatus, 0u);
 }
 
-// --  FILES
+// --  Filesystem
 
 int32_t usr_syscall_open(const char *path, int32_t flags, int32_t mode)
 {
@@ -81,4 +81,19 @@ size_t usr_syscall_write(int32_t fd, const void *data, size_t size)
 off_t usr_syscall_lseek(int fd, off_t offset, int whence)
 {
     return syscall(SYSCALL__LSEEK, fd, (uint32_t)offset, whence);
+}
+
+int32_t usr_syscall_mount(const char *dev, const char *target, const char *fstype)
+{
+    return syscall(SYSCALL__MOUNT, (uint32_t)dev, (uint32_t)target, (uint32_t)fstype);
+}
+
+int32_t usr_syscall_mkdir(const char *path, mode_t mode)
+{
+    return syscall(SYSCALL__MKDIR, (uint32_t)path, mode, 0u);    
+}
+
+int32_t usr_syscall_mknod(const char *path, mode_t mode, dev_t dev)
+{
+    return syscall(SYSCALL__MKNOD, (uint32_t)path, mode, dev);
 }

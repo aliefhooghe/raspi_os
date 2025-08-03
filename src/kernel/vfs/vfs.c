@@ -69,6 +69,19 @@ static int _basedir(const char *filepath, char *basedir, char *filename)
     return 0;
 }
 
+static int _dentry_is_directory(dentry_t *dentry)
+{
+    // dentry lookup: does the inode exists ? 
+    if (dentry == NULL || dentry->inode == NULL)
+        return 0;
+
+    // not null here.
+    inode_t *dir_inode = dentry->inode;
+
+    // is the inode a directory ?
+    return (dir_inode->mode & S_IFMT) == S_IFDIR;
+}
+
 //
 // Node lookup
 // 
@@ -151,7 +164,7 @@ static dentry_t *_vfs_dentry_lookup(const char *path)
 }
 
 //
-// vfs interface
+//  VFS: Initialization
 //
 void vfs_init(void)
 {
@@ -162,86 +175,62 @@ void vfs_init(void)
     if (_vfs.dentry_allocator.base == NULL)
         kernel_fatal_error("vfs dentry memory section allocation failed");
 
-    // Mount a section fs on /
-    super_block_t *section_fs = create_ramfs_super_block();
+    // Create a initial root inode: we need to have a '/' dir to mount on it
+    static inode_t init_root_node;
+    _memset(&init_root_node, 0, sizeof(inode_t));
+    init_root_node.mode = S_IFDIR;
+
+    // Insert a root dentry with the initial inode
     dentry_t *root_dentry = dentry_t_x_72_bitfield_alloc(&_vfs.dentry_allocator);
-    // root_dentry->type = DT_DIR;
-    root_dentry->inode = section_fs->root_node;
+    root_dentry->inode = &init_root_node;
     root_dentry->child_count = 0u;
     root_dentry->parent = NULL;
     _strcpy(root_dentry->name, "root");
-
+    
     _vfs.root = root_dentry;
+
+    // Mount a ramfs on /
+    const int32_t root_mount_status = vfs_mount("dev", "/", "fstype");
+    KERNEL_ASSERT(0 == root_mount_status);
 }
 
 //
-//  File Descriptor interface
+//  VFS: Filesystem interface
 //
 
-file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
+static super_block_t *_sb_by_dev_fs_type(const char *dev, const char *fstype)
 {
-    (void)flags;
-    (void)mode;
-
-    mini_uart_kernel_log("vfs: open %s", path);
-    dentry_t *dentry = _vfs_dentry_lookup(path);
-
-    // of no dentry or a negative dentry
-    if (dentry == NULL ||
-        dentry->inode == NULL)
-    {
-        mini_uart_kernel_log(
-            "vfs: open: no file at path '%s'", path);
-        return NULL;
-    }
-    else if(
-        dentry->inode->file_ops == NULL ||
-        dentry->inode->file_ops->open == NULL)
-    {
-        mini_uart_kernel_log(
-            "vfs: open: inode at '%s' does not implement open file operation",
-            path);
-        return NULL;
-    }
-
-    return dentry->inode->file_ops->open(dentry->inode);
+    (void)dev;
+    (void)fstype;
+    return create_ramfs_super_block();
 }
 
-int32_t vfs_file_close(file_t *file)
+int32_t vfs_mount(const char *dev, const char *target, const char *fstype)
 {
-    if (file->inode->file_ops != NULL &&
-        file->inode->file_ops->release != NULL)
-        file->inode->file_ops->release(file->inode, file);
+    mini_uart_kernel_log(
+        "vfs: mount: dev='%s', target='%s', fstype=%s",
+        dev, target, fstype);
+
+    // Load root inode from fs super block
+    super_block_t *sb = _sb_by_dev_fs_type(dev, fstype);
+    inode_t *root = sb->ops->alloc_inode(sb);
+    KERNEL_ASSERT(root != NULL);
+    const int load_status = sb->ops->read_inode(sb, sb->root_ino, root);
+    KERNEL_ASSERT(load_status == 0);
+
+    // Check if target is a directory
+    dentry_t *target_dentry = _vfs_dentry_lookup(target);
+    if (!_dentry_is_directory(target_dentry)) {
+        mini_uart_kernel_log(
+            "vfs: mount: no directory at '%s'", target);
+        return -1;
+    }
+
+    // Mount the root inode on the target dentry
+    target_dentry->inode = root;
+    target_dentry->child_count = 0u;  // flush dentry child cache
+    
     return 0;
-}
-
-ssize_t vfs_file_read(file_t *file, void *data, size_t size)
-{
-    if (file->inode->file_ops->read == NULL)
-        return -1;
-    return file->inode->file_ops->read(file, data, size, &file->pos);
-}
-
-ssize_t vfs_file_readdir(file_t *file, dirent *entries, size_t count)
-{
-    if (file->inode->file_ops->readdir == NULL)
-        return -1;
-    return file->inode->file_ops->readdir(file, entries, count);
-}
-
-ssize_t vfs_file_write(file_t *file, const void *data, size_t size)
-{
-    if (file->inode->file_ops->write == NULL)
-        return -1;
-    return file->inode->file_ops->write(file, data, size, &file->pos);
-}
-
-ssize_t vfs_file_lseek(file_t *file, int32_t offset, int32_t whence)
-{
-    // seek is allowed to not be implemented by the handler
-    if (file->inode->file_ops->seek == NULL)
-        return -1;
-    return file->inode->file_ops->seek(file, offset, whence);
 }
 
 int32_t vfs_mknod(const char *path, mode_t mode, dev_t dev)
@@ -262,7 +251,7 @@ int32_t vfs_mknod(const char *path, mode_t mode, dev_t dev)
         "vfs: mknod: search base '%s'",
         basedir_path);
 
-    // dentry lookup: does the basedire exists ? 
+    // dentry lookup: does the basedir exists ? 
     dentry_t* dir_dentry = _vfs_dentry_lookup(basedir_path);
     if (dir_dentry == NULL || dir_dentry->inode == NULL) {
         mini_uart_kernel_log(
@@ -357,4 +346,74 @@ int32_t vfs_mkdir(const char *path, mode_t mode)
     // TODO: update parent dentry
 
     return 0;
+}
+
+//
+//  VFS: File interface
+//
+
+file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
+{
+    (void)flags;
+    (void)mode;
+
+    mini_uart_kernel_log("vfs: open %s", path);
+    dentry_t *dentry = _vfs_dentry_lookup(path);
+
+    // of no dentry or a negative dentry
+    if (dentry == NULL ||
+        dentry->inode == NULL)
+    {
+        mini_uart_kernel_log(
+            "vfs: open: no file at path '%s'", path);
+        return NULL;
+    }
+    else if(
+        dentry->inode->file_ops == NULL ||
+        dentry->inode->file_ops->open == NULL)
+    {
+        mini_uart_kernel_log(
+            "vfs: open: inode at '%s' does not implement open file operation",
+            path);
+        return NULL;
+    }
+
+    return dentry->inode->file_ops->open(dentry->inode);
+}
+
+int32_t vfs_file_close(file_t *file)
+{
+    if (file->inode->file_ops != NULL &&
+        file->inode->file_ops->release != NULL)
+        file->inode->file_ops->release(file->inode, file);
+    return 0;
+}
+
+ssize_t vfs_file_read(file_t *file, void *data, size_t size)
+{
+    if (file->inode->file_ops->read == NULL)
+        return -1;
+    return file->inode->file_ops->read(file, data, size, &file->pos);
+}
+
+ssize_t vfs_file_readdir(file_t *file, dirent *entries, size_t count)
+{
+    if (file->inode->file_ops->readdir == NULL)
+        return -1;
+    return file->inode->file_ops->readdir(file, entries, count);
+}
+
+ssize_t vfs_file_write(file_t *file, const void *data, size_t size)
+{
+    if (file->inode->file_ops->write == NULL)
+        return -1;
+    return file->inode->file_ops->write(file, data, size, &file->pos);
+}
+
+ssize_t vfs_file_lseek(file_t *file, int32_t offset, int32_t whence)
+{
+    // seek is allowed to not be implemented by the handler
+    if (file->inode->file_ops->seek == NULL)
+        return -1;
+    return file->inode->file_ops->seek(file, offset, whence);
 }

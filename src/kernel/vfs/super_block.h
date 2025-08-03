@@ -8,7 +8,10 @@ struct super_block {
     //  Root Inode:
     //  - have a special number known by the fs
     //  - must be loaded and read at startup  (super_bloc->alloc + super_bloc->read)
-    inode_t *root_node;
+    // inode_t *root_node;
+    //
+
+    ino_t root_ino;
     const super_block_ops_t *ops;
     void *private;
 };

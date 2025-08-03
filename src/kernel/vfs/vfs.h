@@ -13,6 +13,7 @@ typedef struct file file_t;
 
 void vfs_init(void);
 
+int32_t vfs_mount(const char *dev, const char *target, const char *fstype);
 int32_t vfs_mknod(const char *path, mode_t mode, dev_t dev);
 int32_t vfs_mkdir(const char *path, mode_t mode);
 

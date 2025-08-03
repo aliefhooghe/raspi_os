@@ -404,40 +404,17 @@ super_block_t *create_ramfs_super_block(void)
         return sb;
     sb->ops = &_ramfs_sb_ops;
 
-     // allocate ramfs
-     ramfs_t *ramfs = (ramfs_t*)memory_calloc(sizeof(ramfs_t));
-     if (ramfs == NULL) {
-         memory_free(sb);
-         return NULL;
-     }
-     sb->private = ramfs;
+    // allocate ramfs
+    ramfs_t *ramfs = (ramfs_t*)memory_calloc(sizeof(ramfs_t));
+    if (ramfs == NULL) {
+        memory_free(sb);
+        return NULL;
+    }
+    sb->private = ramfs;
 
-
-    const ino_t root_ino = ++ramfs->ino_gen;
-    KERNEL_ASSERT(root_ino == RAMFS_ROOT_NODE_ID);
-
-    // TODO: move this logic in mount
-    // Load the root inode from the fs
-    inode_t *root = sb->ops->alloc_inode(sb);
-    const int load_status = sb->ops->read_inode(sb, RAMFS_ROOT_NODE_ID, root);
-    KERNEL_ASSERT(load_status == 0);
-
-    //
-    sb->root_node = root;
-
-    
-    // // This fs is always empty at startup.
-    // // We need to create at lest the root node
-    // // Load root node
-    // inode_t *root_node = sb->ops->alloc_inode(sb);
-    // root_node->device = 0u;
-    // root_node->file_ops = NULL;           // TODO
-    // root_node->ino = RAMFS_ROOT_NODE_ID;
-    // root_node->inode_ops = &_ramfs_inode_ops;
-    // root_node->link_count = 0u;
-    // root_node->mode = S_IFDIR;
-    // root_node->size = 0;
-
+    // Initialize root node id 
+    ramfs->ino_gen = RAMFS_ROOT_NODE_ID;
+    sb->root_ino = RAMFS_ROOT_NODE_ID;
 
     return sb;
 }

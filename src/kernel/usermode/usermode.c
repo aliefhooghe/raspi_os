@@ -22,7 +22,7 @@ static void ls(FILE *stdout, const char *path)
     }
     else
     {
-        fprintf(stdout, "directory %s was oppened", path);
+        fprintf(stdout, "directory %s was oppened\n", path);
     }
 
     struct dirent *entity = NULL;
@@ -36,7 +36,7 @@ static void ls(FILE *stdout, const char *path)
                 "unknown");
     }
 
-    fprintf(stdout, "list directory %s: done", path);
+    fprintf(stdout, "list directory %s: done\n", path);
     closedir(dir);
 }
 
