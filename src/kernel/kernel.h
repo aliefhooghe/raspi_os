@@ -14,6 +14,10 @@ void kernel_restore_translation_table(void);
 
 //
 // fatal error handlers
+#define KUN(x) #x
+#define KSTR(x) KUN(x)
+#define KERNEL_ASSERT(cond) if (!(cond)) kernel_fatal_error(__FILE__ ":" KSTR(__LINE__) ": assertion failed: " #cond)
+
 void kernel_fatal_error(const char *reason);
 void kernel_unhandled_interupt_fatal_error(void);
 

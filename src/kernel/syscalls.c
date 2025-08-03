@@ -2,14 +2,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "syscalls.h"
-
 #include "hardware/mini_uart.h"
-#include "kernel.h"
+#include "hardware/watchdog.h"
 #include "kernel_types.h"
 #include "scheduler/scheduler.h"
-#include "hardware/watchdog.h"
-
+#include "syscalls.h"
 #include "vfs/vfs.h"
 
 /**
@@ -61,13 +58,14 @@ static int32_t _syscall__OPEN(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     const uint32_t flags = arg1;
     const uint32_t mode = arg2;
 
-    file_descriptor_t descriptor = vfs_file_descriptor_open(path, flags, mode);
-    if (vfs_file_descriptor_is_null(&descriptor))
+    file_t *file = vfs_file_open(path, flags, mode);
+    if (file == NULL)
         return SYSCALL_STATUS_ERR;
 
-    const int fd = scheduler_cur_proc_add_fd(descriptor);
+    // we shoule be able to allocate the fd before ? 
+    const int fd = scheduler_cur_proc_add_fd(file);
     if (fd < 0)
-        vfs_file_descriptor_close(&descriptor);
+        vfs_file_close(file);
 
     return fd;
 }
@@ -78,11 +76,11 @@ static int32_t _syscall__CLOSE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg1;
     (void)arg2;
 
-    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
-    if (descriptor == NULL)
+    file_t *file = scheduler_cur_proc_get_fd(fd);
+    if (file == NULL)
         return SYSCALL_STATUS_ERR;
 
-    vfs_file_descriptor_close(descriptor);
+    vfs_file_close(file);
     scheduler_cur_proc_rem_fd(fd);
 
     return 0;
@@ -94,11 +92,24 @@ static int32_t _syscall__READ(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     void* data = scheduler_cur_proc_get_kernel_address(arg1);
     const size_t size = arg2;
   
-    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
-    if (descriptor == NULL)
+    file_t *file = scheduler_cur_proc_get_fd(fd);
+    if (file == NULL)
         return SYSCALL_STATUS_ERR;
 
-    return vfs_file_descriptor_read(descriptor, data, size);
+    return vfs_file_read(file, data, size);
+}
+
+static int32_t _syscall__READDIR(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+    const int32_t fd = arg0;
+    dirent* entries = (dirent*)scheduler_cur_proc_get_kernel_address(arg1);
+    const size_t count = arg2;
+  
+    file_t *file = scheduler_cur_proc_get_fd(fd);
+    if (file == NULL)
+        return SYSCALL_STATUS_ERR;
+
+    return vfs_file_readdir(file, entries, count);
 }
 
 static int32_t _syscall__WRITE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
@@ -107,11 +118,11 @@ static int32_t _syscall__WRITE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     const void* data = scheduler_cur_proc_get_kernel_address(arg1);
     const size_t size = arg2;
 
-    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
-    if (descriptor == NULL)
+    file_t *file = scheduler_cur_proc_get_fd(fd);
+    if (file == NULL)
         return SYSCALL_STATUS_ERR;
 
-    return vfs_file_descriptor_write(descriptor, data, size);
+    return vfs_file_write(file, data, size);
 }
 
 static int32_t _syscall__LSEEK(uint32_t arg0, uint32_t arg1, uint32_t arg2)
@@ -120,11 +131,11 @@ static int32_t _syscall__LSEEK(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     const off_t offset = arg1;
     const int whence = arg2;
 
-    file_descriptor_t *descriptor = scheduler_cur_proc_get_fd(fd);
-    if (descriptor == NULL)
+    file_t *file = scheduler_cur_proc_get_fd(fd);
+    if (file == NULL)
         return SYSCALL_STATUS_ERR;
-    
-    return vfs_file_descriptor_lseek(descriptor, offset, whence);
+
+    return vfs_file_lseek(file, offset, whence);
 }
 
 static int32_t _syscall__FORK(uint32_t arg0, uint32_t arg1, uint32_t arg2)

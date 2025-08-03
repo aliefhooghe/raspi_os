@@ -1,6 +1,7 @@
 
 #include <stdint.h>
 
+#include "hardware/mini_uart.h"
 #include "hardware/mmu.h"
 
 #include "kernel.h"
@@ -33,11 +34,23 @@ void *memory_alloc(size_t size)
     uint8_t *new_cursor = (uint8_t*)
         (((uint32_t)_kernel_memory_allocator.memory_cursor + size + 0x3u) & ~0x3);
     if (new_cursor > _kernel_memory_allocator.section_end)
+    {
+        mini_uart_kernel_log("memory_alloc: failed allocation of %u bytes", size);
         return NULL;
+    }
 
     const uint8_t *mem = _kernel_memory_allocator.memory_cursor;
     _kernel_memory_allocator.memory_cursor = new_cursor;
     return (void*)mem;
+}
+
+void *memory_calloc(size_t size)
+{
+    void *mem = memory_alloc(size);
+    if (mem == NULL)
+        return NULL;
+    _memset(mem, 0, size);
+    return mem;
 }
 
 void memory_free(void *ptr)

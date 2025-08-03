@@ -88,5 +88,16 @@ const char* _strchr(const char* str, char ch)
         if (*str == ch)
             return str;
     }
-    return str;
+    return NULL;
+}
+
+const char *_strrchr(const char *str, char ch)
+{
+    const char *last = NULL;
+    str--;
+    while (*++str) {
+        if (*str == ch)
+            last = str;
+    }
+    return last;
 }

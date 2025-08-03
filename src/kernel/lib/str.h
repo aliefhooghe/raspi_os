@@ -43,4 +43,8 @@ const char* _strchr(
     const char* str,
     char ch);
 
+const char *_strrchr(
+    const char *str,
+    char ch);
+
 #endif

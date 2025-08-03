@@ -6,6 +6,7 @@
 #include "hardware/mmu.h"
 
 #include "kernel.h"
+#include "kernel_types.h"
 #include "lib/str.h"
 
 #include "memory/bitfield.h"
@@ -14,6 +15,7 @@
 
 #include "scheduler.h"
 #include "task_context.h"
+
 #include "vfs/vfs.h"
 
 ///
@@ -84,7 +86,7 @@ typedef struct {
     //
     // Virtual file system interfaces
     //
-    file_descriptor_t file_descriptors[MAX_FILE_DESCRIPTOR_COUNT];
+    file_t *file_descriptors[MAX_FILE_DESCRIPTOR_COUNT];
     uint8_t fd_bitfield[FD_BITFIELD_COUNT];
 
 } task_t; // a renommer => process
@@ -209,12 +211,12 @@ static void _task_init(
 
 int32_t _proc_add_fd(
     task_t *task,
-    file_descriptor_t descriptor)
+    file_t *file)
 {
     const int32_t fd = bitfield_acquire_first(
         task->fd_bitfield, FD_BITFIELD_COUNT);
     if (fd >= 0)
-        task->file_descriptors[fd] = descriptor;
+        task->file_descriptors[fd] = file;
     return fd;
 }
 
@@ -226,7 +228,7 @@ void _proc_rem_fd(
         task->fd_bitfield, FD_BITFIELD_COUNT, fd);
 }
 
-static file_descriptor_t *_proc_get_fd(
+static file_t *_proc_get_fd(
     task_t *task,
     int32_t fd)
 {
@@ -234,7 +236,7 @@ static file_descriptor_t *_proc_get_fd(
         task->fd_bitfield,
         FD_BITFIELD_COUNT, fd))
         return NULL;
-    return &task->file_descriptors[fd];
+    return task->file_descriptors[fd];
 }
 
 static task_t *_select_next_scheduled_task(void)
@@ -311,16 +313,21 @@ void scheduler_start(void *init_proc)
         PROCESS_STACK_VIRTUAL_ADDRRESS,
         init_proc, 0u);
 
+    // create device files
+    mini_uart_kernel_log("scheduler: init setup character device");
+    KERNEL_ASSERT(0 == vfs_mkdir("/dev", S_IFDIR));
+    KERNEL_ASSERT(0 == vfs_mknod("/dev/tty", S_IFCHR, 0u));
+
     // setup stdin/stdout
     mini_uart_kernel_log("scheduler: init: setup IOs");
-    const file_descriptor_t tty_fd = vfs_file_descriptor_open("/dev/tty", 0u, 0u);
-    if (vfs_file_descriptor_is_null(&tty_fd))
+    file_t *tty = vfs_file_open("/dev/tty", 0u, 0u);
+    if (tty == NULL)
         kernel_fatal_error("failed to open tty device at /dev/tty");
 
     // initialize standard ios
-    const int32_t stdin = _proc_add_fd(init_task, tty_fd);
-    const int32_t stdout = _proc_add_fd(init_task, tty_fd);
-    const int32_t stderr = _proc_add_fd(init_task, tty_fd);
+    const int32_t stdin = _proc_add_fd(init_task, tty);
+    const int32_t stdout = _proc_add_fd(init_task, tty);
+    const int32_t stderr = _proc_add_fd(init_task, tty);
     if (stdin != FD_STDIN ||
         stdout != FD_STDOUT ||
         stderr != FD_STDERR)
@@ -385,7 +392,7 @@ int32_t scheduler_cur_proc_fork(void)
 {
     if (_scheduler.taskss_count >= SCHEDULER_MAX_TASK_COUNT)
     {
-        mini_uart_kernel_log("fork: too many tasks");
+       mini_uart_kernel_log("fork: too many tasks");
         return -1;
     }
 
@@ -424,7 +431,7 @@ int32_t scheduler_cur_proc_fork(void)
     _memcpy(
         new_task->file_descriptors,
         current_task->file_descriptors,
-        sizeof(file_descriptor_t) * MAX_FILE_DESCRIPTOR_COUNT);
+        sizeof(file_t*) * MAX_FILE_DESCRIPTOR_COUNT);
     _memcpy(
         new_task->fd_bitfield,
         current_task->fd_bitfield,
@@ -541,10 +548,10 @@ int32_t scheduler_cur_proc_get_parent_id(void)
     return _get_current_task()->parent_id;
 }
 
-int32_t scheduler_cur_proc_add_fd(file_descriptor_t descriptor)
+int32_t scheduler_cur_proc_add_fd(file_t *file)
 {
     task_t *current_task = _get_current_task();
-    return _proc_add_fd(current_task, descriptor);
+    return _proc_add_fd(current_task, file);
 }
 
 void scheduler_cur_proc_rem_fd(int32_t fd)
@@ -553,7 +560,7 @@ void scheduler_cur_proc_rem_fd(int32_t fd)
     _proc_rem_fd(current_task, fd);
 }
 
-file_descriptor_t *scheduler_cur_proc_get_fd(int32_t fd)
+file_t *scheduler_cur_proc_get_fd(int32_t fd)
 {
     task_t *current_task = _get_current_task();
     return _proc_get_fd(current_task, fd);

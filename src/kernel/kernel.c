@@ -76,30 +76,38 @@ static void kernel_init(void)
 {
     // initialize the mini UART
     mini_uart_init();
+    mini_uart_kernel_puts("Satan OS kernel is starting...\r\n");
 
     // Initialize the section allocator
+    mini_uart_kernel_log("kernel: initialize the section allocator");
     section_allocator_init(KERNEL_DYN_SECTIONS_BEGIN);
 
     // Initialize the general purpose memory allocator
+    mini_uart_kernel_log("kernel: initialize the memory allocator");
     memory_allocator_init();
 
     // Initialize the translation table allocator
+    mini_uart_kernel_log("kernel: initialize translation table allocator");
     void *process_translation_tables_section = section_allocator_alloc();
     translation_table_allocator_init(process_translation_tables_section);
 
     // Initialize the kernel translation table
+    mini_uart_kernel_log("kernel: initialize kernel translation table");
     kernel_translation_table = translation_table_allocator_alloc();
     kernel_init_translation_table(kernel_translation_table);
 
     // Enable and initialize the MMU with the kernel translation table
+    mini_uart_kernel_log("kernel: enable MMU");
     kernel_restore_translation_table();
     mmu_set_dacr(0x55555555);
     mmu_enable();
 
     // Initialize the scheduler
+    mini_uart_kernel_log("kernel: initialize the scheduler");
     scheduler_init();
 
     // Initialize the Virtual File System
+    mini_uart_kernel_log("kernel: initialize the vfs");
     vfs_init();
 }
 
@@ -118,8 +126,8 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     kernel_init();
 
     // wait a first input
-    mini_uart_kernel_puts("starting satan OS...\r\n");
-    mini_uart_kernel_puts("press a key...\r\n");
+    mini_uart_kernel_puts("Satan OS is initialized.\r\n");
+    mini_uart_kernel_puts("press a key to continue ...\r\n");
     mini_uart_getc();
 
     // print a welcome message ;)
@@ -128,7 +136,7 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     const uint16_t cpu_mode = cpu_get_execution_mode();
     mini_uart_kernel_log("cpu mode: 0x%x", cpu_mode);
 
-    // enable irq globaly
+    // enable irq globaly. TODO ??????? Why here ?
     cpu_irq_enable();
 
     // start user mode

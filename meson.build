@@ -90,11 +90,18 @@ kernel_sources = files(
   'src/kernel/usermode/libc/string.h',
   'src/kernel/vfs/vfs.h',
   'src/kernel/vfs/vfs.c',
-  'src/kernel/vfs/vfs_handler.h',
+  'src/kernel/vfs/dentry.h',
+  'src/kernel/vfs/device_ops.h',
+  'src/kernel/vfs/inode.h',
+  'src/kernel/vfs/super_block.h',
+  'src/kernel/vfs/driver_registry.h',
+  'src/kernel/vfs/driver_registry.c',
   'src/kernel/vfs/dev/tty.h',
   'src/kernel/vfs/dev/tty.c',
   'src/kernel/vfs/dev/zero.h',
-  'src/kernel/vfs/dev/zero.c'
+  'src/kernel/vfs/dev/zero.c',
+  'src/kernel/vfs/filesystems/ramfs.h',
+  'src/kernel/vfs/filesystems/ramfs.c',
 )
 kernel_linker_script = files(
   'src/kernel/linker.ld'

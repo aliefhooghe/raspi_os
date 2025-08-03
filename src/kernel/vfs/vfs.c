@@ -1,5 +1,4 @@
 
-
 #include "hardware/mini_uart.h"
 
 #include "kernel.h"
@@ -7,62 +6,27 @@
 #include "lib/str.h"
 
 #include "memory/bitfield.h"
-#include "memory/memory_allocator.h"
 #include "memory/section_allocator.h"
 
-#include "vfs/dev/tty.h"
+#include "vfs/filesystems/ramfs.h"
+#include "vfs/super_block.h"
+
 #include "vfs/vfs.h"
-#include "vfs/dev/zero.h"
-#include "vfs/vfs_handler.h"
+#include "vfs/dentry.h"
+#include "vfs/inode.h"
 
-/**
- *  vfs
- */
-#define NODE_NAME_MAX_SIZE (52u)
-#define MAX_CHILD_COUNT    (10u)
-
-typedef enum {
-    VFS_NODE_FILE,
-    VFS_NODE_DIRECTORY
-} vfs_node_type_t;
+//
+// vfs
+//
+DEF_BITFIELD_ALLOCATOR(dentry_t, 72)
+_Static_assert(
+    BITFIELD_ALLOCATABLE_SIZE(dentry_t, 72) < 0x10000,
+    "1/10 section reached");
 
 typedef struct {
-    struct vfs_node *childs[MAX_CHILD_COUNT];
-    uint32_t child_count;
-} vfs_directory_t;  
-
-typedef struct vfs_node {
-    char name[NODE_NAME_MAX_SIZE];
-    struct vfs_node *parent;
-    file_handle_t handler;
-    vfs_node_type_t type;
-    vfs_directory_t directory; // bad for FILES?????????????????????????, 
-} vfs_node_t;
-
-_Static_assert(
-    sizeof(vfs_node_t) == 128u,
-    "vfs node size is assumed to be 128");
-
-// 8 * 8 = 64 bits. Can manage up to 64 vfs nodes
-// #define NODE_ALLOCATOR_BITFIELD_COUNT 8u 
-// #define NODE_ARRAY_SIZE (sizeof(vfs_node_t) * NODE_ALLOCATOR_BITFIELD_COUNT * 8u)
-
-
-// constinit int x = 4;
-DEF_BITFIELD_ALLOCATOR(vfs_node_t, 64)
-_Static_assert(
-    BITFIELD_ALLOCATABLE_SIZE(vfs_node_t, 64) == 8192,
-    "vfs node array take more than expected"
-);
-
-  
-typedef struct {
-    vfs_node_t_x_64_bitfield_allocator_t node_allocator; // 8 kb = 1 section / 128
-
-    // tree structure
-    vfs_node_t *root_node;
+    dentry_t_x_72_bitfield_allocator_t dentry_allocator;
+    dentry_t *root;
 } vfs_t;
-
 
 //
 // global vfs
@@ -70,217 +34,120 @@ typedef struct {
 static vfs_t _vfs;
 
 //
-// vfs internals
+// Utils
 //
-static file_descriptor_t _create_null_descriptor(void)
+
+static int _basedir(const char *filepath, char *basedir, char *filename)
 {
-    const file_descriptor_t null_fd = {
-        .handle = NULL
-    };
-    return null_fd;
+    mini_uart_kernel_log("vfs: basedir: filepath='%s'", filepath);
+    
+    // compute path len
+    const size_t path_len = _strlen(filepath);
+    if (path_len == 0u)
+        return -1;
+
+    const char *last_separator = _strrchr(filepath, '/');
+    if (last_separator == NULL) {
+        mini_uart_kernel_log("vfs: basedir: relavite path are not handled");
+        return -1;
+    }
+
+    const size_t basedir_path_len = 1 + last_separator - filepath;
+    // check last car: we do not want a directory path
+    if (basedir_path_len == (path_len - 1))
+        return -1;
+
+    // retrieve base dir and filename
+    _memcpy(basedir, filepath, basedir_path_len);
+    basedir[basedir_path_len] = '\0';
+    _strcpy(filename, last_separator + 1);
+
+    mini_uart_kernel_log(
+        "vfs: basedir: filepath='%s' => .basedir='%s' .filename='%s'",
+         filepath, basedir, filename);
+   
+    return 0;
 }
 
-static file_descriptor_t _create_descriptor(const vfs_node_t *node)
-{
-    const file_descriptor_t fd = {
-        .handle = &node->handler,
-        .fd_ctx = node->handler.ops.create_ctx == NULL ? NULL :
-            node->handler.ops.create_ctx(node->handler.backend)
-    };
-    return fd;
-}
-
-static void _close_descriptor(file_descriptor_t *descriptor)
-{
-    if (descriptor->handle->ops.close_ctx != NULL)
-         descriptor->handle->ops.close_ctx(
-            descriptor->handle->backend,
-            descriptor->fd_ctx);
-    descriptor->handle = NULL;
-    descriptor->fd_ctx = NULL;
-}
 //
-// Node management 
+// Node lookup
 // 
-
-// node initialization
-static vfs_node_t *_vfs_node_create(
-    const char *name,
-    vfs_node_t *parent,
-    vfs_node_type_t type,
-    const file_handle_t *handler)
+static dentry_t *_vfs_dentry_child_by_name(
+    dentry_t *parent,  // non negative dentry
+    const char *name)
 {
-    vfs_node_t *node = vfs_node_t_x_64_bitfield_alloc(&_vfs.node_allocator);
-    if (node == NULL)
-        kernel_fatal_error("vfs node alloc failed"); 
-
-    _strcpy(node->name, name);
-    node->parent = parent;
-    node->type = type;
-
-    if (handler == NULL) {
-        _memset(&node->handler, 0u, sizeof(file_handle_t));
-    }
-    else {
-        node->handler = *handler;
-    }
-
-    return node;
-}
-
-// node lookup
-static const vfs_node_t *_vfs_child_by_name(
-    const vfs_node_t *parent,
-    const char *child_name,
-    uint32_t child_name_len)
-{
-    for (size_t index = 0u; index < parent->directory.child_count; index++)
+    // direct dentry lookup
+    for (size_t index = 0u; index < parent->child_count; index++)
     {
-        const vfs_node_t *child = parent->directory.childs[index];
-        if (0 == _strncmp(child_name, child->name, child_name_len))
+        dentry_t* child = parent->children[index];
+        if (0 == _strcmp(name, child->name))
             return child;
     }
-    return NULL;
+
+    // dentry cache miss: lookup in inode
+    inode_t *child = parent->inode->inode_ops->lookup(parent->inode, name);
+    dentry_t *new_dentry = dentry_t_x_72_bitfield_alloc(&_vfs.dentry_allocator);
+
+    _strcpy(new_dentry->name, name);
+    new_dentry->child_count = 0u;
+    new_dentry->inode = child;  // if child is null, this is a negative dentry
+    new_dentry->parent = parent;
+
+    if (parent->child_count == DENTRY_MAX_CHILREN_COUNT)
+        kernel_fatal_error("reached max dentry child cound");
+
+    parent->children[parent->child_count++] = new_dentry;
+
+    return new_dentry;
 }
 
-static const vfs_node_t *_vfs_node_lookup_rec(
-    const char *path,
-    const vfs_node_t *root)
+static dentry_t *_vfs_node_lookup_rec(
+    dentry_t *dentry,  // non negative dentry
+    const char *path)
 {
     mini_uart_kernel_log(
-        "vfs: node lookup: look for relative path '%s' in node %s",
-        path, root->name);
+        "vfs: inode lookup: look for relative path '%s' in dentry %s",
+         path, dentry->name);
     const char *next_separator = _strchr(path, '/');
-    if (*next_separator == '\0') {
+    if (next_separator == NULL) {
         // then path itself is the last segment
-        const uint32_t child_name_len = _strlen(path);
-        if (child_name_len == 0u)
-            return root;
-        return _vfs_child_by_name(root, path, child_name_len);
+        const uint32_t name_len = _strlen(path);
+        if (name_len == 0u)
+             return dentry;
+        return _vfs_dentry_child_by_name(dentry, path);
     }
     else {
         const uint32_t child_name_len = next_separator - path;
-        const vfs_node_t *child = _vfs_child_by_name(root, path, child_name_len);       
-        if (child == NULL || child->type == VFS_NODE_FILE)
-            return NULL;
-        return _vfs_node_lookup_rec(path + child_name_len + 1, child);
+
+        // HOORRIIIIBLE but ok for now.
+        static char name[DENTRY_MAX_NAME_LEN] = "";
+        _memcpy(name, path, child_name_len);
+        name[child_name_len] = '\0';
+
+        dentry_t *child = _vfs_dentry_child_by_name(dentry, name);
+        if (child->inode == NULL)
+            return NULL;  // no dentry
+
+        return _vfs_node_lookup_rec(child, path + child_name_len + 1);
     }
 }
 
-static const vfs_node_t *_vfs_node_lookup(const char *path)
+static dentry_t *_vfs_dentry_lookup(const char *path)
 {
+    mini_uart_kernel_log("vfs: dentry lookup: search path '%s'", path);
+    // only absolute path for now
     if (path[0] != '/')
         return NULL;
-    const size_t path_len = _strlen(path);
-    mini_uart_kernel_log("node lookup: path='%s', len=%u", path, path_len);
-    return _vfs_node_lookup_rec(path + 1, _vfs.root_node);
-}
+    dentry_t *result = _vfs_node_lookup_rec(_vfs.root, path + 1);
 
-//
-// Directory handlers
-// 
+    if (result == NULL)
+        mini_uart_kernel_log("vfs: dentry lookup: path='%s': failed (no dentry)", path);
+    else if (result->inode == NULL)
+        mini_uart_kernel_log("vfs: dentry lookup: path='%s': failed (negative dentry)", path);
+    else
+        mini_uart_kernel_log("vfs: dentry lookup: path='%s': succeed", path);
 
-typedef struct {
-    uint32_t cur;
-} vfs_directory_fd_context_t;
-
-static void *_vfs_directory_handler_create_ctx(void *backend)
-{
-    (void)backend;
-    const size_t ctx_size = sizeof(vfs_directory_fd_context_t);
-    vfs_directory_fd_context_t *ctx = (vfs_directory_fd_context_t*)memory_alloc(ctx_size);
-    _memset(ctx, 0u, ctx_size);
-    return ctx;
-}
-
-static void _vfs_directory_handler_close_ctx(void *backend, void *ctx)
-{
-    (void)backend;
-    memory_free(ctx);
-}
-
-static int32_t _vfs_directory_handler_read(void *backend, void *ctx, void *data, size_t size)
-{
-    vfs_directory_fd_context_t *fd_ctx = (vfs_directory_fd_context_t*)ctx;
-    vfs_directory_t *directory = (void*)backend;
-
-    struct dirent *entities = (dirent *)data;
-    const size_t total_buffer_size = size;
-
-    for (
-        size_t i = 0u;
-        fd_ctx->cur < directory->child_count && size >= sizeof(dirent);
-        fd_ctx->cur++, i++, size -= sizeof(dirent))
-    {
-        const vfs_node_t *vfs_entity = directory->childs[fd_ctx->cur];
-        mini_uart_kernel_log("read a dirent cur=%u/%u, name=%s", fd_ctx->cur, directory->child_count, vfs_entity->name);
-        _strcpy(entities[i].d_name, vfs_entity->name);
-        entities[i].d_type = (vfs_entity->type == VFS_NODE_DIRECTORY);
-    }
-
-    // note: if cur after end, return 0 => unix compliant
-    return total_buffer_size - size;
-}
-
-static int32_t _vfs_directory_handler_write(void *backend, void *ctx, const void *data, size_t size)
-{
-    (void)backend;
-    (void)ctx;
-    (void)data;
-    (void)size;
-    kernel_fatal_error("write on directory is not implemented");
-    return -1;
-}
-
-static int32_t _vfs_directory_handler_seek(void *backend, void *ctx, int32_t offset, int32_t whence)
-{
-    _Static_assert(
-        sizeof(dirent) == 32,
-        "sizeof(dirent) is expected to be 32");
-
-    vfs_directory_fd_context_t *fd_ctx = (vfs_directory_fd_context_t*)ctx;
-    vfs_directory_t *directory = (void*)backend;
-
-    int32_t index_ref;
-    switch (whence) {
-        case SEEK_SET: index_ref = 0u; break;
-        case SEEK_CUR: index_ref = fd_ctx->cur; break;
-        case SEEK_END: index_ref = directory->child_count; break;
-        default: return -1;
-    }
-
-    const int32_t index_offset = offset >> 0x5u;
-    const int32_t new_cur = index_ref + index_offset;
-
-    // position before begin is not allowed
-    if (new_cur < 0)
-        return -1;
-
-    // position after end is ok.
-    fd_ctx->cur = new_cur;
-    return new_cur * sizeof(dirent);
-}
-
-static file_handle_t _vfs_directory_create_handler(vfs_directory_t *directory)
-{
-    const file_handle_t handler = {
-        .ops = {
-            .create_ctx = _vfs_directory_handler_create_ctx,
-            .close_ctx = _vfs_directory_handler_close_ctx,
-            .read = _vfs_directory_handler_read,
-            .write = _vfs_directory_handler_write,
-            .seek = _vfs_directory_handler_seek
-        },
-        .backend = directory
-    };
-    return handler;
-}
-
-static vfs_node_t *_vfs_create_directory_node(vfs_node_t *parent, const char *name)
-{
-    vfs_node_t *dir = _vfs_node_create(name, parent, VFS_NODE_DIRECTORY, NULL);
-    dir->handler = _vfs_directory_create_handler(&dir->directory);
-    return dir;
+    return result;
 }
 
 //
@@ -291,88 +158,203 @@ void vfs_init(void)
     _memset(&_vfs, 0, sizeof(vfs_t));
 
     // allocate memory section for vfs
-    _vfs.node_allocator.base = section_allocator_alloc();
-    if (_vfs.node_allocator.base == NULL)
-        kernel_fatal_error("vfs memory section allocation failed");
+    _vfs.dentry_allocator.base = section_allocator_alloc();
+    if (_vfs.dentry_allocator.base == NULL)
+        kernel_fatal_error("vfs dentry memory section allocation failed");
 
-    // create root descriptor
-    vfs_node_t *root = _vfs_create_directory_node(NULL, "root");
+    // Mount a section fs on /
+    super_block_t *section_fs = create_ramfs_super_block();
+    dentry_t *root_dentry = dentry_t_x_72_bitfield_alloc(&_vfs.dentry_allocator);
+    // root_dentry->type = DT_DIR;
+    root_dentry->inode = section_fs->root_node;
+    root_dentry->child_count = 0u;
+    root_dentry->parent = NULL;
+    _strcpy(root_dentry->name, "root");
 
-    //
-    // create the /dev node
-    //
-    vfs_node_t *dev = _vfs_create_directory_node(root, "dev");
-    
-
-    // zero device
-    file_handle_t zero_handler = vfs_dev_zero_create_handler();
-    vfs_node_t *zero = _vfs_node_create("zero", dev, VFS_NODE_FILE, &zero_handler);
-    
-
-    // tty device
-    file_handle_t tty_handler = vfs_dev_tty_create_handler();
-    vfs_node_t *tty = _vfs_node_create("tty", dev, VFS_NODE_FILE, &tty_handler);
-
-    // hierarchy
-    root->directory.child_count = 1u;
-    root->directory.childs[0] = dev;
-
-    dev->directory.child_count = 2u;
-    dev->directory.childs[0] = tty;
-    dev->directory.childs[1] = zero;
-
-    // set the vfs root
-    _vfs.root_node = root;
+    _vfs.root = root_dentry;
 }
 
 //
 //  File Descriptor interface
 //
-int32_t vfs_file_descriptor_is_null(const file_descriptor_t *desc)
-{
-    return desc == NULL || desc->handle == NULL;
-}
 
-file_descriptor_t vfs_file_descriptor_open(const char *path, uint32_t flags, uint32_t mode)
+file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
 {
     (void)flags;
     (void)mode;
+
     mini_uart_kernel_log("vfs: open %s", path);
+    dentry_t *dentry = _vfs_dentry_lookup(path);
 
-    const vfs_node_t *node = _vfs_node_lookup(path);
-    if (node == NULL)
+    // of no dentry or a negative dentry
+    if (dentry == NULL ||
+        dentry->inode == NULL)
     {
-        mini_uart_kernel_log("vfs: lookup failed for path: %s", path);
-        return _create_null_descriptor();
+        mini_uart_kernel_log(
+            "vfs: open: no file at path '%s'", path);
+        return NULL;
     }
-    else
+    else if(
+        dentry->inode->file_ops == NULL ||
+        dentry->inode->file_ops->open == NULL)
     {
-        mini_uart_kernel_log("vfs: lookup succeed for path: %s", path);
+        mini_uart_kernel_log(
+            "vfs: open: inode at '%s' does not implement open file operation",
+            path);
+        return NULL;
     }
 
-    return _create_descriptor(node); 
+    return dentry->inode->file_ops->open(dentry->inode);
 }
 
-int32_t vfs_file_descriptor_close(file_descriptor_t *fd)
+int32_t vfs_file_close(file_t *file)
 {
-    _close_descriptor(fd);
+    if (file->inode->file_ops != NULL &&
+        file->inode->file_ops->release != NULL)
+        file->inode->file_ops->release(file->inode, file);
     return 0;
 }
 
-int32_t vfs_file_descriptor_read(file_descriptor_t *fd, void *data, size_t size)
+ssize_t vfs_file_read(file_t *file, void *data, size_t size)
 {
-    return fd->handle->ops.read(fd->handle->backend, fd->fd_ctx, data, size);
+    if (file->inode->file_ops->read == NULL)
+        return -1;
+    return file->inode->file_ops->read(file, data, size, &file->pos);
 }
 
-int32_t vfs_file_descriptor_write(file_descriptor_t *fd, const void *data, size_t size)
+ssize_t vfs_file_readdir(file_t *file, dirent *entries, size_t count)
 {
-    return fd->handle->ops.write(fd->handle->backend, fd->fd_ctx, data, size);
+    if (file->inode->file_ops->readdir == NULL)
+        return -1;
+    return file->inode->file_ops->readdir(file, entries, count);
 }
 
-int32_t vfs_file_descriptor_lseek(file_descriptor_t *fd, int32_t offset, int32_t whence)
+ssize_t vfs_file_write(file_t *file, const void *data, size_t size)
+{
+    if (file->inode->file_ops->write == NULL)
+        return -1;
+    return file->inode->file_ops->write(file, data, size, &file->pos);
+}
+
+ssize_t vfs_file_lseek(file_t *file, int32_t offset, int32_t whence)
 {
     // seek is allowed to not be implemented by the handler
-    if (fd->handle->ops.seek == NULL)
+    if (file->inode->file_ops->seek == NULL)
         return -1;
-    return fd->handle->ops.seek(fd->handle->backend, fd->fd_ctx, offset, whence);
+    return file->inode->file_ops->seek(file, offset, whence);
+}
+
+int32_t vfs_mknod(const char *path, mode_t mode, dev_t dev)
+{
+    mini_uart_kernel_log(
+        "vfs: mknod: path='%s', mode=0x%x, dev=0x%x",
+        path, mode, dev);
+
+    // get the basedir path
+    char basedir_path[256] = "";
+    char filename[MAX_DIR_NAME_LEN] = "";
+
+    const int status = _basedir(path, basedir_path, filename);
+    if (status != 0)
+        return status;
+
+    mini_uart_kernel_log(
+        "vfs: mknod: search base '%s'",
+        basedir_path);
+
+    // dentry lookup: does the basedire exists ? 
+    dentry_t* dir_dentry = _vfs_dentry_lookup(basedir_path);
+    if (dir_dentry == NULL || dir_dentry->inode == NULL) {
+        mini_uart_kernel_log(
+            "vfs: mknod: base directory '%s' does not exists",
+            basedir_path);
+        return -1;
+    }
+    mini_uart_kernel_log(
+        "vfs: mknod: found a positive dentry for path '%s'. Check type",
+        basedir_path);
+
+    // not null here.
+    inode_t *dir_inode = dir_dentry->inode;
+
+    // is the inode a directory ?
+    if ((dir_inode->mode & S_IFMT) != S_IFDIR) {
+        mini_uart_kernel_log(
+            "vfs: mknod: base path '%s' is not a directory",
+            basedir_path);
+        return -1;
+    }
+
+    mini_uart_kernel_log(
+        "vfs: mknod: '%s' checked to be a directory. Call inode backend !",
+        basedir_path);
+
+    if (dir_inode->inode_ops == NULL) {
+        mini_uart_kernel_log(
+            "vfs: mknod: inode_ops is NULL for inode at %s",
+            basedir_path);
+        return -1;
+    }
+    else if (dir_inode->inode_ops->mknod == NULL) {
+        mini_uart_kernel_log(
+            "vfs: mknod: inode_ops.mknode is NULL for inode at %s",
+            basedir_path);
+        return -1;
+    }
+
+    // call fs backend.
+    inode_t *dev_noed = dir_inode->inode_ops->mknod(dir_inode, filename, mode, dev);
+    if (dev_noed == NULL) {
+        mini_uart_kernel_log(
+            "vfs: mknod: backend failed.");
+        return -1;
+    }
+
+    // TODO: update parent dentry
+
+    return 0;
+}
+
+int32_t vfs_mkdir(const char *path, mode_t mode)
+{
+    mini_uart_kernel_log(
+        "vfs: mkdir: path='%s', mode=0x%x",
+        path, mode);
+
+    // get the basedir path: TODO: handle path terminating with '/' here
+    char basedir_path[256] = "";
+    char filename[MAX_DIR_NAME_LEN] = "";
+
+    const int status = _basedir(path, basedir_path, filename);
+    if (status != 0)
+        return status;
+
+    // dentry lookup: does the basedire exists ? 
+    dentry_t* dir_dentry = _vfs_dentry_lookup(basedir_path);
+    if (dir_dentry == NULL || dir_dentry->inode == NULL) {
+        mini_uart_kernel_log(
+            "vfs: mknod: base directory '%s' does not exists",
+            basedir_path);
+        return -1;
+    }
+
+    // not null here.
+    inode_t *dir_inode = dir_dentry->inode;
+
+    // is the inode a directory ?
+    if ((dir_inode->mode & S_IFMT) != S_IFDIR) {
+        mini_uart_kernel_log(
+            "vfs: mkdir: base path '%s' is not a directory",
+            basedir_path);
+        return -1;
+    }
+
+    // call fs backend.
+    inode_t *dev_noed = dir_inode->inode_ops->mkdir(dir_inode, filename, mode);
+    if (dev_noed == NULL)
+        return -1;
+
+    // TODO: update parent dentry
+
+    return 0;
 }

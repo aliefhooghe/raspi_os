@@ -27,9 +27,9 @@ int32_t scheduler_cur_proc_get_id(void);
 int32_t scheduler_cur_proc_get_parent_id(void);
 
 // 
-int32_t scheduler_cur_proc_add_fd(file_descriptor_t descriptor);
+int32_t scheduler_cur_proc_add_fd(file_t *descriptor);
 void scheduler_cur_proc_rem_fd(int32_t fd);
-file_descriptor_t *scheduler_cur_proc_get_fd(int32_t fd);
+file_t *scheduler_cur_proc_get_fd(int32_t fd);
 
 
 #endif

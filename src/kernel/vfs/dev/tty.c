@@ -1,69 +1,80 @@
 
+#include "memory/memory_allocator.h"
 #include "hardware/mini_uart.h"
+#include "vfs/device_ops.h"
+#include "vfs/inode.h"
 #include "tty.h"
 
 //
-// DRAFT: mini uart tty infrastructure
+// mini uart tty character device driver
 //
-static int32_t _tty_mini_uart_read(void *_back, void *_ctx, void *data, size_t size)
-{
-    (void)_back;
-    (void)_ctx;
 
-    uint8_t *bdata = (uint8_t*)data;
+static ssize_t _tty_mini_uart_read(
+    file_t *file, void *data, size_t size, off_t *offset)
+{
+    (void)file;
+    (void)offset;
+    
+    uint8_t *car_buf = (uint8_t*)data;
 
     for (uint32_t i = 0u; i < size; i++)
     {
         const uint8_t car = mini_uart_getc();
+
+        // echo the car onto the tty terminal
         mini_uart_putc(car);
 
         if (car == '\r')
         {
             mini_uart_putc('\n');
-            bdata[i] = '\n';
+            car_buf[i] = '\n';
             return i + 1;
         }
-
-        //
-        //  TODO: place the tty infrastructure where it belong to
-        //          handle backspace
-        //
-        // echo the car onto the tty terminal
-
-        bdata[i] = car;
+        car_buf[i] = car;
     }
 
     return size;
 }
 
-static int32_t _tty_mini_uart_write(void *_back, void *_ctx, const void *data, size_t size)
+static ssize_t _tty_mini_uart_write(
+    file_t *file, const void *data, size_t size, off_t *offset)
 {
-    (void)_back;
-    (void)_ctx;
+    (void)file;
+    (void)offset;
 
-    const uint8_t *bdata = (const uint8_t*)data;
+    const uint8_t *car_buf = (const uint8_t*)data;
 
     for (uint32_t i = 0u; i < size; i++)
     {
-        if (bdata[i] == '\n')
+        if (car_buf[i] == '\n')
             mini_uart_putc('\r');
-        mini_uart_putc(bdata[i]);
+        mini_uart_putc(car_buf[i]);
     }
 
     return size;
 }
 
-file_handle_t vfs_dev_tty_create_handler(void)
+static file_t *_tty_mini_uart_open(inode_t *inode)
 {
-    const file_handle_t result = {
-        .backend = NULL,
-        .ops = {
-            .create_ctx = NULL,
-            .close_ctx = NULL,
-            .read = _tty_mini_uart_read,
-            .write = _tty_mini_uart_write,
-            .seek = NULL
-        }
-    };
-    return result;
+    // TODO: a default implem for that one and some others ??
+    file_t *file = memory_calloc(sizeof(file_t));
+    file->inode = inode;
+    file->pos = 0u;
+    file->private = NULL;
+    return file; 
 }
+
+static const character_device_ops_t _dev_tty_ops = {
+    .read = _tty_mini_uart_read,
+    .write = _tty_mini_uart_write,
+    .seek = NULL,
+    .readdir = NULL,
+    .open = _tty_mini_uart_open,
+    .release = NULL,
+};
+
+const character_device_ops_t *dev_tty_create(void)
+{
+    return &_dev_tty_ops;
+}
+

@@ -1,10 +1,9 @@
 #ifndef SATAN_VFS_DEV_TTY_H_
 #define SATAN_VFS_DEV_TTY_H_
 
-#include "vfs/vfs.h"
-#include "vfs/vfs_handler.h"
+#include "vfs/device_ops.h"
 
-file_handle_t vfs_dev_tty_create_handler(void);
+const character_device_ops_t *dev_tty_create(void);
 
 #endif
 

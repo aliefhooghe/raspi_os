@@ -20,14 +20,23 @@ static void ls(FILE *stdout, const char *path)
         fprintf(stdout, "directory %s does not exists\n", path);
         return;
     }
+    else
+    {
+        fprintf(stdout, "directory %s was oppened", path);
+    }
 
     struct dirent *entity = NULL;
     while ((entity = readdir(dir))) {
         fprintf(stdout,
             "- %s (%s)\n",
-            entity->d_name, entity->d_type == DT_DIR ? "dir" : "reg");
+            entity->d_name,
+                entity->d_type == DT_DIR ? "dir" :
+                entity->d_type == DT_REG ? "reg" :
+                entity->d_type == DT_CHR ? "character device" :
+                "unknown");
     }
 
+    fprintf(stdout, "list directory %s: done", path);
     closedir(dir);
 }
 

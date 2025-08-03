@@ -6,7 +6,7 @@
 
 struct DIR {
     int fd;
-    dirent lastread;
+    dirent last_read;
 };
 
 _Static_assert(sizeof(dirent)==32, "sizeof(dirent)");
@@ -14,7 +14,7 @@ _Static_assert(sizeof(dirent)==32, "sizeof(dirent)");
 DIR *opendir(const char *name)
 {
     int fd = usr_syscall_open(name, 0u, 0u); // todo: mode O_DIRECTORY
-    if (fd == -1)
+    if (fd < 0)
         return NULL;
 
     DIR *dir = malloc(sizeof(DIR));
@@ -34,10 +34,10 @@ int dirfd(DIR *dirp)
 
 struct dirent *readdir(DIR *dirp)
 {
-    const size_t size = usr_syscall_read(dirp->fd, &dirp->lastread, sizeof(dirent));
-    if (size != sizeof(dirent))
+    const size_t count = usr_syscall_readdir(dirp->fd, &dirp->last_read, 1u);
+    if (count != 1u)
         return NULL;
-    return &dirp->lastread;
+    return &dirp->last_read;
 }
 
 int closedir(DIR *dirp)
@@ -54,13 +54,11 @@ void rewinddir(DIR *dirp)
 
 long telldir(DIR *dirp)
 {
-    const off_t offset = usr_syscall_lseek(dirp->fd, 0, SEEK_CUR);
-    return offset >> 0x5;
+    return usr_syscall_lseek(dirp->fd, 0, SEEK_CUR);
 }
 
 void seekdir(DIR *dirp, long loc)
 {
-    const off_t offset = loc << 0x5;
-    usr_syscall_lseek(dirp->fd, offset, SEEK_SET);
+    usr_syscall_lseek(dirp->fd, loc, SEEK_SET);
 }
 

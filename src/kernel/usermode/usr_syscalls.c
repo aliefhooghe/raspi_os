@@ -68,6 +68,11 @@ size_t usr_syscall_read(int32_t fd, void *data, size_t size)
     return syscall(SYSCALL__READ, fd, (uint32_t)data, size);
 }
 
+size_t usr_syscall_readdir(int32_t fd, dirent *entries, size_t count)
+{
+    return syscall(SYSCALL__READDIR, fd, (uint32_t)entries, count);    
+}
+
 size_t usr_syscall_write(int32_t fd, const void *data, size_t size)
 {
     return syscall(SYSCALL__WRITE, fd, (uint32_t)data, size);

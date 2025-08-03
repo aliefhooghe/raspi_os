@@ -29,7 +29,14 @@ int32_t usr_syscall_waitpid(int32_t pid, int32_t *wstatus);
 int32_t usr_syscall_open(const char *path, int32_t flags, int32_t mode);
 int32_t usr_syscall_close(int32_t fd);
 size_t usr_syscall_read(int32_t fd, void *data, size_t size);
+size_t usr_syscall_readdir(int32_t fd, dirent *entries, size_t count);
 size_t usr_syscall_write(int32_t fd, const void *data, size_t size);
 off_t usr_syscall_lseek(int fd, off_t offset, int whence);
+
+int32_t usr_syscall_mount(const char *dev, const char *target, const char *fstype);
+
+
+// return type is 0 or -1, _not_ a fd
+int32_t usr_syscall_mknod(const char *path, mode_t mode, dev_t dev);
 
 #endif

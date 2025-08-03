@@ -4,23 +4,28 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct file_handle file_handle_t;
+#include "kernel_types.h"
 
-typedef struct  {
-    const file_handle_t *handle;
-    void *fd_ctx;
-} file_descriptor_t;
+//
+// VFS Public Interface
+//
+typedef struct file file_t;
 
-// vfs interface
 void vfs_init(void);
-// file_descriptor_t vfs_get_tty_file_descriptor(void);
 
-// file descriptor interface: used by SYSCALLs
-int32_t vfs_file_descriptor_is_null(const file_descriptor_t *fd);
-file_descriptor_t vfs_file_descriptor_open(const char *path, uint32_t flags, uint32_t mode);
-int32_t vfs_file_descriptor_close(file_descriptor_t *fd);
-int32_t vfs_file_descriptor_read(file_descriptor_t *fd, void *data, size_t size);
-int32_t vfs_file_descriptor_write(file_descriptor_t *fd, const void *data, size_t size);
-int32_t vfs_file_descriptor_lseek(file_descriptor_t *fd, int32_t offset, int32_t whence);
+int32_t vfs_mknod(const char *path, mode_t mode, dev_t dev);
+int32_t vfs_mkdir(const char *path, mode_t mode);
+
+file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode);
+int32_t vfs_file_close(file_t *file);
+
+ssize_t vfs_file_read(file_t *file, void *data, size_t size);
+ssize_t vfs_file_readdir(file_t *file, dirent *entries, size_t count);
+ssize_t vfs_file_write(file_t *file, const void *data, size_t size);
+ssize_t vfs_file_lseek(file_t *file, int32_t offset, int32_t whence);
+
+
+// int32_t usr_syscall_mount(const char *dev, const char *target, const char *fstype);
+// int32_t usr_syscall_mknod(const char *path, mode_t mode, dev_t dev);
 
 #endif
