@@ -21,9 +21,8 @@ typedef struct {
     // inode number generator
     ino_t ino_gen;
     
-    // Inode table
-    // inode_t *inode_table[RAMFS_MAX_INODE_COUNT];
-    // size_t inode_count;
+    // root inode: NULL if never loaded
+    // inode_t *root;
 } ramfs_t;
 
 #define RAMFS_INODE_MAX_CHILDREN_COUNT (8)
@@ -338,7 +337,9 @@ static inode_t *_ramfs_sb_alloc_inode(super_block_t *ram_sb)
     inode_t *inode = memory_calloc(sizeof(inode_t));
     
     KERNEL_ASSERT(inode != NULL);
-    inode->super_block = ram_sb; 
+    inode->super_block = ram_sb;
+
+    // TODO: really here ??
     inode->private = memory_calloc(sizeof(ramfs_inode_private_t));
     KERNEL_ASSERT(inode->private != NULL);
 
@@ -358,6 +359,7 @@ static void _ramfs_sb_free_inode(super_block_t* sb, inode_t *inode)
 static int _ramfs_sb_read_inode(super_block_t *ram_sb, ino_t ino, inode_t *inode)
 {
     mini_uart_kernel_log("ramfs: super-block: read inode %u", ino);
+    // ramfs_t *ramfs = (ramfs_t*)ram_sb->private;
     
     // this is the only one which should be read one time on the ramfs
     if (ino != RAMFS_ROOT_NODE_ID)
@@ -412,7 +414,7 @@ super_block_t *create_ramfs_super_block(void)
     }
     sb->private = ramfs;
 
-    // Initialize root node id 
+    // Initialize root node id
     ramfs->ino_gen = RAMFS_ROOT_NODE_ID;
     sb->root_ino = RAMFS_ROOT_NODE_ID;
 

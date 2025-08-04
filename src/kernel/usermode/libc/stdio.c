@@ -148,7 +148,7 @@ int fputs(const char *restrict s, FILE *restrict stream)
     return fwrite(s, len, 1, stream);
 }
 
-static void _fput_uint(FILE *restrict stream, uint32_t x)
+static void _fput_uint(FILE *stream, uint32_t x)
 {
     char result[11] = {0};
     int index = 10;
@@ -161,7 +161,20 @@ static void _fput_uint(FILE *restrict stream, uint32_t x)
     fwrite(result + index, 11 - index, 1, stream);
 }
 
+static void _fput_uint_hex(FILE *stream, uint32_t x)
+{
+    static const char cars[] = "0123456789abcdef";
+    char result[16] = "";
+    int index = 15;
 
+    do {
+        result[--index] = cars[x & 0xf];
+        x >>= 4;
+    } while (x > 0);
+
+    // mini_uart_kernel_puts(result + index);
+    fwrite(result + index, 16 - index, 1, stream);
+}
 // int putchar(int c)
 // {
 //     const int32_t status = usr_syscall_write(1, &c, 1u);
@@ -187,7 +200,6 @@ static void _fput_uint(FILE *restrict stream, uint32_t x)
 
 // int vsnprintf(char *restrict str, size_t size, const char *restrict format, va_list ap)
 // {
-
 // }
 
 int fprintf(FILE *restrict stream, const char *restrict format, ...)
@@ -213,11 +225,11 @@ int vfprintf(FILE *restrict stream, const char *restrict format, va_list ap)
                         _fput_uint(stream, value);
                     }
                     break;
-                // case 'x':
-                //     {
-                //         const uint32_t value = va_arg(ap, uint32_t);
-                //         mini_uart_put_uint_hex(value);
-                //     }
+                case 'x':
+                    {
+                        const uint32_t value = va_arg(ap, uint32_t);
+                        _fput_uint_hex(stream, value);
+                    }
                 //     break;
                 // case 'b':
                 //     {

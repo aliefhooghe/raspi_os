@@ -17,7 +17,7 @@ void bitfield_clear(
     uint32_t bit_index);
 
 int32_t bitfield_bit(
-    uint8_t *bitfields,
+    const uint8_t *bitfields,
     uint32_t bitfield_count,
     uint32_t bit_index);
 

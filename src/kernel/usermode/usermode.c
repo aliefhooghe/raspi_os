@@ -10,7 +10,6 @@
 
 #define LINE_SIZE 128
 
-
 static void ls(FILE *stdout, const char *path)
 {
     fprintf(stdout, "list file in path: %s\n", path);
@@ -19,10 +18,6 @@ static void ls(FILE *stdout, const char *path)
     {
         fprintf(stdout, "directory %s does not exists\n", path);
         return;
-    }
-    else
-    {
-        fprintf(stdout, "directory %s was oppened\n", path);
     }
 
     struct dirent *entity = NULL;
@@ -36,7 +31,6 @@ static void ls(FILE *stdout, const char *path)
                 "unknown");
     }
 
-    fprintf(stdout, "list directory %s: done\n", path);
     closedir(dir);
 }
 
@@ -133,6 +127,13 @@ void user_function(void)
             fprintf(stdout, "[%u] call ls test procedure:\n", pid);
             ls(stdout, "/");
             ls(stdout, "/dev");
+        }
+        else if (strcmp(line, "mkdir") == 0)
+        {
+            fprintf(stdout, "[%u] test mkdir on /data\n", pid);
+            const int status = usr_syscall_mkdir("/data", S_IFDIR);
+            fprintf(stdout, "[%u] mkdir /data => return %x\n", pid, status);
+            ls(stdout, "/");
         }
         else
         {
