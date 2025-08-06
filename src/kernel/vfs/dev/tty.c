@@ -60,7 +60,7 @@ static file_t *_tty_mini_uart_open(inode_t *inode)
     file_t *file = memory_calloc(sizeof(file_t));
     file->inode = inode;
     file->pos = 0u;
-    file->private = NULL;
+    // file->private = NULL;
     return file; 
 }
 

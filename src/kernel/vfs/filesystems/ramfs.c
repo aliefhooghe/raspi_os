@@ -1,4 +1,3 @@
-
 #include "hardware/mini_uart.h"
 #include "kernel.h"
 #include "kernel_types.h"
@@ -17,6 +16,8 @@
 
 #define RAMFS_MAX_INODE_COUNT (32u)
 
+
+// ramfs
 typedef struct {
     // inode number generator
     ino_t ino_gen;
@@ -25,6 +26,7 @@ typedef struct {
     // inode_t *root;
 } ramfs_t;
 
+// ramfs dir
 #define RAMFS_INODE_MAX_CHILDREN_COUNT (8)
 #define RAMFS_MAX_NAME_LEN (32)
 
@@ -36,14 +38,21 @@ typedef struct {
 typedef struct {
     ramfs_inode_child_t children[RAMFS_INODE_MAX_CHILDREN_COUNT];
     size_t child_count;
-} ramfs_inode_private_t;
+} ramfs_dir_private_t;
 
+// ramfs file
+#define RAMFS_INITIAL_FILE_ALLOC (512)
+
+typedef struct {
+    void *data;
+    size_t alloc_size;
+} ramfs_file_private_t;
 
 //
 // Ramfs Helpers
 //
 static void _add_inode_child(
-    ramfs_inode_private_t *priv,
+    ramfs_dir_private_t *priv,
     const char *name,
     inode_t *inode)
 {
@@ -57,25 +66,94 @@ static void _add_inode_child(
 //
 // VFS Interface Implementation
 // 
+static off_t _off_t_min(off_t a, off_t b)
+{
+    return a <= b ? a : b;
+}
 
+// static off_t _off_t_max(off_t a, off_t b)
+// {
+//     return a >= b ? a : b;
+// }
 
+static size_t _size_t_max(size_t a, size_t b)
+{
+    return a >= b ? a : b;
+}
+
+//
 //
 // Regular files operations
 static ssize_t _ramfs_reg_file_read(
     file_t *file, void *data, size_t size, off_t *offset)
 {
-    return -1;
+    KERNEL_ASSERT(file->inode != NULL);
+
+    const off_t start = *offset;
+    if (start < 0)
+        return -1;
+
+    const off_t req_end = start + size;
+    const off_t act_end = _off_t_min(req_end, file->inode->size);
+    if (start >= act_end)
+        return -1;
+
+    const size_t act_size = act_end - start;
+    ramfs_file_private_t *ramfs_file = (ramfs_file_private_t*)file->inode->private;
+
+    // read data
+    _memcpy(
+        data,
+        start + (uint8_t*)ramfs_file->data,
+        act_size);
+    *offset = act_end;
+    
+    return act_size;
 }
 
 static ssize_t _ramfs_reg_file_write(
     file_t *file, const void *data, size_t size, off_t *offset)
 {
-    return -1;
+    const off_t start = *offset;
+    if (start < 0)
+        return -1;
+
+    // no sparse file
+    if (start > file->inode->size)
+        return -1;
+
+    const size_t end = start + size;
+    const size_t new_size = _size_t_max(end, file->inode->size);
+    ramfs_file_private_t *ramfs_file = (ramfs_file_private_t*)file->inode->private;
+
+    // compute new alloc size
+    size_t alloc_size = ramfs_file->alloc_size;
+    while (alloc_size < new_size)
+        alloc_size *= 2;
+
+    // realloc if needed
+    if (alloc_size > ramfs_file->alloc_size) {
+        ramfs_file->data = memory_realloc(ramfs_file->data, alloc_size);
+        KERNEL_ASSERT(ramfs_file->data != NULL);
+        ramfs_file->alloc_size = alloc_size;
+    }
+
+    // write data
+    _memcpy(
+        start + (uint8_t*)ramfs_file->data,
+        data, size);
+    *offset = end;
+    file->inode->size = new_size;
+   
+    return size;
 }
 
 static ssize_t _ramfs_reg_file_seek(
     file_t *file, int32_t offset, int32_t whence)
 {
+    (void)file;
+    (void)offset;
+    (void)whence;
     return -1;
 }
 
@@ -84,7 +162,7 @@ static file_t *_ramfs_reg_file_open(inode_t *inode)
     file_t *file = memory_calloc(sizeof(file_t));
     file->inode = inode;
     file->pos = 0u;
-    file->private = NULL;
+    // file->private = NULL;
     return file;
 }
 
@@ -112,7 +190,7 @@ static int _ramfs_dir_readdir(
     inode_t *dir = file->inode;
     KERNEL_ASSERT(dir != NULL);
 
-    ramfs_inode_private_t *priv_dir = (ramfs_inode_private_t*)dir->private;
+    ramfs_dir_private_t *priv_dir = (ramfs_dir_private_t*)dir->private;
     KERNEL_ASSERT(priv_dir != NULL);
 
     size_t i = 0u;
@@ -144,7 +222,7 @@ static ssize_t _ramfs_dir_file_seek(
     inode_t *dir = file->inode;
     KERNEL_ASSERT(dir != NULL);
 
-    ramfs_inode_private_t *priv_dir = (ramfs_inode_private_t*)dir->private;
+    ramfs_dir_private_t *priv_dir = (ramfs_dir_private_t*)dir->private;
     KERNEL_ASSERT(priv_dir != NULL);
     
     // compute reference
@@ -173,7 +251,7 @@ static file_t *_ramfs_dir_file_open(inode_t *inode)
     file_t *file = memory_calloc(sizeof(file_t));
     file->inode = inode;
     file->pos = 0u;
-    file->private = NULL;
+    // file->private = NULL;
     return file;
 }
 
@@ -197,7 +275,7 @@ static const file_ops_t _ramfs_dir_file_ops = {
 // INode Operations
 static inode_t *_ramfs_inode_lookup(inode_t *dir, const char *name)
 {
-    ramfs_inode_private_t *priv_dir = (ramfs_inode_private_t*)dir->private;
+    ramfs_dir_private_t *priv_dir = (ramfs_dir_private_t*)dir->private;
 
     for (size_t i = 0u; i < priv_dir->child_count; i++)
     {
@@ -222,12 +300,20 @@ static inode_t *_ramfs_inode_create(inode_t *dir, const char *name, mode_t mode)
         return NULL;
     }
     ramfs_t *ramfs = (ramfs_t*)dir->super_block->private;
-    ramfs_inode_private_t *priv_dir = (ramfs_inode_private_t*)dir->private;
+    ramfs_dir_private_t *priv_dir = (ramfs_dir_private_t*)dir->private;
     inode_t *inode = dir->super_block->ops->alloc_inode(dir->super_block);
 
+    // Allocate memory for file data
+    ramfs_file_private_t *inode_file = (ramfs_file_private_t*)memory_calloc(sizeof(ramfs_file_private_t));
+    KERNEL_ASSERT(inode_file != NULL); 
+    inode_file->data = memory_calloc(RAMFS_INITIAL_FILE_ALLOC);
+    KERNEL_ASSERT(inode_file->data != NULL);
+    inode_file->alloc_size = RAMFS_INITIAL_FILE_ALLOC;
+ 
     inode->device = 0;
     inode->inode_ops = NULL; // no inode ops for a regular file
     inode->file_ops = &_ramfs_reg_file_ops;
+    inode->private = (void*)inode_file;
     inode->size = 0u; // the file is created empty
     inode->ino = ++ramfs->ino_gen;
     inode->link_count = 0u;
@@ -239,6 +325,10 @@ static inode_t *_ramfs_inode_create(inode_t *dir, const char *name, mode_t mode)
 
 static inode_t *_ramfs_inode_mkdir(inode_t *dir, const char *name, mode_t mode)
 {
+    // TODO:
+    // - what if the dir already exists ?
+    // - on which layer are done the check ?
+    // 
     mini_uart_kernel_log(
         "ramfs: inode_ops: mkdir: name='%s' mode=0x%x",
         name, mode);
@@ -254,13 +344,14 @@ static inode_t *_ramfs_inode_mkdir(inode_t *dir, const char *name, mode_t mode)
     }
 
     ramfs_t *ramfs = (ramfs_t*)dir->super_block->private;
-    ramfs_inode_private_t *priv_dir = (ramfs_inode_private_t*)dir->private;
+    ramfs_dir_private_t *priv_dir = (ramfs_dir_private_t*)dir->private;
     inode_t *inode = dir->super_block->ops->alloc_inode(dir->super_block);
 
     inode->device = 0;
     inode->inode_ops = dir->inode_ops;
     inode->file_ops = &_ramfs_dir_file_ops;
-    inode->size = 0u; // the file is created empty
+    inode->size = 0u;
+    inode->private = memory_calloc(sizeof(ramfs_dir_private_t));
     inode->ino = ++ramfs->ino_gen;
     inode->link_count = 0u;
     inode->mode = mode;
@@ -284,13 +375,12 @@ static inode_t *_ramfs_inode_mknod(
 
     ramfs_t *ramfs = (ramfs_t*)dir->super_block->private;
     inode_t *inode = dir->super_block->ops->alloc_inode(dir->super_block);
-    ramfs_inode_private_t *priv_dir = (ramfs_inode_private_t*)dir->private;
-
+    ramfs_dir_private_t *priv_dir = (ramfs_dir_private_t*)dir->private;
     
     inode->device = dev;
     inode->inode_ops = NULL;
     inode->file_ops = load_char_device();
-
+    inode->private = NULL;
     inode->size = 0u; // ?
     inode->ino = ++ramfs->ino_gen;
     inode->link_count = 0u;
@@ -315,12 +405,16 @@ static int _ramfs_inode_link(inode_t *src, inode_t *dir, const char *new_name)
 
 static int _ramfs_inode_unlink(inode_t *dir, const char *name)
 {
+    (void)dir;
+    (void)name;
     kernel_fatal_error("_ramfs_inode_unlink not implemented");
     return -1;
 }
 
 static int _ramfs_inode_rmdir(inode_t *dir, const char *name)
 {
+    (void)dir;
+    (void)name;
     kernel_fatal_error("_ramfs_inode_rmdir not implemented");
     return -1;
 }
@@ -345,15 +439,14 @@ static inode_t *_ramfs_sb_alloc_inode(super_block_t *ram_sb)
     KERNEL_ASSERT(inode != NULL);
     inode->super_block = ram_sb;
 
-    // TODO: really here ??
-    inode->private = memory_calloc(sizeof(ramfs_inode_private_t));
-    KERNEL_ASSERT(inode->private != NULL);
-
     return inode;
 }
 
 static void _ramfs_sb_free_inode(super_block_t* sb, inode_t *inode)
 {
+    //
+    //  TODO: what about childs ????
+    // 
     (void)sb;
     KERNEL_ASSERT(inode!= NULL);
     KERNEL_ASSERT(inode->super_block == sb);
@@ -364,9 +457,13 @@ static void _ramfs_sb_free_inode(super_block_t* sb, inode_t *inode)
 
 static int _ramfs_sb_read_inode(super_block_t *ram_sb, ino_t ino, inode_t *inode)
 {
+    (void)ram_sb;
+
+    // TODO: 
+    // - in theory this should only be called on sb mount, but what if it
+    //   is called another time ? 
     mini_uart_kernel_log("ramfs: super-block: read inode %u", ino);
-    // ramfs_t *ramfs = (ramfs_t*)ram_sb->private;
-    
+   
     // this is the only one which should be read one time on the ramfs
     if (ino != RAMFS_ROOT_NODE_ID)
         return -1;
@@ -378,6 +475,7 @@ static int _ramfs_sb_read_inode(super_block_t *ram_sb, ino_t ino, inode_t *inode
     inode->inode_ops = &_ramfs_inode_ops;
     inode->link_count = 0u;
     inode->mode = S_IFDIR;
+    inode->private = memory_calloc(sizeof(ramfs_dir_private_t));  
     inode->size = 0;
 
     return 0;

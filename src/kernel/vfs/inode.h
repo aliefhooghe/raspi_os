@@ -20,7 +20,7 @@ typedef struct super_block_ops super_block_ops_t;
 struct file {
     inode_t *inode;
     off_t pos;           // current offset
-    void *private;       // fs driver stuff
+    // void *private;       // fs driver stuff
 };
 
 
@@ -51,7 +51,7 @@ struct inode {
     dev_t device;
     loff_t size;
     mode_t mode;
-    size_t link_count;           // number of references to this inode
+    size_t link_count;           // TODO: use number of references to this inode
     const file_ops_t * file_ops; 
     const inode_ops_t * inode_ops;
     super_block_t *super_block;
