@@ -315,11 +315,6 @@ void scheduler_start(void *init_code_entry)
         PROCESS_STACK_VIRTUAL_ADDRRESS,
         init_code_entry, 0u);
 
-    // create device files
-    mini_uart_kernel_log("scheduler: init setup character device");
-    KERNEL_ASSERT(0 == vfs_mkdir("/dev", S_IFDIR));
-    KERNEL_ASSERT(0 == vfs_mknod("/dev/tty", S_IFCHR, 0u));
-
     // setup stdin/stdout
     mini_uart_kernel_log("scheduler: init: setup IOs");
     file_t *tty = vfs_file_open("/dev/tty", 0u, 0u);

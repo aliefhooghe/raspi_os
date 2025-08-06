@@ -234,10 +234,6 @@ void vfs_init(void)
     _strcpy(root_dentry->name, "root");
     
     _vfs.root = root_dentry;
-
-    // Mount a ramfs on /
-    const int32_t root_mount_status = vfs_mount("dev", "/", "fstype");
-    KERNEL_ASSERT(0 == root_mount_status);
 }
 
 //

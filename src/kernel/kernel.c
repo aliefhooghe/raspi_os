@@ -124,6 +124,14 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     // initialize the kernel
     kernel_init();
+   
+    // Mount a ramfs on /
+    const int32_t root_mount_status = vfs_mount("ramfs", "/", "ramfs");
+    KERNEL_ASSERT(0 == root_mount_status);
+
+    // create device files
+    KERNEL_ASSERT(0 == vfs_mkdir("/dev", S_IFDIR));
+    KERNEL_ASSERT(0 == vfs_mknod("/dev/tty", S_IFCHR, 0u));
 
     // wait a first input
     mini_uart_kernel_puts("Satan OS is initialized.\r\n");
