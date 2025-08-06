@@ -62,17 +62,28 @@ int fclose(FILE* file)
 
 int fseek(FILE *stream, long offset, int whence)
 {
-    return -1;    
+    const int status = fflush(stream);
+    if (status < 0)
+        return status;
+    return usr_syscall_lseek(stream->fd, offset, whence);
 }
 
 long ftell(FILE *stream)
 {
-    return -1;
+    const int status = fflush(stream);
+    if (status < 0)
+        return status;
+    return usr_syscall_lseek(stream->fd, 0, SEEK_CUR);
 }
 
 void rewind(FILE *stream)
 {
-    
+    const int status = fflush(stream);
+    if (status < 0)
+        return;
+
+    const int seek_status = usr_syscall_lseek(stream->fd, 0, SEEK_SET);
+    (void)seek_status;
 }
 
 int fflush(FILE *stream)
