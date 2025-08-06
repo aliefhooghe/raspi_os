@@ -9,11 +9,9 @@ struct DIR {
     dirent last_read;
 };
 
-_Static_assert(sizeof(dirent)==32, "sizeof(dirent)");
-
 DIR *opendir(const char *name)
 {
-    int fd = usr_syscall_open(name, 0u, 0u); // todo: mode O_DIRECTORY
+    int fd = usr_syscall_open(name, O_DIRECTORY, 0u);
     if (fd < 0)
         return NULL;
 
