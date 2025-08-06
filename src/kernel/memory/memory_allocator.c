@@ -11,13 +11,24 @@
 #include "memory_allocator.h"
 #include "section_allocator.h"
 
+// --
+
+typedef struct {
+    size_t size;
+    uint8_t data[4];
+} memory_block_t;
+
 typedef struct {
     uint8_t *memory_cursor;
     uint8_t *section_end;
 } kernel_memory_allocator ;
 
-
 static kernel_memory_allocator _kernel_memory_allocator;
+
+static memory_block_t *_block_by_ptr(void *ptr)
+{
+    return (memory_block_t*)((uint8_t*)ptr - sizeof(size_t));
+}
 
 void memory_allocator_init(void)
 {
@@ -32,16 +43,39 @@ void memory_allocator_init(void)
 void *memory_alloc(size_t size)
 {
     uint8_t *new_cursor = (uint8_t*)
-        (((uint32_t)_kernel_memory_allocator.memory_cursor + size + 0x3u) & ~0x3);
+        ((
+            (uint32_t)_kernel_memory_allocator.memory_cursor +
+                sizeof(size_t) + size + 
+                0x3u
+            ) & ~0x3 // align to 4 bytes
+        );
+
     if (new_cursor > _kernel_memory_allocator.section_end)
     {
         mini_uart_kernel_log("memory_alloc: failed allocation of %u bytes", size);
         return NULL;
     }
 
-    const uint8_t *mem = _kernel_memory_allocator.memory_cursor;
+    memory_block_t *block = (memory_block_t*)_kernel_memory_allocator.memory_cursor;
+
+    block->size = size;
     _kernel_memory_allocator.memory_cursor = new_cursor;
-    return (void*)mem;
+    return block->data;
+}
+
+void *memory_realloc(void *mem, size_t size)
+{
+    const memory_block_t *old_block = _block_by_ptr(mem);
+
+    if (size < old_block->size) {
+        return (void*)old_block->data;
+    }
+
+    // initialize additional memory to zero
+    void *new_mem = memory_calloc(size);
+    _memcpy(new_mem, mem, old_block->size);
+
+    return new_mem;
 }
 
 void *memory_calloc(size_t size)

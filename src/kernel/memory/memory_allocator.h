@@ -8,6 +8,7 @@ void memory_allocator_init(void);
 // for now, alloc only zeroed memory
 // void *memory_alloc(size_t size);
 void *memory_calloc(size_t size);
+void *memory_realloc(void *mem, size_t size);
 void memory_free(void *ptr);
 
 #endif
