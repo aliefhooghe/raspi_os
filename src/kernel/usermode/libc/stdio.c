@@ -172,7 +172,6 @@ static void _fput_uint_hex(FILE *stream, uint32_t x)
         x >>= 4;
     } while (x > 0);
 
-    // mini_uart_kernel_puts(result + index);
     fwrite(result + index, 16 - index, 1, stream);
 }
 // int putchar(int c)
@@ -230,7 +229,7 @@ int vfprintf(FILE *restrict stream, const char *restrict format, va_list ap)
                         const uint32_t value = va_arg(ap, uint32_t);
                         _fput_uint_hex(stream, value);
                     }
-                //     break;
+                    break;
                 // case 'b':
                 //     {
                 //         const uint32_t value = va_arg(ap, uint32_t);
