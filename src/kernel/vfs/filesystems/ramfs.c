@@ -247,6 +247,12 @@ static inode_t *_ramfs_inode_mkdir(inode_t *dir, const char *name, mode_t mode)
         mini_uart_kernel_log("ramfs: mkdir: only directory are supported");
         return NULL;
     }
+
+    if (NULL != _ramfs_inode_lookup(dir, name)) {
+        mini_uart_kernel_log("ramfs: mkdir: name conflict %s", name);
+        return NULL;
+    }
+
     ramfs_t *ramfs = (ramfs_t*)dir->super_block->private;
     ramfs_inode_private_t *priv_dir = (ramfs_inode_private_t*)dir->private;
     inode_t *inode = dir->super_block->ops->alloc_inode(dir->super_block);
