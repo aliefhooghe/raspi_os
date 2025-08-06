@@ -132,7 +132,7 @@ void user_function(void)
         {
             fprintf(stdout, "[%u] test mkdir on /data\n", pid);
             const int status = usr_syscall_mkdir("/data", S_IFDIR);
-            fprintf(stdout, "[%u] mkdir /data => return %x\n", pid, status);
+            fprintf(stdout, "[%u] mkdir /data => return 0x%x\n", pid, status);
             ls(stdout, "/");
         }
         else

@@ -163,6 +163,52 @@ static dentry_t *_vfs_dentry_lookup(const char *path)
     return result;
 }
 
+static int _check_new_path(
+    const char *path,
+    char *basedir_path,
+    dentry_t **basedir,
+    dentry_t **child)
+{
+    char filename[DENTRY_MAX_NAME_LEN] = "";
+    
+    const int status = _basedir(path, basedir_path, filename);
+    if (status != 0)
+        return status;
+
+    // dentry lookup: does the basedire exists ? 
+    dentry_t* dir_dentry = _vfs_dentry_lookup(basedir_path);
+    if (dir_dentry == NULL || dir_dentry->inode == NULL) {
+        mini_uart_kernel_log(
+            "vfs: mknod: base directory '%s' does not exists",
+            basedir_path);
+        return -1;
+    }
+
+    // inode is not null here.
+    inode_t *dir_inode = dir_dentry->inode;
+
+    // is the inode a directory ?
+    if ((dir_inode->mode & S_IFMT) != S_IFDIR) {
+        mini_uart_kernel_log(
+            "vfs: check new path: base path '%s' is not a directory",
+            basedir_path);
+        return -1;
+    }
+
+    // check if the path already exists
+    dentry_t *existing_dentry = _vfs_dentry_child_by_name(dir_dentry, filename);
+    if (existing_dentry->inode != NULL) {
+        mini_uart_kernel_log(
+            "vfs: check new path: path '%s' already exists", path);
+        return -1;
+    }
+
+    // Ok: parent exists and is a directory and the path is unused
+    *basedir = dir_dentry;
+    *child = existing_dentry;
+    return 0;
+}
+
 //
 //  VFS: Initialization
 //
@@ -241,66 +287,33 @@ int32_t vfs_mknod(const char *path, mode_t mode, dev_t dev)
 
     // get the basedir path
     char basedir_path[256] = "";
-    char filename[MAX_DIR_NAME_LEN] = "";
+    dentry_t *basedir = NULL;
+    dentry_t *new_child = NULL;
 
-    const int status = _basedir(path, basedir_path, filename);
+    const int status = _check_new_path(path, basedir_path, &basedir, &new_child);
     if (status != 0)
         return status;
 
-    mini_uart_kernel_log(
-        "vfs: mknod: search base '%s'",
-        basedir_path);
-
-    // dentry lookup: does the basedir exists ? 
-    dentry_t* dir_dentry = _vfs_dentry_lookup(basedir_path);
-    if (dir_dentry == NULL || dir_dentry->inode == NULL) {
-        mini_uart_kernel_log(
-            "vfs: mknod: base directory '%s' does not exists",
-            basedir_path);
-        return -1;
-    }
-    mini_uart_kernel_log(
-        "vfs: mknod: found a positive dentry for path '%s'. Check type",
-        basedir_path);
-
-    // not null here.
-    inode_t *dir_inode = dir_dentry->inode;
-
-    // is the inode a directory ?
-    if ((dir_inode->mode & S_IFMT) != S_IFDIR) {
-        mini_uart_kernel_log(
-            "vfs: mknod: base path '%s' is not a directory",
-            basedir_path);
-        return -1;
-    }
-
-    mini_uart_kernel_log(
-        "vfs: mknod: '%s' checked to be a directory. Call inode backend !",
-        basedir_path);
-
-    if (dir_inode->inode_ops == NULL) {
-        mini_uart_kernel_log(
-            "vfs: mknod: inode_ops is NULL for inode at %s",
-            basedir_path);
-        return -1;
-    }
-    else if (dir_inode->inode_ops->mknod == NULL) {
-        mini_uart_kernel_log(
-            "vfs: mknod: inode_ops.mknode is NULL for inode at %s",
-            basedir_path);
-        return -1;
-    }
+    KERNEL_ASSERT(basedir != NULL && basedir->inode != NULL);
+    KERNEL_ASSERT(new_child != NULL && new_child->inode == NULL);
 
     // call fs backend.
-    inode_t *dev_noed = dir_inode->inode_ops->mknod(dir_inode, filename, mode, dev);
-    if (dev_noed == NULL) {
+    inode_t *basedir_inode = basedir->inode;
+    if (basedir_inode->inode_ops == NULL ||
+        basedir_inode->inode_ops->mknod == NULL) {
         mini_uart_kernel_log(
-            "vfs: mknod: backend failed.");
-        return -1;
+            "vfs: mknod: missing inode_ops.mknod at %s",
+            basedir_path);
     }
+    
+    inode_t *new_node = basedir_inode->inode_ops->mknod(
+        basedir_inode, new_child->name, mode, dev);
 
-    // TODO: update parent dentry
+    if (new_node == NULL)
+        return -1;
 
+    // update dentry
+    new_child->inode = new_node;
     return 0;
 }
 
@@ -312,38 +325,33 @@ int32_t vfs_mkdir(const char *path, mode_t mode)
 
     // get the basedir path: TODO: handle path terminating with '/' here
     char basedir_path[256] = "";
-    char filename[MAX_DIR_NAME_LEN] = "";
+    dentry_t *basedir = NULL;
+    dentry_t *new_child = NULL;
 
-    const int status = _basedir(path, basedir_path, filename);
+    const int status = _check_new_path(path, basedir_path, &basedir, &new_child);
     if (status != 0)
         return status;
 
-    // dentry lookup: does the basedire exists ? 
-    dentry_t* dir_dentry = _vfs_dentry_lookup(basedir_path);
-    if (dir_dentry == NULL || dir_dentry->inode == NULL) {
-        mini_uart_kernel_log(
-            "vfs: mknod: base directory '%s' does not exists",
-            basedir_path);
-        return -1;
-    }
-
-    // not null here.
-    inode_t *dir_inode = dir_dentry->inode;
-
-    // is the inode a directory ?
-    if ((dir_inode->mode & S_IFMT) != S_IFDIR) {
-        mini_uart_kernel_log(
-            "vfs: mkdir: base path '%s' is not a directory",
-            basedir_path);
-        return -1;
-    }
+    KERNEL_ASSERT(basedir != NULL && basedir->inode != NULL);
+    KERNEL_ASSERT(new_child != NULL && new_child->inode == NULL);
 
     // call fs backend.
-    inode_t *dev_noed = dir_inode->inode_ops->mkdir(dir_inode, filename, mode);
-    if (dev_noed == NULL)
+    inode_t *basedir_inode = basedir->inode;
+    if (basedir_inode->inode_ops == NULL ||
+        basedir_inode->inode_ops->mkdir == NULL) {
+        mini_uart_kernel_log(
+            "vfs: mkdir: missing inode_ops.mkdir at %s",
+            basedir_path);
+    }
+    
+    inode_t *new_node = basedir_inode->inode_ops->mkdir(
+        basedir_inode, new_child->name, mode);
+
+    if (new_node == NULL)
         return -1;
 
-    // TODO: update parent dentry
+    // update dentry
+    new_child->inode = new_node;
 
     return 0;
 }
@@ -383,37 +391,40 @@ file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
 
 int32_t vfs_file_close(file_t *file)
 {
-    if (file->inode->file_ops != NULL &&
-        file->inode->file_ops->release != NULL)
-        file->inode->file_ops->release(file->inode, file);
-    return 0;
+    if (file->inode->file_ops == NULL ||
+        file->inode->file_ops->release == NULL)
+        return -1;
+    return file->inode->file_ops->release(file->inode, file);
 }
 
 ssize_t vfs_file_read(file_t *file, void *data, size_t size)
 {
-    if (file->inode->file_ops->read == NULL)
+    if (file->inode->file_ops == NULL ||
+        file->inode->file_ops->read == NULL)
         return -1;
     return file->inode->file_ops->read(file, data, size, &file->pos);
 }
 
 ssize_t vfs_file_readdir(file_t *file, dirent *entries, size_t count)
 {
-    if (file->inode->file_ops->readdir == NULL)
+    if (file->inode->file_ops == NULL ||
+        file->inode->file_ops->readdir == NULL)
         return -1;
     return file->inode->file_ops->readdir(file, entries, count);
 }
 
 ssize_t vfs_file_write(file_t *file, const void *data, size_t size)
 {
-    if (file->inode->file_ops->write == NULL)
+    if (file->inode->file_ops == NULL ||
+        file->inode->file_ops->write == NULL)
         return -1;
     return file->inode->file_ops->write(file, data, size, &file->pos);
 }
 
 ssize_t vfs_file_lseek(file_t *file, int32_t offset, int32_t whence)
 {
-    // seek is allowed to not be implemented by the handler
-    if (file->inode->file_ops->seek == NULL)
+    if (file->inode->file_ops == NULL ||
+        file->inode->file_ops->seek == NULL)
         return -1;
     return file->inode->file_ops->seek(file, offset, whence);
 }
