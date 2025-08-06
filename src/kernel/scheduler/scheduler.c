@@ -319,7 +319,8 @@ void scheduler_start(void *init_code_entry)
     mini_uart_kernel_log("scheduler: init: setup IOs");
     file_t *tty = vfs_file_open("/dev/tty", 0u, 0u);
     if (tty == NULL)
-        kernel_fatal_error("failed to open tty device at /dev/tty");
+        kernel_fatal_error(
+            "scheduler: init: failed to open tty device at /dev/tty");
 
     // initialize standard ios
     const int32_t stdin = _proc_add_fd(init_proc, tty);
