@@ -53,6 +53,9 @@ FILE *fopen(const char *restrict path, const char *restrict mode)
 
 int fclose(FILE* file)
 {
+    const int flush_status = fflush(file);
+    if (flush_status < 0)
+        return flush_status;
     const int status = usr_syscall_close(file->fd);
     if (status != 0)
         return status;
@@ -115,6 +118,7 @@ size_t fread(void *restrict ptr, size_t size, size_t n, FILE *restrict stream)
     }
     else
     {
+        // TODO: return the number of item read
         return status;
     }
 }
