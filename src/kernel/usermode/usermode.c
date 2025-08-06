@@ -23,7 +23,7 @@ static void ls(FILE *stdout, const char *path)
     struct dirent *entity = NULL;
     while ((entity = readdir(dir))) {
         fprintf(stdout,
-            "- %s (%s)\n",
+            "%s (%s)\n",
             entity->d_name,
                 entity->d_type == DT_DIR ? "dir" :
                 entity->d_type == DT_REG ? "reg" :
@@ -85,6 +85,62 @@ static void test_fork(int32_t pid, FILE *stdout)
     fprintf(stdout, "[%u] exit fork test function\n", usr_syscall_getpid());
 }
 
+static void test_w_file(FILE *stdout)
+{
+    const int s1 = usr_syscall_mkdir("/test", S_IFDIR);
+    fprintf(stdout, "mkdir: status=%x\n", s1);
+
+    int fd = usr_syscall_open("/test/toto.txt", O_CREAT, S_IFREG);
+    if (fd < 0)
+    {
+        fprintf(stdout, "open failed.\n");
+        return;
+    }
+    
+    FILE *test = fdopen(fd, "w");
+    if (test == NULL)
+    {
+        fprintf(stdout, "fdopen failed.\n");
+        return;
+    }
+    
+    fprintf(test, "hello THE world\n");
+
+    const int s2 = fclose(test);
+    fprintf(stdout, "fclose: status=%x\n", s2);
+}
+
+static void test_r_file(FILE *stdout)
+{
+    int fd = usr_syscall_open("/test/toto.txt", 0u, S_IFREG);
+    if (fd < 0)
+    {
+        fprintf(stdout, "open failed.\n");
+        return;
+    }
+    
+    FILE *test = fdopen(fd, "r");
+    if (test == NULL)
+    {
+        fprintf(stdout, "fdopen failed.\n");
+        return;
+    }
+
+    char buffer[128];
+    const ssize_t sz = fread(buffer, 1, 127, test);
+    if (sz < 0)
+    {
+        fprintf(stdout, "fread failed\n");
+        return; 
+    }
+    buffer[sz] = '\0';
+    
+    fprintf(stdout, "file content is:\n%s\n----\n");
+
+    const int s2 = fclose(test);
+    fprintf(stdout, "fclose: status=%x\n", s2);
+}
+
 void user_function(void)
 {
     FILE *stdout = fdopen(1, "w");
@@ -121,6 +177,16 @@ void user_function(void)
         {
             fprintf(stdout, "[%u] call fork test procedure:\n", pid);
             test_fork(pid, stdout);
+        }
+        else if (strcmp(line, "write") == 0)
+        {
+            fprintf(stdout, "[%u] call write test proc:\n", pid);
+            test_w_file(stdout);
+        }
+        else if (strcmp(line, "read") == 0)
+        {
+            fprintf(stdout, "[%u] call read test proc:\n", pid);
+            test_r_file(stdout);
         }
         else if (strcmp(line, "ls") == 0)
         {
