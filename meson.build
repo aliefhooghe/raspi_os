@@ -38,6 +38,7 @@ custom_target(
 # Kernel
 kernel_sources = files(
   'src/kernel/banner.c',
+  'src/kernel/elf_loader/elf_format.h',
   'src/kernel/hardware/boot.S',
   'src/kernel/hardware/cpu.h',
   'src/kernel/hardware/cpu.S',
