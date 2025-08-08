@@ -37,11 +37,13 @@ custom_target(
 
 # Kernel
 kernel_sources = files(
-  'src/kernel/banner.c',
+  # MUST BE THE FIRST: TODO edit the linker script to ensure this is the start
+  'src/kernel/hardware/boot.S',
+  
   'src/kernel/utils.h',
   'src/kernel/utils.c',
+  'src/kernel/banner.c',
   'src/kernel/elf_loader/elf_format.h',
-  'src/kernel/hardware/boot.S',
   'src/kernel/hardware/cpu.h',
   'src/kernel/hardware/cpu.S',
   'src/kernel/hardware/gpio.h',
