@@ -2,8 +2,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "elf_loader/elf_loader.h"
 #include "hardware/mini_uart.h"
 #include "hardware/watchdog.h"
+#include "kernel.h"
 #include "kernel_types.h"
 #include "scheduler/scheduler.h"
 #include "syscalls.h"
@@ -131,11 +133,16 @@ static int32_t _syscall__MOUNT(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     const char *dev = (const char*)arg0;
     const char *target = (const char*)arg1;
     const char *fstype = (const char*)arg2;
-
+    (void)dev;
+    (void)target;
+    (void)fstype;
+    kernel_fatal_error("mount syscall is not implemented");
+    return -1;
 }
 
 static int32_t _syscall__MKDIR(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
+    (void)arg2;
     const char *path = (const char*)arg0;
     const mode_t mode = arg1;
     return vfs_mkdir(path, mode);
@@ -178,6 +185,15 @@ static int32_t _syscall__WAITPID(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     const int32_t pid = arg0;
     uint32_t *const wstatus = (uint32_t*)scheduler_cur_proc_get_kernel_address(arg1);
     return scheduler_cur_proc_wait_id(pid, wstatus);
+}
+
+static int32_t _syscall__EXEC(uint32_t arg0, uint32_t arg1, uint32_t arg2)
+{
+    (void)arg1;
+    (void)arg2;
+    const char *path = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
+    elf_test(path);
+    return 0;
 }
 
 static int32_t _syscall__GETPPID(uint32_t arg0, uint32_t arg1, uint32_t arg2)

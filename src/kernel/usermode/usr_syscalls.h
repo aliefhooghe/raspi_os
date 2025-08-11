@@ -22,6 +22,7 @@ int32_t usr_syscall_fork(void);
 int32_t usr_syscall_getpid(void);
 int32_t usr_syscall_getppid(void);
 int32_t usr_syscall_waitpid(int32_t pid, int32_t *wstatus);
+int32_t usr_syscall_exec(const char *bin);
 
 //
 //  Filesystem

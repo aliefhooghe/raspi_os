@@ -3,12 +3,49 @@
 
 #include <stdint.h>
 
+//
+// sources:
+// https://www.man7.org/linux/man-pages/man5/elf.5.html
+// https://docs.oracle.com/cd/E19957-01/806-0641/chapter6-35342/index.html
+
+
+// id_magic
+#define ELF_MAGIC 0x464c457fu
+
+// id_class
+typedef enum {
+    ELFCLASSNONE = 0,         // invalid
+    ELFCLASS32 = 1,           // 32 bit object
+    ELFCLASS64 = 2            // 64 bit object
+} elf_class_t;
+
+// data encoding
+typedef enum {
+   ELFDATANONE = 0,           // invalid
+   ELFDATA2LSB = 1,           // litle endian
+   ELFDATA2MSB = 2            // big endian
+} elf_data_encoding_t;
+
+// type
+typedef enum {
+    ET_NONE = 0,              // no file type
+    ET_REL = 1,               // relocatable file
+    ET_EXEC = 2,              // executable file
+    ET_DYN = 3,               // shared object file
+    ET_CORE = 4               // core file
+} elf_type_t;
+
+// machine
+typedef enum {
+    EM_NONE = 0,              // no machine
+    EM_ARM = 40               // Advanced Risc Machine
+} elf_machine_t;
+
 typedef struct __attribute__((packed)) {
     // uint8_t	 ident[16];
     //
     //
     //
-
 
     // ident architecture independant
     uint32_t id_magic;         // 0x7f, e, l, f

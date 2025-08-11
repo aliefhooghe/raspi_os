@@ -35,15 +35,32 @@ custom_target(
   build_by_default: true
 )
 
+
 # Kernel
+
+
+# kernel_resources
+
+xxd = find_program('xxd')
+
+loader_payload_c = custom_target(
+  'payload_c',
+  input: 'src/kernel/loader.elf',
+  output: 'loader_payload.c',
+  command: [xxd, '-i', '@INPUT@', '@OUTPUT@'], 
+  build_by_default: true
+)
+
 kernel_sources = files(
   # MUST BE THE FIRST: TODO edit the linker script to ensure this is the start
   'src/kernel/hardware/boot.S',
-  
+
+  'src/kernel/banner.c',
   'src/kernel/utils.h',
   'src/kernel/utils.c',
-  'src/kernel/banner.c',
   'src/kernel/elf_loader/elf_format.h',
+  'src/kernel/elf_loader/elf_loader.h',
+  'src/kernel/elf_loader/elf_loader.c',
   'src/kernel/hardware/cpu.h',
   'src/kernel/hardware/cpu.S',
   'src/kernel/hardware/gpio.h',
@@ -114,7 +131,7 @@ kernel_linker_script = files(
 
 kernel_elf = executable(
   'kernel.elf',
-  sources: kernel_sources,
+  sources: kernel_sources + loader_payload_c,
   link_args: ['-T', kernel_linker_script[0].full_path()],
   install: false,
   include_directories: include_directories('src/kernel')

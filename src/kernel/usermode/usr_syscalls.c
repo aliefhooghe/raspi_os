@@ -51,6 +51,11 @@ int32_t usr_syscall_waitpid(int32_t pid, int32_t *wstatus)
     return syscall(SYSCALL__WAITPID, pid, (uint32_t)wstatus, 0u);
 }
 
+int32_t usr_syscall_exec(const char *bin)
+{
+    return syscall(SYSCALL__EXEC, (uint32_t)bin, 0u, 0u);
+}
+
 // --  Filesystem
 
 int32_t usr_syscall_open(const char *path, int32_t flags, int32_t mode)

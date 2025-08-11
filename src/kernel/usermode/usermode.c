@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "usermode/usermode.h"
+#include "elf_loader/elf_loader.h"
 #include "kernel_types.h"
 #include "usermode/usr_syscalls.h"
 #include "usermode/libc/stdio.h"
@@ -110,9 +111,9 @@ static void test_w_file(FILE *stdout)
     fprintf(stdout, "fclose: status=%x\n", s2);
 }
 
-static void test_r_file(FILE *stdout)
+static void test_r_file(FILE *stdout, const char *path)
 {
-    int fd = usr_syscall_open("/test/toto.txt", 0u, S_IFREG);
+    int fd = usr_syscall_open(path, 0u, S_IFREG);
     if (fd < 0)
     {
         fprintf(stdout, "open failed.\n");
@@ -186,12 +187,18 @@ void user_function(void)
         else if (strcmp(line, "read") == 0)
         {
             fprintf(stdout, "[%u] call read test proc:\n", pid);
-            test_r_file(stdout);
+            test_r_file(stdout, "/test/toto.txt");
+        }
+        else if (strcmp(line, "elf") == 0)
+        {
+            fprintf(stdout, "[%u] test elf loader:\n", pid);
+            usr_syscall_exec("/bin/loader.elf");
         }
         else if (strcmp(line, "ls") == 0)
         {
             fprintf(stdout, "[%u] call ls test procedure:\n", pid);
             ls(stdout, "/");
+            ls(stdout, "/bin");
             ls(stdout, "/dev");
         }
         else if (strcmp(line, "mkdir") == 0)

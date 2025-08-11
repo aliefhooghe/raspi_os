@@ -19,6 +19,7 @@
 
 #include "usermode/usermode.h"
 
+#include "utils.h"
 #include "vfs/vfs.h"
 
 //
@@ -26,6 +27,12 @@
 // 
 extern const char *__satan_welcome_banner;
 extern const char *__satan_fatal_error_banner;
+
+//
+// Kernel resources
+//
+extern unsigned int ___src_kernel_loader_elf_len;
+extern unsigned char ___src_kernel_loader_elf[];
 
 //
 // # Kernel Memory Layout:
@@ -124,14 +131,23 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     // initialize the kernel
     kernel_init();
+
+    // Prepare filesystem 
    
-    // Mount a ramfs on /
+    //// Mount a ramfs on /
     const int32_t root_mount_status = vfs_mount("ramfs", "/", "ramfs");
     KERNEL_ASSERT(0 == root_mount_status);
 
-    // create device files
+    //// create device files
     KERNEL_ASSERT(0 == vfs_mkdir("/dev", S_IFDIR));
     KERNEL_ASSERT(0 == vfs_mknod("/dev/tty", S_IFCHR, 0u));
+
+    //// init files from resources
+    KERNEL_ASSERT(0 == vfs_mkdir("/bin", S_IFDIR));
+    load_resource_as_file(
+        "/bin/loader.elf",
+        ___src_kernel_loader_elf,
+        ___src_kernel_loader_elf_len);
 
     // wait a first input
     mini_uart_kernel_puts("Satan OS is initialized.\r\n");

@@ -21,6 +21,7 @@
   SYSCALL(LSEEK)                 \
   SYSCALL(FORK)                  \
   SYSCALL(WAITPID)               \
+  SYSCALL(EXEC)                  \
   SYSCALL(GETPPID)               \
   SYSCALL(GETPID)
 
