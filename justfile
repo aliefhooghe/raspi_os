@@ -17,7 +17,7 @@ clean:
     rm -rf {{build_dir}}
 
 kernel_size: build
-    @echo "kernel size: $((0x$(arm-none-eabi-objdump -t build/kernel.elf | grep '_end' | sort  | cut -f1 -d' ' | sed 's/^0*//') - 0x8000))"
+    @echo "kernel size: $(echo $((0x$(arm-none-eabi-objdump -t build/kernel.elf | grep '_end' | sort  | cut -f1 -d' ' | sed 's/^0*//') - 0x8000)) | numfmt --to=iec --suffix=B)"
 
 # emulation
 run_kernel: build kernel_size
