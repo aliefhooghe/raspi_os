@@ -151,10 +151,25 @@ static ssize_t _ramfs_reg_file_write(
 static ssize_t _ramfs_reg_file_seek(
     file_t *file, int32_t offset, int32_t whence)
 {
-    (void)file;
-    (void)offset;
-    (void)whence;
-    return -1;
+    // compute reference
+    off_t reference;
+    switch (whence) {
+        case SEEK_SET: reference = 0u; break;
+        case SEEK_END: reference = file->inode->size; break;
+        case SEEK_CUR: reference = file->pos; break;
+        default:
+            mini_uart_kernel_log(
+                "ramfs: reg_file_seek: invalid whence: %u",
+                whence);
+            return -1;
+    }
+
+    const off_t new_pos = reference + offset;
+    if (new_pos < 0)
+        return -1;
+
+    file->pos = new_pos;
+    return file->pos;
 }
 
 static file_t *_ramfs_reg_file_open(inode_t *inode)
@@ -241,8 +256,11 @@ static ssize_t _ramfs_dir_file_seek(
     // compute new offset
     const off_t new_pos = reference + offset;
 
-    // clamp negative values
-    file->pos = new_pos >= 0 ? new_pos : 0u;
+    // negative values is an error
+    if (new_pos < 0)
+        return -1;
+    
+    file->pos = new_pos;
     return file->pos;
 }
 
