@@ -2,7 +2,6 @@
 #include <stdint.h>
 
 #include "usermode/usermode.h"
-#include "elf_loader/elf_loader.h"
 #include "kernel_types.h"
 #include "usermode/usr_syscalls.h"
 #include "usermode/libc/stdio.h"

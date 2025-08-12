@@ -192,7 +192,7 @@ static int32_t _syscall__EXEC(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg1;
     (void)arg2;
     const char *path = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
-    elf_test(path);
+    (void)path;
     return 0;
 }
 

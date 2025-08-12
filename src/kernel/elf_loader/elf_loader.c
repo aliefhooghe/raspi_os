@@ -1,89 +1,100 @@
 
 #include "hardware/mini_uart.h"
-#include "kernel.h"
+#include "kernel_types.h"
 #include "lib/str.h"
 #include "vfs/vfs.h"
-#include "elf_format.h"
 
-static ssize_t _elf32_read_program_header(
-    file_t *file,
+#include "elf_format.h"
+#include "elf_loader.h"
+
+
+int32_t _elf32_check_compat(const elf32_header_t *header)
+{
+    return (
+        header->id_magic == ELF_MAGIC &&   // this is an elf file
+        header->id_class == ELFCLASS32 &&  // 32bit addresses
+        header->id_data_encoding == ELFDATA2LSB && // little endian
+        header->machine == EM_ARM && // arm cpu architecture
+
+        // future elf could allocate larger size
+        header->phentsize >= sizeof(elf32_program_header_t) &&
+        header->shentsize >= sizeof(elf32_section_header_t)
+    );
+}
+
+int32_t elf32_open(const char *path, elf32_file_t *file)
+{
+    // open elf file
+    file->file = vfs_file_open(path, 0u, 0u);
+    if (file->file == NULL) {
+        mini_uart_kernel_log(
+            "elf32_open: failed to open path %s", path);
+        return -1;
+    }
+
+    // read elf header
+    _memset(&file->header, 0u, sizeof(elf32_header_t));
+    const ssize_t status = vfs_file_read(
+        file->file, &file->header, sizeof(elf32_header_t));
+
+    // validate compatibility
+    if (status != sizeof(elf32_header_t) ||
+        !_elf32_check_compat(&file->header))
+    {
+        mini_uart_kernel_log(
+            "elf32_open: invalid elf file at %s",
+            path);
+        elf32_close(file);
+        return -1;
+    }
+
+    return 0;
+}
+
+int32_t elf32_close(elf32_file_t *file)
+{
+    const int32_t status = vfs_file_close(file->file);
+    if (status < 0)
+        return status;
+    file->file = NULL;
+    return 0;
+}
+
+elf32_program_header_iterator_t elf32_init_program_header_iterator(
+    elf32_file_t* file)
+{
+    const elf32_program_header_iterator_t it = {
+        .elf = file,
+        .current_section = 0u
+    };
+    return it;
+}
+
+ssize_t elf32_program_header_iterator_read_next(
+    elf32_program_header_iterator_t *iterator,
     elf32_program_header_t *header)
 {
-    const ssize_t status = vfs_file_read(file, header, sizeof(elf32_program_header_t));
+    if (iterator->current_section >= iterator->elf->header.phnum)
+        return 0;
+
+    // seek to the program header offset
+    const off_t offset =
+        iterator->elf->header.phoff +
+        iterator->current_section * iterator->elf->header.phentsize;
+    const off_t actual_offset =
+        vfs_file_lseek(iterator->elf->file, offset, SEEK_SET);
+    if (actual_offset != offset)
+        return -1;
+
+    // read program header
+    const ssize_t status =
+        vfs_file_read(iterator->elf->file,
+                      header,
+                      sizeof(elf32_program_header_t));
     if (status < 0)
         return status;
     else if (status != sizeof(elf32_program_header_t))
         return -1;
     else
         return 1;
-}
-
-void elf_test(const char *path)
-{
-    mini_uart_kernel_log("elf test: read file %s", path);
-    file_t *file = vfs_file_open(path, 0u, 0u);
-    if (file == NULL)
-        kernel_fatal_error("could not open elf file");
-
-    mini_uart_kernel_log("elf test: read header");
-    elf32_header_t header;
-    _memset(&header, 0u, sizeof(header));
-
-    const ssize_t status = vfs_file_read(file, &header, sizeof(elf32_header_t));
-    if (status != sizeof(elf32_header_t))
-        kernel_fatal_error("could not read elf file header");
-
-    // Check if this is an elf file
-    mini_uart_kernel_log("elf test: check magic: 0x%x", header.id_magic);
-    if (header.id_magic != ELF_MAGIC)
-        kernel_fatal_error("bad elf header magic value");
-
-    // Check if elf class is 32 bit
-    mini_uart_kernel_log("elf test: check class: 0x%x", header.id_class);
-    if (header.id_class != ELFCLASS32)
-        kernel_fatal_error("bad elf class");
-    
-    // Check if data encoding is little endian
-    mini_uart_kernel_log("elf test: check encoding: 0x%x", header.id_data_encoding);
-    if (header.id_data_encoding != ELFDATA2LSB)
-        kernel_fatal_error("bad data encoding");
-
-    // Check machine
-    mini_uart_kernel_log("elf test: check machine: 0x%x", header.machine);
-    if (header.machine!= EM_ARM)
-        kernel_fatal_error("bad machine");
-
-    // Print some information
-    mini_uart_kernel_log("elf test: elf type: 0x%x", header.type);
-    mini_uart_kernel_log("elf test:    entry: 0x%x", header.entry);
-
-    // allows to ignore phentsize, shentsize
-    KERNEL_ASSERT(header.phentsize == sizeof(elf32_program_header_t));
-    KERNEL_ASSERT(header.shentsize == sizeof(elf32_section_header_t));
-
-    mini_uart_kernel_log(
-        "elf: %u program headers of size %u (sizeof(phdr_t) = %u)",
-        header.phnum, header.phentsize, sizeof(elf32_program_header_t));
-    mini_uart_kernel_log(
-        "elf: %u section headers of size %u (sizeof(shdr_t) = %u)",
-        header.shnum, header.shentsize, sizeof(elf32_section_header_t));
-
-
-    const ssize_t phoff = vfs_file_lseek(file, header.phoff, SEEK_SET);
-    KERNEL_ASSERT(phoff == (ssize_t)header.phoff);
-
-    for (size_t pidx = 0u; pidx < header.phnum; pidx++) {
-        elf32_program_header_t phdr;
-        const ssize_t nread = _elf32_read_program_header(file, &phdr);
-        KERNEL_ASSERT(nread == 1);
-
-        mini_uart_kernel_log("elf: read program header %u:", pidx);
-        mini_uart_kernel_log("elf: type : 0x%x", phdr.type);
-        mini_uart_kernel_log("elf: vaddr: 0x%x", phdr.vaddress);
-        mini_uart_kernel_log("elf: flags: 0x%x", phdr.flags);
-        mini_uart_kernel_log("elf: ------ ");
-    }
-    
-    mini_uart_kernel_log("elf test: Done.");
-    vfs_file_close(file);
 }
