@@ -27,16 +27,32 @@
 
 // content:
 
-=  Parties manquantes
-- Ecriture du secteur d'ammorcage
+=  Notes sur la rédaction.
+
+== Objectifs
+Il s'agit pour le moment de prises de notes sur l'ensemble des informations necessaires à l'écriture de ce kernel. Aucune prétention.
+
+== Plan
+Plusieurs axes:
+- Le harware: ARM et la raspbery
+- L'architecture de l'OS
+- lien avec le minitel ?
+
+== Parties manquantes 
 - Décider si le document doit être écris en anglais
 - Documentation sur les périphériques avec les infos avérées
 
 Il faudra déguager les section suivantes:
 - architecture du kernel
+- principes théoriques ?
 - étude du harware armV6, périphériques
 
+
 = System boot
+
+// TODO: explain the pi boot procedure, the initial memory layout
+// explain the serial loader tool
+
 
 = Context switching
 
@@ -79,49 +95,6 @@ Le registre `CPSR` est sauvegardé dans le registre `SPSR` lors des changements 
   ),
   caption: [CPU Modes]
 )
-
-
-= Context switching
-
-#figure(
-  table(
-    columns: (auto, auto, 1fr),
-    inset: 10pt,
-    align: (center, center, left),
-    table.header([*Offset*], [*Name*], [*Description*]),
-    [31],   [N], [],
-    [30],   [Z], [],
-    [29],   [C], [],
-    [28],   [V], [],
-    [27:8], [_unused_], [],
-    [7],    [I], [Disables IRQ interrupts when it is set],
-    [6],    [F], [Disables FIQ interrupts when it is set],
-    [5],    [T], [Thumb mode],
-    [4:0],  [M], [cpu mode (see bellow)],
-  ),
-  caption: [CPSR – Current Program Status Register]
-)
-
-#figure(
-  table(
-    columns: (auto, auto, auto, auto, auto),
-    inset: 10pt,
-    align: (left, center, left),
-    table.header([*Mode*], [*Encoding*], [*Function*], [*SecurityState*], [*PrivilegeLevel*]),
-      [user],        [0x10], [Unprivileged mode in which most applications run],                          [Both],            [PL0],
-      [fiq],         [0x11], [Entered on an FIQ interrupt exception],                                     [Both],            [PL1],
-      [irq],         [0x12], [Entered on an IRQ interrupt exception],                                     [Both],            [PL1],
-      [svc],         [0x13], [Entered on reset or when a Supervisor Call instruction (SVC) is executed],  [Both],            [PL1],
-      [monitor],     [0x16], [Implemented with Security Extensions.],                                     [Secure only],     [PL1],
-      [abort],       [0x17], [Entered on a memory access exception],                                      [Both],            [PL1],
-      [hyp],         [0x1a], [Implemented with Virtualization Extensions.],                               [Non-secure],      [PL2],
-      [undef],       [0x1b], [Entered when an undefined instruction executed],                            [Both],            [PL1],
-      [system],      [0x1f], [Privileged mode, sharing the register view with User mode],                 [Both],            [PL1],
-  ),
-  caption: [CPU Modes]
-)
-
-Le registre `CPSR` est sauvegardé dans le registre `SPSR` lors des changements de contexte.
 
 = Process
 
@@ -408,3 +381,59 @@ Par défaut :
   ),
   caption: [System Control Register (SCTLR)]
 )
+
+
+= Chargement de fichiers ELF
+An ELF (Executable Link Format) file is constitued of the following parts.
+
+== ELF Header
+Serve as an entry point at the begining of the file. There are differences bettween 32 and 64 bits architectures: We will be talking about the 32 bit architecture variant.
+
+#figure(
+  table(
+    columns: (auto, auto, 1fr),
+    inset: 10pt,
+    align: (center, center, left),
+    table.header([*Name*], [*Size*], [*Description*]),
+    [IDENT],    [16], [file identitification],
+    [type],     [2],  [elf file type (exec/dyn/core)],
+    [machine],  [2],  [processor architecture],
+    [version],  [4],  [elf format version],
+    [entry],    [4],  [if any: entrypoint virtual address],
+    [phoff],    [4],  [program header table file offset if any],
+    [shoff],    [4],  [section header table file offset if any],
+    [flags],    [4],  [proc flags: _unused_],
+    [ehsize],   [2],  [elf header size],
+
+// TODO: continue to explain the elf header format
+  )
+)
+
+== Program Headers
+Each program header describe a memory section to be loaded in memory.
+
+// #figure(
+//   table(
+//     columns: (auto, auto, 1fr),
+//     inset: 10pt,
+//     align: (center, center, left),
+//     table.header([*Name*], [*Size*], [*Description*]),
+//     [IDENT],    [16], [file identitification],
+//     [type],     [2],  [elf file type (exec/dyn/core)],
+//     [machine],  [2],  [processor architecture],
+//     [version],  [4],  [elf format version],
+//     [entry],    [4],  [if any: entrypoint virtual address],
+//     [phoff],    [4],  [program header table file offset if any],
+//     [shoff],    [4],  [section header table file offset if any],
+//     [flags],    [4],  [proc flags: _unused_],
+//     [ehsize],   [2],  [elf header size],
+
+// // TODO: continue to explain the elf header format
+//   )
+// )
+
+== Sections
+These are of interest more for linker or debugger than for elf loaders.
+
+== Loading procedure
+
