@@ -9,7 +9,7 @@ static ssize_t _elf32_read_program_header(
     file_t *file,
     elf32_program_header_t *header)
 {
-    const ssize_t status = vfs_file_read(file, &header, sizeof(elf32_program_header_t));
+    const ssize_t status = vfs_file_read(file, header, sizeof(elf32_program_header_t));
     if (status < 0)
         return status;
     else if (status != sizeof(elf32_program_header_t))

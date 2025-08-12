@@ -44,8 +44,6 @@ typedef enum {
 typedef struct __attribute__((packed)) {
     // uint8_t	 ident[16];
     //
-    //
-    //
 
     // ident architecture independant
     uint32_t id_magic;         // 0x7f, e, l, f
