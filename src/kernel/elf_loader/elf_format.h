@@ -56,31 +56,49 @@ typedef struct __attribute__((packed)) {
     uint8_t id_abi_version;    // abi version
     uint8_t __pad[7];          // padded with zero
  
-    // 32 bit specific
+    //
+    // 32 bit specific after this point
     uint16_t type;         // exec/dyn lib
     uint16_t machine;      // proc architecture
     uint32_t version;      // file version (current or None)
-    uint32_t entry;        // entry point virtual address (or zero if none) 
+    uint32_t entry;        // entry point virtual address (or zero if none)
+    
     uint32_t phoff;        // program header table file offset if any
     uint32_t shoff;        // section header table file offset if any
     uint32_t flags;        // proc files. unused
     uint16_t ehsize;       // elf header size
-    uint16_t phentsize;    // program header table entry size
+    uint16_t phentsize;    // program header table entry size   // should be at least sizeof(program header)
     uint16_t phnum;        // program header table entry count
-    uint16_t shentsize;    // section header table entry size
+    uint16_t shentsize;    // section header table entry size   // should be at least sizeof(section header)
     uint16_t shnum;        // section header table entry count
     uint16_t shstrndx;     // TODO: re read documentation :)
 } elf32_header_t;
 
+typedef enum {
+    PT_NULL = 0,           // unused entry
+    PT_LOAD = 1,           // segment to be loaded in memory
+    PT_DYNAMIC = 2,        // dynamic table for shared libs
+    PT_INTERP = 3,         // dyn interpr path (e.g. lib/ld-linux.so.2 in linux)
+    PT_NOTE = 4,           // used in core dump. TODO: more infos
+    PT_PHDR = 5            // program headers table
+} elf32_program_type_t;
+
+typedef enum {
+    PF_X = 1,
+    PF_W = 2,
+    PF_R = 4
+} elf32_program_mem_flag_t;
+
 typedef struct __attribute__((packed)) {
-    uint32_t type;
-    uint32_t offset;
-    uint32_t vaddress;
-    uint32_t paddress;
-    uint32_t file_size;
-    uint32_t mem_size;
-    uint32_t flags;
-    uint32_t align;
+    uint32_t type;         // segment type: elf32_program_type_t
+    uint32_t offset;       // file offset
+    uint32_t vaddress;     // virtual address
+    uint32_t paddress;     // physical address. Use case is baremetal. 0 / ignored in userland
+    uint32_t file_size;    // number of bytes to be read from this file
+    uint32_t mem_size;     // segment size in memory. When file_size < mem_size: pad with zero
+    uint32_t flags;        // memory permission for segment: elf32_program_mem_flag_t
+    uint32_t align;        // if 1 alignment is free. Should be coherent with offset and vaddress
+                           // note: alignment allows to memory map file into memory
 } elf32_program_header_t;
 
 typedef struct __attribute__((packed)) {

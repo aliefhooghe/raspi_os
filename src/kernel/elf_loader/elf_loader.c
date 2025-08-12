@@ -5,6 +5,18 @@
 #include "vfs/vfs.h"
 #include "elf_format.h"
 
+static ssize_t _elf32_read_program_header(
+    file_t *file,
+    elf32_program_header_t *header)
+{
+    const ssize_t status = vfs_file_read(file, &header, sizeof(elf32_program_header_t));
+    if (status < 0)
+        return status;
+    else if (status != sizeof(elf32_program_header_t))
+        return -1;
+    else
+        return 1;
+}
 
 void elf_test(const char *path)
 {
@@ -41,10 +53,37 @@ void elf_test(const char *path)
     if (header.machine!= EM_ARM)
         kernel_fatal_error("bad machine");
 
-    // 
+    // Print some information
     mini_uart_kernel_log("elf test: elf type: 0x%x", header.type);
+    mini_uart_kernel_log("elf test:    entry: 0x%x", header.entry);
+
+    // allows to ignore phentsize, shentsize
+    KERNEL_ASSERT(header.phentsize == sizeof(elf32_program_header_t));
+    KERNEL_ASSERT(header.shentsize == sizeof(elf32_section_header_t));
+
+    mini_uart_kernel_log(
+        "elf: %u program headers of size %u (sizeof(phdr_t) = %u)",
+        header.phnum, header.phentsize, sizeof(elf32_program_header_t));
+    mini_uart_kernel_log(
+        "elf: %u section headers of size %u (sizeof(shdr_t) = %u)",
+        header.shnum, header.shentsize, sizeof(elf32_section_header_t));
+
+
+    const ssize_t phoff = vfs_file_lseek(file, header.phoff, SEEK_SET);
+    KERNEL_ASSERT(phoff == (ssize_t)header.phoff);
+
+    for (size_t pidx = 0u; pidx < header.phnum; pidx++) {
+        elf32_program_header_t phdr;
+        const ssize_t nread = _elf32_read_program_header(file, &phdr);
+        KERNEL_ASSERT(nread == 1);
+
+        mini_uart_kernel_log("elf: read program header %u:", pidx);
+        mini_uart_kernel_log("elf: type : 0x%x", phdr.type);
+        mini_uart_kernel_log("elf: vaddr: 0x%x", phdr.vaddress);
+        mini_uart_kernel_log("elf: flags: 0x%x", phdr.flags);
+        mini_uart_kernel_log("elf: ------ ");
+    }
     
     mini_uart_kernel_log("elf test: Done.");
     vfs_file_close(file);
 }
-
