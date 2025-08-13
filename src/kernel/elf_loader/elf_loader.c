@@ -78,9 +78,10 @@ ssize_t elf32_program_header_iterator_read_next(
         return 0;
 
     // seek to the program header offset
+    const size_t current_section = iterator->current_section++;
     const off_t offset =
         iterator->elf->header.phoff +
-        iterator->current_section * iterator->elf->header.phentsize;
+        current_section * iterator->elf->header.phentsize;
     const off_t actual_offset =
         vfs_file_lseek(iterator->elf->file, offset, SEEK_SET);
     if (actual_offset != offset)
