@@ -289,14 +289,23 @@ file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
         if ((flags & O_CREAT) &&
             !(flags & O_DIRECTORY)) // can't create a directory with open
         { 
+            // TODO: inode ops may be null
             // EXCL does not mater here.
+            mini_uart_kernel_log("vfs: call inode.create");
+
+            if (parent->inode_ops == NULL ||
+                parent->inode_ops->create == NULL)
+                return NULL; // missing create operation
+
             inode_t *new_inode = parent->inode_ops->create(
                 parent, dentry->name, mode);
+
             if (new_inode == NULL)
                 return NULL; // creation failed
-
             // update dentry
             dentry->inode = new_inode;
+
+            // then: open as an existing file
         }
         else
         {
