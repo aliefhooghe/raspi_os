@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdnoreturn.h>
 
 #include "kernel_types.h"
 
@@ -13,7 +14,6 @@
 // 
 int32_t usr_syscall_yield(void);
 int32_t usr_syscall_reboot(void);
-int32_t usr_syscall_exit(int32_t status);
 
 //
 //  Processes
@@ -23,6 +23,7 @@ int32_t usr_syscall_getpid(void);
 int32_t usr_syscall_getppid(void);
 int32_t usr_syscall_waitpid(int32_t pid, int32_t *wstatus);
 int32_t usr_syscall_exec(const char *bin);
+int32_t usr_syscall_exit(int32_t status);
 
 //
 //  Filesystem

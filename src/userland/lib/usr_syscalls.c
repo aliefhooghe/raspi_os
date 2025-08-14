@@ -26,10 +26,11 @@ int32_t usr_syscall_reboot(void)
     return syscall(SYSCALL__REBOOT, 0u, 0u, 0u);
 }
 
-noreturn int32_t usr_syscall_exit(int32_t status)
+int32_t usr_syscall_exit(int32_t status)
 {
     syscall(SYSCALL__EXIT, status, 0u, 0u);
-    for(;;);
+    // for(;;);
+    return 0;
 }
 
 // --  PROCESSES
