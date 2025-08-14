@@ -31,8 +31,8 @@ extern const char *__satan_fatal_error_banner;
 //
 // Kernel resources
 //
-extern unsigned int ___src_kernel_loader_elf_len;
-extern unsigned char ___src_kernel_loader_elf[];
+extern unsigned int hello_elf_len;
+extern unsigned char hello_elf[];
 
 //
 // # Kernel Memory Layout:
@@ -145,9 +145,9 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     //// init files from resources
     KERNEL_ASSERT(0 == vfs_mkdir("/bin", S_IFDIR));
     load_resource_as_file(
-        "/bin/loader.elf",
-        ___src_kernel_loader_elf,
-        ___src_kernel_loader_elf_len);
+        "/bin/hello",
+        hello_elf,
+        hello_elf_len);
 
     // wait a first input
     mini_uart_kernel_puts("Satan OS is initialized.\r\n");

@@ -6,6 +6,9 @@ project(
 )
 
 
+xxd = find_program('xxd')
+
+
 # Serial Loader
 
 serial_loader_sources = files(
@@ -35,22 +38,43 @@ custom_target(
   build_by_default: true
 )
 
+# Userland
+userland_lib_sources = files(
+  'src/userland/bin/_start.c',
+  'src/userland/lib/stdio.c',
+  'src/userland/lib/stdlib.c',
+  'src/userland/lib/string.c',
+  'src/userland/lib/usr_syscalls.c',
+  'src/userland/lib/usr_syscalls.S'
+)
+
+userland_include_directories = include_directories(
+  'src/userland/include'
+)
+
+userland_program_link_script = files(
+  'src/userland/bin/linker.ld'
+)
+
+hello_elf = executable(
+  'hello.elf',
+  sources: files('src/userland/bin/hello.c') + userland_lib_sources,
+  link_args: ['-T', userland_program_link_script[0].full_path()],
+  install: false,
+  include_directories: userland_include_directories
+)
 
 # Kernel
 
-
-# kernel_resources
-
-xxd = find_program('xxd')
-
-loader_payload_c = custom_target(
-  'payload_c',
-  input: 'src/kernel/loader.elf',
-  output: 'loader_payload.c',
-  command: [xxd, '-i', '@INPUT@', '@OUTPUT@'], 
-  build_by_default: true
+# resources
+hello_payload_c = custom_target(
+  'hello_payload_c',
+  input: hello_elf,
+  output: 'hello_elf_payload.c',
+  command: [xxd, '-i', '@INPUT@', '@OUTPUT@'] 
 )
 
+# sources
 kernel_sources = files(
   # MUST BE THE FIRST: TODO edit the linker script to ensure this is the start
   'src/kernel/hardware/boot.S',
@@ -131,7 +155,7 @@ kernel_linker_script = files(
 
 kernel_elf = executable(
   'kernel.elf',
-  sources: kernel_sources + loader_payload_c,
+  sources: kernel_sources + hello_payload_c,
   link_args: ['-T', kernel_linker_script[0].full_path()],
   install: false,
   include_directories: include_directories('src/kernel')
