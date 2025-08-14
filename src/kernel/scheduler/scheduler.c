@@ -478,12 +478,18 @@ int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
         return -1;
 
     if (child_proc->schedule_state.status == PROC_EXITED) {
+        mini_uart_kernel_log(
+            "scheduler: waiting %u: child is already exited",
+            pid);
         // 1st case: the child is exited
         *wstatus = child_proc->schedule_state.exited.wstatus;
         _remove_process(child_proc);
         return pid;
     }
     else {
+        mini_uart_kernel_log(
+            "scheduler: waiting %u: child is not exited yet",
+            pid);
         // 2nd case: the child is not exited yet
         schedule_state_t *current_state = &current_proc->schedule_state;
         current_state->status = PROC_SUSPENDED;

@@ -334,7 +334,7 @@ file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
         return NULL;
     }
 
-    mini_uart_kernel_log("vfs: call backend");
+    mini_uart_kernel_log("vfs: call inode.open");
     return inode->file_ops->open(inode);
 }
 
