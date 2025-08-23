@@ -3,7 +3,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    ram : ORIGIN = 0x8000, LENGTH = 0x20000 /* 128K - max is 7.9 Mb */
+    ram : ORIGIN = 0x8000, LENGTH = 0x80000 /* 512K - max is 7.9 Mb */
 }
 
 SECTIONS

@@ -15,8 +15,6 @@
 
 #include "scheduler/scheduler.h"
 
-#include "usermode/usermode.h"
-
 #include "utils.h"
 #include "vfs/vfs.h"
 
@@ -27,10 +25,16 @@ extern const char *__satan_welcome_banner;
 extern const char *__satan_fatal_error_banner;
 
 //
-// Kernel resources
+// Programs as Kernel resources
 //
 extern unsigned int hello_elf_len;
 extern unsigned char hello_elf[];
+
+extern unsigned int init_elf_len;
+extern unsigned char init_elf[];
+
+extern unsigned int lucifer_elf_len;
+extern unsigned char lucifer_elf[];
 
 //
 // # Kernel Memory Layout:
@@ -142,10 +146,9 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     //// init files from resources
     KERNEL_ASSERT(0 == vfs_mkdir("/bin", S_IFDIR));
-    load_resource_as_file(
-        "/bin/hello",
-        hello_elf,
-        hello_elf_len);
+    load_resource_as_file("/bin/init", init_elf, init_elf_len);
+    load_resource_as_file("/bin/lucifer", lucifer_elf, lucifer_elf_len);
+    load_resource_as_file("/bin/hello", hello_elf, hello_elf_len);
 
     // wait a first input
     mini_uart_kernel_puts("Satan OS is initialized.\r\n");
@@ -162,10 +165,8 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     cpu_irq_enable();
 
     // start user mode
-    mini_uart_kernel_log("call user mode !");
-
-    // duplicated code
-    scheduler_start((void*)user_function);
+    mini_uart_kernel_log("call user mode init");
+    scheduler_start("/bin/init");
 }
 
 void kernel_fatal_error(const char *reason)

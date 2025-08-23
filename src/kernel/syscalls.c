@@ -193,8 +193,7 @@ static int32_t _syscall__EXEC(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg2;
     const char *path = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
     const int status = scheduler_cur_proc_exec(path);
-    (void)status; // What to do ?
-    return 0;
+    return status;
 }
 
 static int32_t _syscall__GETPPID(uint32_t arg0, uint32_t arg1, uint32_t arg2)

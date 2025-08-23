@@ -1,8 +1,8 @@
 
 #include "dirent.h"
 #include "kernel_types.h"
-#include "usermode/usr_syscalls.h"
-#include "usermode/libc/stdlib.h"
+#include "usr_syscalls.h"
+#include "stdlib.h"
 
 struct DIR {
     int fd;

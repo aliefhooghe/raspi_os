@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <stdnoreturn.h>
 
 #include "usr_syscalls.h"
 #include "syscalls.h"
@@ -29,6 +28,7 @@ int32_t usr_syscall_reboot(void)
 int32_t usr_syscall_exit(int32_t status)
 {
     syscall(SYSCALL__EXIT, status, 0u, 0u);
+    // should not be reached
     return 0;
 }
 

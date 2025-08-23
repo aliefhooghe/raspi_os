@@ -323,6 +323,97 @@ static void _cleanup_proc_resources(process_t* proc)
     proc->memory_section = NULL;
 }
 
+static int32_t __load_proc_from_elf(
+    process_t *proc,
+    const char *path)
+{
+    // TODO: split this function: too long
+    // important: check that elf exists before writing to the existing section
+    elf32_file_t elf_file;
+    const int32_t status = elf32_open(path, &elf_file);
+    if (status < 0)
+        return status;
+
+    // zero initialize process section for security
+    _memset(
+        proc->memory_section,
+        0,
+        MMU_SECTION_SIZE);
+
+    elf32_program_header_iterator_t it =
+        elf32_init_program_header_iterator(&elf_file);
+
+    int32_t st;
+    elf32_program_header_t phdr;
+    while (1 == (st = elf32_program_header_iterator_read_next(&it, &phdr))) {
+        // only handle PT_LOAD sections
+        mini_uart_kernel_log(
+            "scheduler: elf: read section: type=%x",
+            phdr.type);
+        if (phdr.type != PT_LOAD || phdr.vaddress == 0u) {
+            // ignore non PT_LOAD: not to be loaded
+            // ignore vaddr=0 => they contains elf headers
+            continue;
+        }
+
+        // load section to process image memory
+        uint8_t *const dst_kaddr = mmu_translate_virtual_address(
+            proc->translation_table, phdr.vaddress);
+        mini_uart_kernel_log(
+            "scheduler: elf: load PT_LOAD section to %x=>%x (paddr=%x) (file_sz=%u/mem_sz=%u)",
+            phdr.vaddress, phdr.vaddress + phdr.mem_size, dst_kaddr,
+            phdr.file_size, phdr.mem_size);
+
+        const off_t seek_st = vfs_file_lseek(
+            elf_file.file, phdr.offset, SEEK_SET);
+        KERNEL_ASSERT(seek_st == (off_t)phdr.offset);
+
+        const ssize_t read_sz = vfs_file_read(
+            elf_file.file, dst_kaddr, phdr.file_size);
+        KERNEL_ASSERT(read_sz == (ssize_t)phdr.file_size);
+
+        // pad with zero if required
+        // TODO: not usefull because we have zeroed the section before
+        // if (phdr.mem_size > phdr.file_size) {
+            // const size_t padd_sz = phdr.mem_size - phdr.file_size;
+            // mini_uart_kernel_log(
+                // "scheduler: elf: pad %u zeros",
+                // padd_sz);
+            // _memset(
+                // dst_kaddr + phdr.file_size, 0, padd_sz);
+        // }
+    }
+
+    // TODO: error handling here
+    // if (st < 0) // hard to handle
+    //     return st;
+    KERNEL_ASSERT(st == 0);
+
+    // TODO: do we need to invalidate the instruction cache here ? 
+    // __invalidate_instruction_cache();
+    // asm volatile ("" ::: "memory"); // memory barrier
+
+    // 2 - reset cpu context
+    const uint32_t entry = elf_file.header.entry;
+    KERNEL_ASSERT(entry != 0u);
+    mini_uart_kernel_log(
+        "scheduler: exec: set entry=%x",
+        entry);
+    KERNEL_ASSERT(
+        entry >= PROCESS_PROGRAM_START_VADRR &&
+        entry <= PROCESS_PROGRAM_END_VADRR);
+
+    _proc_context_init(
+        &proc->context,
+        PROCESS_STACK_VIRTUAL_ADDRRESS,
+        entry, 0u);
+
+    const int32_t close_status = elf32_close(&elf_file);
+    KERNEL_ASSERT(close_status == 0);
+
+    return 0;
+}
+
 ///////////////////////////////////////////////////////////
 //                                                       //
 //                    Public APIS                        //
@@ -337,7 +428,7 @@ void scheduler_init(void)
     _memset(&_scheduler, 0, sizeof(scheduler_t));
 }
 
-void scheduler_start(void *init_code_entry)
+void scheduler_start(const char *init_path)
 {
     //
     // setup the init process
@@ -368,20 +459,15 @@ void scheduler_start(void *init_code_entry)
         PROCESS_SECTION_VIRTUAL_ADDRRESS,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 
-    // initialize proc context: registers
-    _proc_context_init(
-        &init_proc->context,
-        PROCESS_STACK_VIRTUAL_ADDRRESS,
-        (uint32_t)init_code_entry, 0u);
+    // initialize proc from elf
+    __load_proc_from_elf(init_proc, init_path);
 
-    // setup stdin/stdout
+    // Setup Standard Input/Output
     mini_uart_kernel_log("scheduler: init: setup IOs");
     file_t *tty = vfs_file_open("/dev/tty", 0u, 0u);
     if (tty == NULL)
         kernel_fatal_error(
             "scheduler: init: failed to open tty device at /dev/tty");
-
-    // initialize standard ios
     const int32_t stdin = _proc_add_fd(init_proc, tty);
     const int32_t stdout = _proc_add_fd(init_proc, tty);
     const int32_t stderr = _proc_add_fd(init_proc, tty);
@@ -529,91 +615,9 @@ int32_t scheduler_cur_proc_exec(const char *path)
     mini_uart_kernel_log(
         "scheduler: exec: path=%s, index=%u pid=%u, section=%x",
         path, _scheduler.current_proc, current_proc->id, current_proc->memory_section);
-    elf32_file_t elf_file;
-    const int32_t status = elf32_open(path, &elf_file);
-    if (status < 0)
-        return status;
 
-    // 1 - replace memory image
-
-    // zero initialize section for security
-    _memset(
-        current_proc->memory_section,
-        0,
-        MMU_SECTION_SIZE);
-
-    elf32_program_header_iterator_t it =
-        elf32_init_program_header_iterator(&elf_file);
-
-    int32_t st;
-    elf32_program_header_t phdr;
-    while (1 == (st = elf32_program_header_iterator_read_next(&it, &phdr))) {
-        // only handle PT_LOAD sections
-        mini_uart_kernel_log(
-            "scheduler: exec: read section: type=%x",
-            phdr.type);
-        if (phdr.type != PT_LOAD || phdr.vaddress == 0u) {
-            // ignore non PT_LOAD: not to be loaded
-            // ignore vaddr=0 => they contains elf headers
-            continue;
-        }
-
-        // load section to process image memory
-        uint8_t *const dst_kaddr = mmu_translate_virtual_address(
-            current_proc->translation_table, phdr.vaddress);
-        mini_uart_kernel_log(
-            "scheduler: load PT_LOAD section to %x=>%x (paddr=%x) (file_sz=%u/mem_sz=%u)",
-            phdr.vaddress, phdr.vaddress + phdr.mem_size, dst_kaddr,
-            phdr.file_size, phdr.mem_size);
-
-        const off_t seek_st = vfs_file_lseek(
-            elf_file.file, phdr.offset, SEEK_SET);
-        KERNEL_ASSERT(seek_st == (off_t)phdr.offset);
-
-        const ssize_t read_sz = vfs_file_read(
-            elf_file.file, dst_kaddr, phdr.file_size);
-        KERNEL_ASSERT(read_sz == (ssize_t)phdr.file_size);
-
-        // pad with zero if required
-        // TODO: not usefull because we have zeroed the section before
-        if (phdr.mem_size > phdr.file_size) {
-            const size_t padd_sz = phdr.mem_size - phdr.file_size;
-            mini_uart_kernel_log(
-                "scheduler: exec: pad %u zeros",
-                padd_sz);
-            _memset(
-                dst_kaddr + phdr.file_size, 0, padd_sz);
-        }
-    }
-
-    // if (st < 0) // hard to handle
-    //     return st;
-    KERNEL_ASSERT(st == 0);
-
-    // __invalidate_instruction_cache();
-    // asm volatile ("" ::: "memory"); // memory barrier
-
-    // 2 - reset cpu context
-    const uint32_t entry = elf_file.header.entry;
-    KERNEL_ASSERT(entry != 0u);
-    mini_uart_kernel_log(
-        "scheduler: exec: set entry=%x",
-        entry);
-    KERNEL_ASSERT(
-        entry >= PROCESS_PROGRAM_START_VADRR &&
-        entry <= PROCESS_PROGRAM_END_VADRR);
-
-    _proc_context_init(
-        &current_proc->context,
-        PROCESS_STACK_VIRTUAL_ADDRRESS,
-        entry, 0u);
-
-    // current_proc->schedule_state.status = PROC_EXITED;
-
-    const int32_t close_status = elf32_close(&elf_file);
-    KERNEL_ASSERT(close_status == 0);
-
-    return 0;
+    // replace process memory image with elf content
+    return __load_proc_from_elf(current_proc, path);
 }
 
 int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)

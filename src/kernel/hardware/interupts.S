@@ -1,6 +1,4 @@
 
-
-
 // mapping bus to physical addresses. The arm peripheral reference manual gives us bus adresses.
 // 0x7E215054  => 0x20215054
 // 0x7E00B000  => 0x2000B000

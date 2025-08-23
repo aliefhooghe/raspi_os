@@ -9,7 +9,7 @@
 
 // called from kernel.c entrypoint
 void scheduler_init(void);
-void scheduler_start(void *init_proc);
+void scheduler_start(const char *init_path);
 
 // called from asm code in interupt.S
 void scheduler_save_current_context(const task_context_t *current_context);

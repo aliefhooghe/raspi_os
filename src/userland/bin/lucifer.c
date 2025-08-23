@@ -1,14 +1,12 @@
-#include <stddef.h>
-#include <stdint.h>
 
-#include "usermode/usermode.h"
-#include "kernel_types.h"
-#include "usermode/usr_syscalls.h"
-#include "usermode/libc/stdio.h"
-#include "usermode/libc/string.h"
-#include "usermode/libc/dirent.h"
+#include <dirent.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#define LINE_SIZE 128
+#include "usr_syscalls.h"
+
+#define LINE_SIZE 128u
 
 __attribute__((noinline)) void ls(FILE *stdout, const char *path)
 {
@@ -168,13 +166,12 @@ __attribute__((noinline)) void fork_exec(FILE *stdout, const char *exec)
     }
 }
 
-void user_function(void)
+
+int main(void)
 {
-    FILE *stdout = fdopen(1, "w");
-    
     char line[LINE_SIZE] = "";
     const int32_t pid = usr_syscall_getpid();
-    fprintf(stdout, "[%u] start usermode function\n", pid);
+    fprintf(stdout, "[%u] welcome in lucifer shell\n", pid);
 
     for (;;)
     {
@@ -239,4 +236,5 @@ void user_function(void)
             fprintf(stdout, "[%u] lucifer: %s: command not found\n", pid, line);
         }
     }
+    return 0;
 }

@@ -41,12 +41,14 @@ custom_target(
 #
 userland_lib_sources = files(
   'src/userland/bin/_start.c',
-  # note: embed only the minimum for now
-  # 'src/userland/lib/stdio.c',
-  # 'src/userland/lib/stdlib.c',
-  # 'src/userland/lib/string.c',
-  # 'src/userland/lib/usr_syscalls.c',
-  'src/userland/lib/usr_syscalls.S'
+  'src/userland/lib/dirent.c',
+  'src/userland/lib/stdio.c',
+  'src/userland/lib/stdlib.c',
+  'src/userland/lib/string.c',
+  'src/userland/lib/usr_syscalls.c',
+  'src/userland/lib/usr_syscalls.S',
+
+  'src/arm_runtime/eabi_rt.c',
 )
 userland_include_directories = include_directories(
   'src/userland/include'
@@ -54,18 +56,23 @@ userland_include_directories = include_directories(
 userland_program_link_script = files(
   'src/userland/bin/linker.ld'
 )
+
+# try to reduce userland elf size as much as possible
 userland_c_args = [
   # allows section garbage collection to be effective
   '-ffunction-sections',  # one section per function
-  '-fdata-sections'       # one section per variable
+  '-fdata-sections',      # one section per variable
 ]
 userland_link_args = [
   '-T', userland_program_link_script[0].full_path(),
-  '-Wl,--gc-sections'  # garbage collect unused sections
+  '-Wl,--gc-sections,--strip-all', # garbage collect unused sections
+  '-Wl,--nmagic'                   # turn off page alignment of sections 
 ]
 
 userland_programs_src = [
-  'src/userland/bin/hello.c'
+  'src/userland/bin/init.c',
+  'src/userland/bin/hello.c',
+  'src/userland/bin/lucifer.c',
 ]
 userland_programs_payloads = []
 
@@ -107,7 +114,6 @@ kernel_sources = files(
   'src/kernel/hardware/mmu.S',
   'src/kernel/hardware/watchdog.c',
   'src/kernel/kernel.c',
-  'src/kernel/lib/eabi_rt.c',
   'src/kernel/lib/str.c',
   'src/kernel/lib/str.h',
   'src/kernel/memory/bitfield.c',
@@ -117,18 +123,13 @@ kernel_sources = files(
   'src/kernel/scheduler/scheduler.c',
   'src/kernel/scheduler/scheduler.S',
   'src/kernel/syscalls.c',
-  'src/kernel/usermode/usermode.c',
-  'src/kernel/usermode/usr_syscalls.c',
-  'src/kernel/usermode/usr_syscalls.S',
-  'src/kernel/usermode/libc/dirent.c',
-  'src/kernel/usermode/libc/stdio.c',
-  'src/kernel/usermode/libc/stdlib.c',
-  'src/kernel/usermode/libc/string.c',
   'src/kernel/vfs/vfs.c',
   'src/kernel/vfs/driver_registry.c',
   'src/kernel/vfs/dev/tty.c',
   'src/kernel/vfs/dev/zero.c',
   'src/kernel/vfs/filesystems/ramfs.c',
+
+  'src/arm_runtime/eabi_rt.c',
 )
 kernel_linker_script = files(
   'src/kernel/linker.ld'

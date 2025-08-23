@@ -1,34 +1,28 @@
 
 #include <stdint.h>
-
 #include "lib/str.h"
+
+// eabi_rt.c
+extern void __aeabi_memcpy(void *restrict dest, const void *restrict src, size_t n);
+extern void __aeabi_memset(void *restrict dest, size_t n, int32_t c);
+extern void __aeabi_memmove(void *dest, const void *src, size_t n);
 
 void *_memcpy(
     void *restrict destination,
     const void *restrict source,
     size_t size)
 {
-    uint8_t *dst = (uint8_t*)destination;
-    const uint8_t *src = (const uint8_t*)source;
-
-    for (uint32_t i = 0; i < size; ++i) {
-        dst[i] = src[i];
-    }
-
+    __aeabi_memcpy(destination, source, size);
     return destination;
 }
-
 
 void *_memset(
     void *destination,
     int c,
     size_t size)
 {
-    uint8_t *dst = (uint8_t*)destination;
-    for (uint32_t i = 0; i < size; ++i) {
-        dst[i] = c;
-    }
-    return dst;
+    __aeabi_memset(destination, size, c);
+    return destination;
 }
 
 void *_memmove(
@@ -36,21 +30,7 @@ void *_memmove(
     const void *source,
     size_t size)
 {
-    uint8_t *dst = (uint8_t*)destination;
-    const uint8_t *src = (const uint8_t*)source;
-
-    if (dst < src)
-    {
-        for (uint32_t i = 0; i < size; i++) {
-            dst[i] = src[i];
-        }
-    }
-    else {
-        for (int32_t i = size - 1; i >= 0; i--) {
-            dst[i] = src[i];
-        }
-    }
-
+    __aeabi_memmove(destination, source, size);
     return destination;
 }
 

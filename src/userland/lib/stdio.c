@@ -1,5 +1,4 @@
 
-
 #include <stddef.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -8,6 +7,9 @@
 #include "stdlib.h"
 #include "string.h"
 #include "usr_syscalls.h"
+
+// standard C stdio
+FILE *stdout;
 
 //
 // File Structure
@@ -143,9 +145,9 @@ size_t fwrite(const void *restrict ptr, size_t size, size_t n, FILE *restrict st
             (total_size > remaining_buffer_size) ?
                 remaining_buffer_size: total_size;
 
-        // memcpy(
-        //     stream->write_buffer + stream->write_buffer_cursor,
-        //     data_ptr, chunk_size);
+        memcpy(
+            stream->write_buffer + stream->write_buffer_cursor,
+            data_ptr, chunk_size);
         stream->write_buffer_cursor += chunk_size;
 
         total_size -= chunk_size;
