@@ -59,6 +59,7 @@ void mini_uart_putc(unsigned char c)
     while(1)
     {
         if(mmio_read(REG__AUX_MU_LSR_REG) & 0x20) break;
+        asm volatile ("wfe");
     }
 
     // Write the character to the data register
@@ -71,6 +72,7 @@ void mini_uart_wait_tx_idle(void)
     while(1)
     {
         if(mmio_read(REG__AUX_MU_LSR_REG) & 0x40) break;
+        asm volatile ("wfe");
     }
 }
 
@@ -79,8 +81,10 @@ uint8_t mini_uart_getc(void)
     // Wait until data is available to read
     while (1)
     {
-        if ((mmio_read(REG__AUX_MU_LSR_REG) & 0x01) != 0)
+        if ((mmio_read(REG__AUX_MU_LSR_REG) & 0x01) != 0) {
+            asm volatile ("wfe");
             break; // Bit 0: Data ready
+        }
     }
 
     // Read the character from the data register
