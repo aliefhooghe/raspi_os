@@ -59,6 +59,8 @@ extern void cpu_delay(uint32_t cycle_count);
 // 11111 	System 	PC, R14 to R0, CPSR
 
 void cpu_irq_enable(void);
+void cpu_irq_disable(void);
+
 uint8_t cpu_get_execution_mode(void);
 
 
