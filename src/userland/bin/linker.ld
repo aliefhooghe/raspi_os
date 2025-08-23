@@ -4,7 +4,7 @@ ENTRY(_start)
 MEMORY
 {
     /* see scheduler.c */
-    ram : ORIGIN = 0x00840000, LENGTH = 0x40000 /* 256 Kb */
+    ram : ORIGIN = 0x00840000, LENGTH = 0x20000 /* 128 Kb */
 }
 
 SECTIONS
