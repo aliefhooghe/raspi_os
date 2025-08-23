@@ -447,12 +447,12 @@ void scheduler_start(const char *init_path)
         init_proc, init_process_pid, 0u /* no parent id */);
 
     // setup the process translation table: 
-    // - map the kernel code and data: read-only for user
-    // - map the process section: read write
+    // - map the kernel code and data: forbiden for user
+    // - map the process section: read write for user
     translation_table_add_identity_mapping(
         init_proc->translation_table,
         0x00000000u, 0x00800000u,
-        MMU_L1_SECTION_AP_KERNEL_RW_USER_RO);
+        MMU_L1_SECTION_AP_KERNEL_RW_USER_NONE);
     translation_table_add_single_section(
         init_proc->translation_table,
         init_proc->memory_section,
