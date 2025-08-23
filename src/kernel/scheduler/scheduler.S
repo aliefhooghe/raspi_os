@@ -13,13 +13,17 @@ __set_task_context:
     add r0, r0, #4
 
     // IV.2 - restore the **user mode** stack pointer
-    ldr r1, [r0]            // load saved sp from context
+    ldr r1, [r0]            // load saved lr_usr from context
+    add r0, r0, #4
+    
+    ldr r2, [r0]            // load saved sp from context
     add r0, r0, #4
 
-    mov r2, #0x1F           // switch to the system cpu mode (0x1F)
-    msr cpsr_c, r2
+    mov r3, #0x1F           // switch to the system cpu mode (0x1F)
+    msr cpsr_c, r3
 
-    mov sp, r1              // restore sp
+    mov lr, r1              // restore lr
+    mov sp, r2              // restore sp
 
     mov r2, #0x13           // switch to the SVC cpu mode (0x13)
     msr cpsr_c, r2
@@ -29,7 +33,7 @@ __set_task_context:
     add r0, r0, #4
     msr spsr, r1            // restore spsr
 
-    // IV.4 - restore user registers on the stack
+    // IV.4 - restore user register and lr_svc
     ldmfd r0, {r1-r12, lr}
 
     // IV.5 - restore syscall return status into r0

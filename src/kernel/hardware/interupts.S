@@ -72,13 +72,14 @@ _reset_handler:
 hang: b hang
 
 _svc_handler:
+    // comming from usermode. No need to save svc mode register for caller.
     // svc number         : from lr (not used for now)
     // syscall number     : r0
     // syscall arguments  : r1 = arg0, r2 = arg1, r3 = arg2 -> already good for kernel handler
 
     // I - save the task context on the stack:
 
-    // I.1 - save user registers on the stack
+    // I.1 - save r1-r12 and lr_svc registers on the stack 
     stmfd sp!, {r1-r12, lr}
 
     // I.2 - save program status on the stack
@@ -90,16 +91,18 @@ _svc_handler:
     mrs r4, spsr
     push { r4 }
 
-    // I.3 - save the **user mode** stack pointer
+    // I.3 - save the **user mode** stack pointer/lr
+    // in system mode we read user lr/sp
     mov r4, #0x1F            // switch to the system cpu mode (0x1F)
     msr cpsr_c, r4
 
-    mov r5, sp              // save sp
+    mov r5, lr              // save lr_svc
+    mov r6, sp              // save sp
 
-    mov r4, #0x13           // switch to the SVC cpu mode (0x13)
+    mov r4, #0x13           // switch back to the SVC cpu mode (0x13)
     msr cpsr_c, r4
 
-    push { r5 }             // push user mode stack pointer
+    push { r5-r6 }         // push user mode lr then stack pointer
 
     // save syscall number and parameters
     push {r0-r3}
@@ -125,8 +128,9 @@ _svc_handler:
     // III - schedule the next task
 
     // III.1 restore supervisor stack pointer: free the saved context
-    // task_context = r1-r12, lr, spsr = 4 * (12 + 2) = 56 bytes
-    add sp, sp, #56
+    // @see task_context.h: sizeof(task_context_t) == 68
+    //      r0 is was already pop: 68 - 4 = 64
+    add sp, sp, #64
 
     // III.2 call scheduler: get the task context to be restored
     bl scheduler_switch_task
