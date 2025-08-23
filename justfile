@@ -24,15 +24,31 @@ run_kernel: build kernel_size
     @echo "Press ctrl+A X to quit emulation"
     qemu-system-arm -display none -m 512 -M raspi0 -kernel {{build_dir}}/kernel.elf -d guest_errors -serial null -serial mon:stdio -s
 
+debug_kernel: build kernel_size
+    @echo "Press ctrl+A X to quit emulation"
+    qemu-system-arm -display none -m 512 -M raspi0 \
+        -kernel {{build_dir}}/kernel.elf -d guest_errors \
+        -serial null -serial mon:stdio  \
+        -gdb tcp::5000 -S
+
+gdb:
+    arm-none-eabi-gdb build/kernel.elf -ex "target remote :5000"
+
 run_kernel_pty: build
-    qemu-system-arm -display none -m 512 -M raspi0 -kernel {{build_dir}}/kernel.elf -d guest_errors -serial null -serial pty -s
+    qemu-system-arm -display none -m 512 -M raspi0 -kernel \
+    {{build_dir}}/kernel.elf -d guest_errors \
+    -serial null -serial pty
 
 run_serial_loader: build
     @echo "Press ctrl+A X to quit emulation"
-    qemu-system-arm -display none -m 512 -M raspi0 -kernel {{build_dir}}/serial_loader.elf -d guest_errors -serial null -serial mon:stdio -s
+    qemu-system-arm -display none -m 512 -M raspi0 -kernel \
+    {{build_dir}}/serial_loader.elf -d guest_errors \
+    -serial null -serial mon:stdio
 
 run_serial_loader_pty: build
-    qemu-system-arm -display none -m 512 -M raspi0 -kernel {{build_dir}}/serial_loader.elf -d guest_errors -serial null -serial pty -s
+    qemu-system-arm -display none -m 512 -M raspi0 -kernel \
+    {{build_dir}}/serial_loader.elf -d guest_errors \
+    -serial null -serial pty
 
 # real hardware
 
