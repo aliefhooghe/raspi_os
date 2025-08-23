@@ -1,4 +1,5 @@
 .cache
+**.pdf
 build/
 doc/references/
 doc/linux_image
