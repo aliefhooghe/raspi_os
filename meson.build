@@ -5,11 +5,11 @@ project(
     default_options: ['warning_level=3', 'optimization=2']
 )
 
-
 xxd = find_program('xxd')
 
+#
 # Serial Loader
-
+#
 serial_loader_sources = files(
   'src/serial_loader/boot.S',
   'src/serial_loader/loader.c',
@@ -36,7 +36,9 @@ custom_target(
   build_by_default: true
 )
 
+#
 # Userland
+#
 userland_lib_sources = files(
   'src/userland/bin/_start.c',
   # note: embed only the minimum for now
@@ -46,33 +48,47 @@ userland_lib_sources = files(
   # 'src/userland/lib/usr_syscalls.c',
   'src/userland/lib/usr_syscalls.S'
 )
-
 userland_include_directories = include_directories(
   'src/userland/include'
 )
-
 userland_program_link_script = files(
   'src/userland/bin/linker.ld'
 )
+userland_c_args = [
+  # allows section garbage collection to be effective
+  '-ffunction-sections',  # one section per function
+  '-fdata-sections'       # one section per variable
+]
+userland_link_args = [
+  '-T', userland_program_link_script[0].full_path(),
+  '-Wl,--gc-sections'  # garbage collect unused sections
+]
 
-hello_elf = executable(
-  'hello.elf',
-  sources: files('src/userland/bin/hello.c') + userland_lib_sources,
-  link_args: ['-T', userland_program_link_script[0].full_path()],
-  c_args : ['-fno-omit-frame-pointer'],
-  install: false,
-  include_directories: userland_include_directories
-)
+userland_programs_src = [
+  'src/userland/bin/hello.c'
+]
+userland_programs_payloads = []
+
+foreach program_src: userland_programs_src
+  program_name = program_src.split('/')[-1].replace('.c', '')
+  elf_target = executable(
+    program_name + '.elf',
+    sources: files(program_src) + userland_lib_sources,
+    link_args: userland_link_args,
+    c_args : userland_c_args,
+    install: false,
+    include_directories: userland_include_directories
+  )
+  elf_payload_c = custom_target(
+    program_name + '_payload_c',
+    input: elf_target,
+    output: program_name + '_payload.c',
+    command: [xxd, '-i', '@INPUT@', '@OUTPUT@'] 
+  )
+  userland_programs_payloads += elf_payload_c
+endforeach
 
 # Kernel
-
-# resources
-hello_payload_c = custom_target(
-  'hello_payload_c',
-  input: hello_elf,
-  output: 'hello_elf_payload.c',
-  command: [xxd, '-i', '@INPUT@', '@OUTPUT@'] 
-)
 
 # sources
 kernel_sources = files(
@@ -120,7 +136,7 @@ kernel_linker_script = files(
 
 kernel_elf = executable(
   'kernel.elf',
-  sources: kernel_sources + hello_payload_c,
+  sources: kernel_sources + userland_programs_payloads,
   link_args: ['-T', kernel_linker_script[0].full_path()],
   install: false,
   include_directories: include_directories('src/kernel')
