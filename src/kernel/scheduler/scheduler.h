@@ -22,6 +22,7 @@ void scheduler_cur_proc_exit(int32_t status);
 void* scheduler_cur_proc_get_kernel_address(uintptr_t process_virtual_address);
 
 int32_t scheduler_cur_proc_fork(void);
+int32_t scheduler_cur_proc_exec(const char *path);
 int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus);
 int32_t scheduler_cur_proc_get_id(void);
 int32_t scheduler_cur_proc_get_parent_id(void);

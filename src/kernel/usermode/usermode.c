@@ -10,7 +10,7 @@
 
 #define LINE_SIZE 128
 
-static void ls(FILE *stdout, const char *path)
+__attribute__((noinline)) void ls(FILE *stdout, const char *path)
 {
     fprintf(stdout, "list file in path: %s\n", path);
     DIR *dir = opendir(path);
@@ -34,7 +34,7 @@ static void ls(FILE *stdout, const char *path)
     closedir(dir);
 }
 
-static void test_fork(int32_t pid, FILE *stdout)
+__attribute__((noinline)) void test_fork(int32_t pid, FILE *stdout)
 {
     fprintf(stdout, "[%u] process is about to fork !\n", pid);
     const uint32_t status = usr_syscall_fork();
@@ -85,7 +85,7 @@ static void test_fork(int32_t pid, FILE *stdout)
     fprintf(stdout, "[%u] exit fork test function\n", usr_syscall_getpid());
 }
 
-static void test_w_file(FILE *stdout)
+__attribute__((noinline)) void test_w_file(FILE *stdout)
 {
     const int s1 = usr_syscall_mkdir("/test", S_IFDIR);
     fprintf(stdout, "mkdir: status=%x\n", s1);
@@ -110,7 +110,7 @@ static void test_w_file(FILE *stdout)
     fprintf(stdout, "fclose: status=%x\n", s2);
 }
 
-static void test_r_file(FILE *stdout, const char *path)
+__attribute__((noinline)) void test_r_file(FILE *stdout, const char *path)
 {
     int fd = usr_syscall_open(path, 0u, S_IFREG);
     if (fd < 0)
@@ -139,6 +139,33 @@ static void test_r_file(FILE *stdout, const char *path)
 
     const int s2 = fclose(test);
     fprintf(stdout, "fclose: status=%x\n", s2);
+}
+
+__attribute__((noinline)) void fork_exec(FILE *stdout, const char *exec)
+{
+    fprintf(stdout, "fork !");
+    const uint32_t status = usr_syscall_fork();
+
+    if (status < 0) {
+        fprintf(stdout, "fork failed\n");
+        return;
+    }
+
+    if (status == 0) {
+        fprintf(stdout, "in child: exec %s\n", exec);
+        usr_syscall_exec(exec);
+        usr_syscall_exit(0);
+    }
+    else {
+        for (int i = 0; i < 2;i++) {
+            fprintf(stdout, "in parent: yield %u\n", i);
+            usr_syscall_yield();
+        }
+        fprintf(stdout, "in parent: wait child %u\n", status);
+        int32_t wstatus = 0;
+        usr_syscall_waitpid(status, &wstatus);
+        fprintf(stdout, "from parent: child exited with status %u\n", wstatus);
+    }
 }
 
 void user_function(void)
@@ -191,7 +218,7 @@ void user_function(void)
         else if (strcmp(line, "elf") == 0)
         {
             fprintf(stdout, "[%u] test elf loader:\n", pid);
-            usr_syscall_exec("/bin/loader.elf");
+            fork_exec(stdout, "/bin/hello");
         }
         else if (strcmp(line, "ls") == 0)
         {

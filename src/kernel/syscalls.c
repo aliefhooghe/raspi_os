@@ -119,7 +119,7 @@ static int32_t _syscall__WRITE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     const int32_t fd = arg0;
     const void* data = scheduler_cur_proc_get_kernel_address(arg1);
     const size_t size = arg2;
-
+    mini_uart_kernel_log("write from paddr %x", data);
     file_t *file = scheduler_cur_proc_get_fd(fd);
     if (file == NULL)
         return SYSCALL_STATUS_ERR;
@@ -192,7 +192,8 @@ static int32_t _syscall__EXEC(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg1;
     (void)arg2;
     const char *path = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
-    (void)path;
+    const int status = scheduler_cur_proc_exec(path);
+    (void)status; // What to do ?
     return 0;
 }
 

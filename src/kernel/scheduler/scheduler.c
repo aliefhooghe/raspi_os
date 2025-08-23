@@ -1,12 +1,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "elf_loader/elf_loader.h"
+
 #include "hardware/cpu.h"
 #include "hardware/mini_uart.h"
 #include "hardware/mmu.h"
 
 #include "kernel.h"
 #include "kernel_types.h"
+
 #include "lib/str.h"
 
 #include "memory/bitfield.h"
@@ -21,10 +24,20 @@
 #include "vfs/inode.h"
 
 ///
-//  Process memory mapping
+// Process memory mapping
+//
+// For now there is one 1Mb section mapped from virtual address 0x00800000u
+// -         | <start>     | <end>       | <size>            | 
+// - stack   | 0x00800000u | 0x00840000u |  0x40000 (256 Kb) |
+// - program | 0x00840000u | 0x00880000u |  0x40000 (256 Kb) |
+// - heap    | 0x00880000u | 0x00900000u |  0x80000 (512 Kb  |
+// ----------------------------------------------------------
+//   section | 0x00800000u | 0x00900000u | 0x100000 (1Mb)
 // 
 #define PROCESS_SECTION_VIRTUAL_ADDRRESS  0x00800000u  // section 0x00800000u -> 0x00900000u = 1Mb
-#define PROCESS_STACK_VIRTUAL_ADDRRESS    0x00880000u  // stack at the midle of section (= a 512 kb stack)
+#define PROCESS_STACK_VIRTUAL_ADDRRESS    0x0083FFFCu  // stack is going descending. 4 bytes aligned
+#define PROCESS_PROGRAM_START_VADRR       0x00840000u
+#define PROCESS_PROGRAM_END_VADRR         0x00880000u
 
 //
 //  Process structure
@@ -38,7 +51,6 @@ _Static_assert(
 );
 
 #define SCHEDULER_MAX_TASK_COUNT  (32u)
-#define MAX_EXITED_CHILD_TASK     SCHEDULER_MAX_TASK_COUNT 
 
 // Unix Standard Constants
 #define INIT_PROC_ID 1u
@@ -102,7 +114,7 @@ typedef struct {
     process_t processes[SCHEDULER_MAX_TASK_COUNT];
     size_t proc_count;
     
-    // current process index: 0 -> takss_count
+    // current process index: 0 -> proc_count
     uint32_t current_proc;
 
     // pid generator for new processes   
@@ -128,6 +140,49 @@ static scheduler_t _scheduler;
 //
 //  Utils: TODO: should it be moved outside
 //
+//
+
+static void _dump_task_context(task_context_t *context)
+{
+    mini_uart_kernel_log(
+        "\n"
+        "  r0     = %x\n"  
+        "  lr_usr = %x\n"
+        "  sp     = %x\n"
+        "  spsr   = %x\n"
+        "  r1     = %x\n"
+        "  r2     = %x\n"
+        "  r3     = %x\n"
+        "  r4     = %x\n"
+        "  r5     = %x\n"
+        "  r6     = %x\n"
+        "  r7     = %x\n"
+        "  r8     = %x\n"
+        "  r9     = %x\n"
+        "  r10    = %x\n"
+        "  r11    = %x\n"
+        "  r12    = %x\n"
+        "  lr_svc = %x",
+        context->r0,
+        context->lr_usr,  
+        context->sp,
+        context->spsr,
+        context->r1,
+        context->r2,
+        context->r3,
+        context->r4,
+        context->r5,
+        context->r6,
+        context->r7,
+        context->r8,
+        context->r9,
+        context->r10,
+        context->r11,
+        context->r12,
+        context->lr_svc
+    );
+}
+
 static void _remove_process(process_t *proc)
 {
     const size_t index = proc - _scheduler.processes;
@@ -135,6 +190,10 @@ static void _remove_process(process_t *proc)
         kernel_fatal_error(
             "trying to remove a process outside of process table");
 
+    mini_uart_kernel_log(
+        "scheduler: remove proc index=%u, pid=%u",
+        index, proc->id);
+    
     // delete process
     _memmove(
         &_scheduler.processes[index],
@@ -173,12 +232,12 @@ static process_t *_find_proc_by_pid(int32_t pid)
 static void _proc_context_init(
     task_context_t *context,
     uintptr_t stack_address,
-    void *code_entry,
+    uint32_t entry,
     uint32_t param)
 {
     context->r0 = param;
     context->sp = stack_address;
-    context->lr = (uint32_t)code_entry;
+    context->lr_svc = entry;
     context->spsr =
         CPU_CPSR_MODE_USER |
         CPU_CPSR_DISABLE_IRQ |
@@ -313,7 +372,7 @@ void scheduler_start(void *init_code_entry)
     _proc_context_init(
         &init_proc->context,
         PROCESS_STACK_VIRTUAL_ADDRRESS,
-        init_code_entry, 0u);
+        (uint32_t)init_code_entry, 0u);
 
     // setup stdin/stdout
     mini_uart_kernel_log("scheduler: init: setup IOs");
@@ -351,17 +410,22 @@ void scheduler_save_current_context(const task_context_t *current_context)
         &current_proc->context,
         current_context,
         sizeof(task_context_t));
+    mini_uart_kernel_log(
+        "save current context: pid=%u",
+        current_proc->id);
+    _dump_task_context(&current_proc->context);
 }
 
 const task_context_t *scheduler_switch_task(void)
 {
-    const int32_t old_pid = scheduler_cur_proc_get_id();
+    const int32_t old_pid = _scheduler.processes[_scheduler.current_proc].id;
     process_t *next_proc = _select_next_scheduled_proc();
 
     mini_uart_kernel_log(
-        "scheduler: switch proc %u => %u",
-        old_pid, next_proc->id);
-    
+        "scheduler: switch proc %u => %u (section=%x). Restore context:",
+        old_pid, next_proc->id, next_proc->memory_section);
+    _dump_task_context(&next_proc->context);
+
     // 1 - select the process translation table
     mmu_set_translation_table(next_proc->translation_table);
 
@@ -373,7 +437,6 @@ const task_context_t *scheduler_switch_task(void)
 //  Scheduler current process control: Called from syscall handlers.
 //  current_proc is scheduled when entering theses functions
 //
-
 void scheduler_cur_proc_set_syscall_status(int32_t status)
 {
     _get_current_proc()->context.r0 = status;
@@ -390,7 +453,7 @@ int32_t scheduler_cur_proc_fork(void)
 {
     if (_scheduler.proc_count >= SCHEDULER_MAX_TASK_COUNT)
     {
-       mini_uart_kernel_log("fork: too many tasks");
+       mini_uart_kernel_log("fork: too many processes");
         return -1;
     }
 
@@ -399,14 +462,14 @@ int32_t scheduler_cur_proc_fork(void)
         "forking from proc: index=%u pid=%u",
         _scheduler.current_proc, current_proc->id);
 
-    // compute the new task id
+    // compute the new process id
     const int32_t new_proc_id = ++_scheduler.id_gen;
     const uint32_t new_index = _scheduler.proc_count++;
     mini_uart_kernel_log(
         "fork: create new proc: index=%u pid=%u",
         new_index, new_proc_id);
 
-    // init task: allocate its own section and translation table
+    // init process: allocate its own section and translation table
     process_t *new_proc = &_scheduler.processes[new_index];
     _proc_init(new_proc, new_proc_id, current_proc->id);
 
@@ -460,6 +523,99 @@ int32_t scheduler_cur_proc_fork(void)
     return new_proc_id; // will be returned to the parent process
 }
 
+int32_t scheduler_cur_proc_exec(const char *path)
+{
+    process_t *current_proc = _get_current_proc();
+    mini_uart_kernel_log(
+        "scheduler: exec: path=%s, index=%u pid=%u, section=%x",
+        path, _scheduler.current_proc, current_proc->id, current_proc->memory_section);
+    elf32_file_t elf_file;
+    const int32_t status = elf32_open(path, &elf_file);
+    if (status < 0)
+        return status;
+
+    // 1 - replace memory image
+
+    // zero initialize section for security
+    _memset(
+        current_proc->memory_section,
+        0,
+        MMU_SECTION_SIZE);
+
+    elf32_program_header_iterator_t it =
+        elf32_init_program_header_iterator(&elf_file);
+
+    int32_t st;
+    elf32_program_header_t phdr;
+    while (1 == (st = elf32_program_header_iterator_read_next(&it, &phdr))) {
+        // only handle PT_LOAD sections
+        mini_uart_kernel_log(
+            "scheduler: exec: read section: type=%x",
+            phdr.type);
+        if (phdr.type != PT_LOAD || phdr.vaddress == 0u) {
+            // ignore non PT_LOAD: not to be loaded
+            // ignore vaddr=0 => they contains elf headers
+            continue;
+        }
+
+        // load section to process image memory
+        uint8_t *const dst_kaddr = mmu_translate_virtual_address(
+            current_proc->translation_table, phdr.vaddress);
+        mini_uart_kernel_log(
+            "scheduler: load PT_LOAD section to %x=>%x (paddr=%x) (file_sz=%u/mem_sz=%u)",
+            phdr.vaddress, phdr.vaddress + phdr.mem_size, dst_kaddr,
+            phdr.file_size, phdr.mem_size);
+
+        const off_t seek_st = vfs_file_lseek(
+            elf_file.file, phdr.offset, SEEK_SET);
+        KERNEL_ASSERT(seek_st == (off_t)phdr.offset);
+
+        const ssize_t read_sz = vfs_file_read(
+            elf_file.file, dst_kaddr, phdr.file_size);
+        KERNEL_ASSERT(read_sz == (ssize_t)phdr.file_size);
+
+        // pad with zero if required
+        // TODO: not usefull because we have zeroed the section before
+        if (phdr.mem_size > phdr.file_size) {
+            const size_t padd_sz = phdr.mem_size - phdr.file_size;
+            mini_uart_kernel_log(
+                "scheduler: exec: pad %u zeros",
+                padd_sz);
+            _memset(
+                dst_kaddr + phdr.file_size, 0, padd_sz);
+        }
+    }
+
+    // if (st < 0) // hard to handle
+    //     return st;
+    KERNEL_ASSERT(st == 0);
+
+    // __invalidate_instruction_cache();
+    // asm volatile ("" ::: "memory"); // memory barrier
+
+    // 2 - reset cpu context
+    const uint32_t entry = elf_file.header.entry;
+    KERNEL_ASSERT(entry != 0u);
+    mini_uart_kernel_log(
+        "scheduler: exec: set entry=%x",
+        entry);
+    KERNEL_ASSERT(
+        entry >= PROCESS_PROGRAM_START_VADRR &&
+        entry <= PROCESS_PROGRAM_END_VADRR);
+
+    _proc_context_init(
+        &current_proc->context,
+        PROCESS_STACK_VIRTUAL_ADDRRESS,
+        entry, 0u);
+
+    // current_proc->schedule_state.status = PROC_EXITED;
+
+    const int32_t close_status = elf32_close(&elf_file);
+    KERNEL_ASSERT(close_status == 0);
+
+    return 0;
+}
+
 int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
 {
     // note: only a direct child can be awaited
@@ -473,7 +629,7 @@ int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
 
     process_t *child_proc = _find_proc_by_pid(pid);
 
-    // the child task have already been cleaned up
+    // the child process have already been cleaned up
     if (child_proc == NULL)
         return -1;
 
@@ -515,7 +671,7 @@ void scheduler_cur_proc_exit(int32_t status)
         kernel_fatal_error("scheduler: init proc was exited");
 
     mini_uart_kernel_log(
-        "scheduler: exiting scheduled proc %u (pid=%u)",
+        "scheduler: exiting scheduled proc index=%u pid=%u",
         _scheduler.current_proc, current_proc->id);
 
     // deschedule proc
@@ -527,9 +683,13 @@ void scheduler_cur_proc_exit(int32_t status)
 
     // each child process now belong to init
     for (size_t i = 0u; i < _scheduler.proc_count; i++) {
-        process_t *task = &_scheduler.processes[i];
-        if (task->parent_id == current_proc->id)
-            task->parent_id = INIT_PROC_ID;
+        process_t *proc = &_scheduler.processes[i];
+        if (proc->parent_id == current_proc->id) {
+            mini_uart_kernel_log(
+                "scheduler: exit: child proc index=%u pid=%u become a zombie",
+                i, proc->id);
+            proc->parent_id = INIT_PROC_ID;
+        }
     }
 
     // reshedule parent if relevant
@@ -540,6 +700,9 @@ void scheduler_cur_proc_exit(int32_t status)
 
     if (parent->schedule_state.status == PROC_SUSPENDED &&
         parent->schedule_state.suspended.wait_pid == current_proc->id) {
+        mini_uart_kernel_log(
+            "scheduler: exit: parent pid=%u was waiting proc. reschedule parent",
+            parent->id);
 
         // write wstatus
         *parent->schedule_state.suspended.wstatus_ref = status;
@@ -580,4 +743,3 @@ file_t *scheduler_cur_proc_get_fd(int32_t fd)
     process_t *current_proc = _get_current_proc();
     return _proc_get_fd(current_proc, fd);
 }
-

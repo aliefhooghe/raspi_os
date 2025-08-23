@@ -3,8 +3,8 @@
 #include "usermode/libc/stdlib.h"
 
 // process section is 0x00800000u -> 0x00900000u = 1Mb
-// stack: 0x00880000u -> 0x00800000u
 // pseudo heap: 0x00880000u -> 0x00900000u
+// @see scheduler.c
 
 #define HEAP_CURSOR 0x00880100u
 #define HEAP_START  0x00881000u
