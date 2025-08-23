@@ -8,13 +8,11 @@ project(
 
 xxd = find_program('xxd')
 
-
 # Serial Loader
 
 serial_loader_sources = files(
   'src/serial_loader/boot.S',
   'src/serial_loader/loader.c',
-  'src/serial_loader/lib.h',
   'src/serial_loader/lib.c',
   'src/serial_loader/lib.S',
 )
@@ -41,10 +39,11 @@ custom_target(
 # Userland
 userland_lib_sources = files(
   'src/userland/bin/_start.c',
-  'src/userland/lib/stdio.c',
-  'src/userland/lib/stdlib.c',
-  'src/userland/lib/string.c',
-  'src/userland/lib/usr_syscalls.c',
+  # note: embed only the minimum for now
+  # 'src/userland/lib/stdio.c',
+  # 'src/userland/lib/stdlib.c',
+  # 'src/userland/lib/string.c',
+  # 'src/userland/lib/usr_syscalls.c',
   'src/userland/lib/usr_syscalls.S'
 )
 
@@ -60,6 +59,7 @@ hello_elf = executable(
   'hello.elf',
   sources: files('src/userland/bin/hello.c') + userland_lib_sources,
   link_args: ['-T', userland_program_link_script[0].full_path()],
+  c_args : ['-fno-omit-frame-pointer'],
   install: false,
   include_directories: userland_include_directories
 )
@@ -80,73 +80,38 @@ kernel_sources = files(
   'src/kernel/hardware/boot.S',
 
   'src/kernel/banner.c',
-  'src/kernel/utils.h',
   'src/kernel/utils.c',
-  'src/kernel/elf_loader/elf_format.h',
-  'src/kernel/elf_loader/elf_loader.h',
   'src/kernel/elf_loader/elf_loader.c',
-  'src/kernel/hardware/cpu.h',
   'src/kernel/hardware/cpu.S',
-  'src/kernel/hardware/gpio.h',
   'src/kernel/hardware/interupts.c',
-  'src/kernel/hardware/interupts.h',
   'src/kernel/hardware/interupts.S',
-  'src/kernel/hardware/io_registers.h',
   'src/kernel/hardware/mini_uart.c',
-  'src/kernel/hardware/mini_uart.h',
-  'src/kernel/hardware/mmio.h',
   'src/kernel/hardware/mmio.S',
   'src/kernel/hardware/mmu.c',
-  'src/kernel/hardware/mmu.h',
   'src/kernel/hardware/mmu.S',
   'src/kernel/hardware/watchdog.c',
-  'src/kernel/hardware/watchdog.h',
   'src/kernel/kernel.c',
-  'src/kernel/kernel.h',
-  'src/kernel/kernel_types.h',
   'src/kernel/lib/eabi_rt.c',
   'src/kernel/lib/str.c',
   'src/kernel/lib/str.h',
-  'src/kernel/memory/bitfield.h',
   'src/kernel/memory/bitfield.c',
-  'src/kernel/memory/section_allocator.h',
   'src/kernel/memory/section_allocator.c',
-  'src/kernel/memory/memory_allocator.h',
   'src/kernel/memory/memory_allocator.c',
-  'src/kernel/memory/translation_table_allocator.h',
   'src/kernel/memory/translation_table_allocator.c',
   'src/kernel/scheduler/scheduler.c',
-  'src/kernel/scheduler/scheduler.h',
   'src/kernel/scheduler/scheduler.S',
-  'src/kernel/scheduler/task_context.h',
   'src/kernel/syscalls.c',
-  'src/kernel/syscalls.h',
   'src/kernel/usermode/usermode.c',
-  'src/kernel/usermode/usermode.h',
   'src/kernel/usermode/usr_syscalls.c',
-  'src/kernel/usermode/usr_syscalls.h',
   'src/kernel/usermode/usr_syscalls.S',
   'src/kernel/usermode/libc/dirent.c',
-  'src/kernel/usermode/libc/dirent.h',
   'src/kernel/usermode/libc/stdio.c',
-  'src/kernel/usermode/libc/stdio.h',
   'src/kernel/usermode/libc/stdlib.c',
-  'src/kernel/usermode/libc/stdlib.h',
   'src/kernel/usermode/libc/string.c',
-  'src/kernel/usermode/libc/string.h',
-  'src/kernel/vfs/vfs.h',
   'src/kernel/vfs/vfs.c',
-  'src/kernel/vfs/dentry.h',
-  'src/kernel/vfs/device_ops.h',
-  'src/kernel/vfs/inode.h',
-  'src/kernel/vfs/super_block.h',
-  'src/kernel/vfs/driver_registry.h',
   'src/kernel/vfs/driver_registry.c',
-  'src/kernel/vfs/dev/tty.h',
   'src/kernel/vfs/dev/tty.c',
-  'src/kernel/vfs/dev/zero.h',
   'src/kernel/vfs/dev/zero.c',
-  'src/kernel/vfs/filesystems/ramfs.h',
   'src/kernel/vfs/filesystems/ramfs.c',
 )
 kernel_linker_script = files(
