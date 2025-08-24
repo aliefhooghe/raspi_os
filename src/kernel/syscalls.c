@@ -82,8 +82,8 @@ static int32_t _syscall__CLOSE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     if (file == NULL)
         return SYSCALL_STATUS_ERR;
 
-    vfs_file_close(file);
-    scheduler_cur_proc_rem_fd(fd);
+    scheduler_cur_proc_rem_fd(fd);   // decrement file.fcount
+    vfs_file_close(file);            // decrement inode.icount
 
     return 0;
 }

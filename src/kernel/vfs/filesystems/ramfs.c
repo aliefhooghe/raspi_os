@@ -182,6 +182,7 @@ static file_t *_ramfs_reg_file_open(inode_t *inode)
     file_t *file = memory_calloc(sizeof(file_t));
     if (file == NULL)
         return file;
+    file->fd_count = 0u;
     file->inode = inode;
     file->pos = 0u;
     // file->private = NULL;
@@ -192,7 +193,8 @@ static int _ramfs_reg_file_release(inode_t *inode, file_t *file)
 {
     KERNEL_ASSERT(inode != NULL);
     KERNEL_ASSERT(file != NULL);
-    memory_free(file);
+    KERNEL_ASSERT(file->fd_count == 0u);
+     memory_free(file);
     return 0;
 }
 
@@ -281,6 +283,7 @@ static file_t *_ramfs_dir_file_open(inode_t *inode)
     file_t *file = memory_calloc(sizeof(file_t));
     if (file == NULL)
         return file;
+    file->fd_count = 0u;
     file->inode = inode;
     file->pos = 0u;
     // file->private = NULL;
@@ -292,6 +295,7 @@ static int _ramfs_dir_file_release(inode_t *inode, file_t *file)
     mini_uart_kernel_log("ramfs: dir_file_ops: release");
     KERNEL_ASSERT(inode != NULL);
     KERNEL_ASSERT(file != NULL);
+    KERNEL_ASSERT(file->fd_count == 0u);
     memory_free(file);
     return 0;
 }

@@ -276,8 +276,10 @@ int32_t _proc_add_fd(
 {
     const int32_t fd = bitfield_acquire_first(
         proc->files_bitfield, FD_BITFIELD_COUNT);
-    if (fd >= 0)
+    if (fd >= 0) {
+        file->fd_count++;
         proc->files[fd] = file;
+    }
     return fd;
 }
 
@@ -285,6 +287,9 @@ void _proc_rem_fd(
     process_t *proc,
     int32_t fd)
 {
+    file_t *file = proc->files[fd];
+    KERNEL_ASSERT(file->fd_count > 0);
+    file->fd_count--;
     bitfield_clear(
         proc->files_bitfield, FD_BITFIELD_COUNT, fd);
 }
@@ -578,11 +583,8 @@ int32_t scheduler_cur_proc_fork(void)
     for (size_t index = 0u; index < MAX_FILE_DESCRIPTOR_COUNT; index++) {
         if (bitfield_bit(
             current_proc->files_bitfield, FD_BITFIELD_COUNT, index)) {
-            // fd at index is allocated. Copy the file
-            file_t *file = memory_calloc(sizeof(file_t));
-            KERNEL_ASSERT(file != NULL); // horrible
-
-            _memcpy(file, current_proc->files[index], sizeof(file_t));
+            file_t *file = current_proc->files[index];
+            file->fd_count++;
             new_proc->files[index] = file;
         }
         else {

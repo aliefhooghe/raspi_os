@@ -16,8 +16,9 @@ typedef struct super_block_ops super_block_ops_t;
 
 
 //
-// Per process file structure
+//  Open file structure
 struct file {
+    size_t fd_count;     // fd  reference count
     inode_t *inode;
     off_t pos;           // current offset
     // void *private;       // fs driver stuff
