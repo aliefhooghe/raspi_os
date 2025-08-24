@@ -1,8 +1,16 @@
-[default_config]
+
+[[project]]
+path = ""
 version = "0.10.0"
 assembler = "gas"
 instruction_set = "arm"
 
-[default_config.opts]
+[project.opts]
+compiler = "clang"
+compile_flags_txt = [
+    "--target=armv6k-none-eabi",
+    "-mcpu=arm1176jzf-s",
+]
 diagnostics = true
-default_diagnostics = false 
+default_diagnostics = true
+
