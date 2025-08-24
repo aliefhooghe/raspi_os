@@ -58,8 +58,16 @@ extern void cpu_delay(uint32_t cycle_count);
 // 11011 	Undefined 	PC, R14_und, R13_und, R12 to R0, CPSR, SPSR_und
 // 11111 	System 	PC, R14 to R0, CPSR
 
+//
+// Enable irq globally
+// 
 void cpu_irq_enable(void);
+
+//
+// Disable irq globally
+// 
 void cpu_irq_disable(void);
+
 
 uint8_t cpu_get_execution_mode(void);
 
