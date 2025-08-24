@@ -146,7 +146,7 @@ static ssize_t _ramfs_reg_file_write(
         data, size);
     *offset = end;
     file->inode->size = new_size;
-   
+
     return size;
 }
 
@@ -223,7 +223,7 @@ static int _ramfs_dir_readdir(
         dirent *entry = &entries[i];
 
         _strcpy(entry->d_name, child->name);
-        
+
         // TODO: add a mapper somewere else name, inode => dirent
         switch (S_IFMT & child->inode->mode) {
             case S_IFDIR: entry->d_type = DT_DIR; break;
@@ -246,7 +246,7 @@ static ssize_t _ramfs_dir_file_seek(
 
     ramfs_dir_private_t *priv_dir = (ramfs_dir_private_t*)dir->private;
     KERNEL_ASSERT(priv_dir != NULL);
-    
+
     // compute reference
     off_t reference;
     switch (whence) {
@@ -386,7 +386,7 @@ static inode_t *_ramfs_inode_mkdir(inode_t *dir, const char *name, mode_t mode)
     inode->ino = ++ramfs->ino_gen;
     inode->link_count = 0u;
     inode->mode = mode;
-    
+
     _add_inode_child(priv_dir, name, inode);
     return inode;
 }
@@ -466,7 +466,7 @@ static inode_t *_ramfs_sb_alloc_inode(super_block_t *ram_sb)
 {
     mini_uart_kernel_log("ramfs: super-block: alloc inode ");
     inode_t *inode = memory_calloc(sizeof(inode_t));
-    
+
     KERNEL_ASSERT(inode != NULL);
     inode->super_block = ram_sb;
 
@@ -494,7 +494,7 @@ static int _ramfs_sb_read_inode(super_block_t *ram_sb, ino_t ino, inode_t *inode
     // - in theory this should only be called on sb mount, but what if it
     //   is called another time ? 
     mini_uart_kernel_log("ramfs: super-block: read inode %u", ino);
-   
+
     // this is the only one which should be read one time on the ramfs
     if (ino != RAMFS_ROOT_NODE_ID)
         return -1;

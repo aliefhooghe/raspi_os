@@ -13,7 +13,7 @@ SECTIONS
     .data : { *(.rodata) } > ram
     .bss : { *(.bss*) } > ram
     _end = .;
-    
+
     ASSERT(
         _end - _start <= LENGTH(ram),
         "KERNEL DOES NOT FIT IN RAM REGION")

@@ -41,7 +41,7 @@
 
 //
 //  Process structure
-// 
+//
 #define MAX_FILE_DESCRIPTOR_COUNT (8u)
 #define FD_BITFIELD_COUNT (MAX_FILE_DESCRIPTOR_COUNT / 8)
 
@@ -113,7 +113,7 @@ typedef struct {
     // process table
     process_t processes[SCHEDULER_MAX_TASK_COUNT];
     size_t proc_count;
-    
+
     // current process index: 0 -> proc_count
     uint32_t current_proc;
 
@@ -193,7 +193,7 @@ static void _remove_process(process_t *proc)
     mini_uart_kernel_log(
         "scheduler: remove proc index=%u, pid=%u",
         index, proc->id);
-    
+
     // delete process
     _memmove(
         &_scheduler.processes[index],
@@ -310,7 +310,7 @@ static process_t *_select_next_scheduled_proc(void)
         if (current_proc->schedule_state.status == PROC_SCHEDULED)
             return current_proc;
     }
-    
+
     kernel_fatal_error("no more scheduled processes");
     return NULL;  // unreachable
 }
@@ -435,7 +435,7 @@ void scheduler_start(const char *init_path)
     // 
     _scheduler.current_proc = 0u;
     _scheduler.proc_count = 1u;
-    
+
     // init process: pid, memory section alloc
     mini_uart_kernel_log("scheduler: initialize init process");
     const int32_t init_process_pid = ++_scheduler.id_gen;
