@@ -23,6 +23,11 @@ void *_memmove(
     const void *source,
     size_t size);
 
+int32_t _memcmp(
+    const void *s1,
+    const void *s2,
+    size_t n);
+
 size_t _strlen(
     const char *s);
 

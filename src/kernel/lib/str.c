@@ -34,6 +34,23 @@ void *_memmove(
     return destination;
 }
 
+
+int32_t _memcmp(
+    const void *s1,
+    const void *s2,
+    size_t n)
+{
+    const uint8_t *sb1 = (uint8_t*)s1;
+    const uint8_t *sb2 = (uint8_t*)s2;
+
+    size_t index = 0u;
+    while (++index < n && (*sb1 == *sb2)) {
+        sb1++; sb2++;
+    }
+
+    return (*sb1 - *sb2);
+}
+
 size_t _strlen(const char *s)
 {
     size_t size = 0u;
@@ -57,8 +74,8 @@ int32_t _strcmp(const char *s1, const char *s2)
 int32_t _strncmp(const char* s1, const char* s2, size_t count)
 {
     size_t index = 0u;
-    while (index++ < count && *s1 != '\0' && (*s1 == *s2)) {s1++; s2++;}
-    return (*(unsigned char *)(s1-1) - *(unsigned char *)(s2-1));
+    while (++index< count && *s1 != '\0' && (*s1 == *s2)) {s1++; s2++;}
+    return (*(unsigned char *)s1 - *(unsigned char *)s2);
 }
 
 const char* _strchr(const char* str, char ch)
