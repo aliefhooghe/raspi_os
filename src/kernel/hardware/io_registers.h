@@ -91,4 +91,32 @@
 #define REG__ARM_TIMER_DIV          0x2000B41Cu
 #define REG__ARM_TIMER_CNT          0x2000B420u
 
+//
+//  EMMC: Registers for the EMMC/SD controller
+#define REG__EMMC_ARG2              0x20300000u  // ACMD23 argument
+#define REG__EMMC_BLKSIZECNT        0x20300004u  // Block Size and Count
+#define REG__EMMC_ARG1              0x20300008u  // argument
+#define REG__EMMC_CMDTM             0x2030000Cu  // Command and Transfer mode
+#define REG__EMMC_RESP0             0x20300010u  // Response bits  31:00
+#define REG__EMMC_RESP1             0x20300014u  //                63:32
+#define REG__EMMC_RESP2             0x20300018u  //                95:64
+#define REG__EMMC_RESP3             0x2030001Cu  //               127:96
+#define REG__EMMC_DATA              0x20300020u  // Data
+#define REG__EMMC_STATUS            0x20300024u  // Status
+#define REG__EMMC_CONTROL0          0x20300028u  // Host configuration bits
+#define REG__EMMC_CONTROL1          0x2030002Cu  // Host configuration bits
+#define REG__EMMC_INTERUPT          0x20300030u  // Interupt flags
+#define REG__EMMC_IRPT_EN           0x20300034u  // Interupt flag Enable
+#define REG__EMMC_CONTROL2          0x2030003Cu  // Host configuration bits
+#define REG__EMMC_FORCE_IRPT        0x20300050u  // Force interupt event
+#define REG__EMMC_BOOT_TIMEOUT      0x20300070u  // Timeout in boot mode
+#define REG__EMMC_DBG_SEL           0x20300074u  // Debug bus configuration
+#define REG__EMMC_EXRDFIFO_CFG      0x20300080u  // Extensions FIFO Configuration
+#define REG__EMMC_EXRDFIFO_EN       0x20300084u  // Extensions FIFO Enable
+#define REG__EMMC_TUNE_STEP         0x20300088u  // Delay per card clock tuning step
+#define REG__EMMC_TUNE_STEPS_STD    0x2030008Cu  // Card clock tuning steps for SDR
+#define REG__EMMC_TUNE_STEPS_DDR    0x20300090u  // Card clock tuning steps for DDR
+#define REG__EMMC_SPI_INT_SPT       0x203000F0u  // SPI interupt support
+#define REG__EMMC_SLOTISR_VER       0x203000FCu  // Slot interupt status and version
+
 #endif
