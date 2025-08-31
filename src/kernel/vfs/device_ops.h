@@ -11,8 +11,12 @@ typedef file_ops_t character_device_ops_t;
 struct block_device_ops {
     int (*read_block)(void *private, uint64_t index, void *block);
     int (*write_block)(void *private, uint64_t index, const void *block);
-    int (*sync)(void *private);
 };
+
+typedef struct block_device {
+    block_device_ops_t ops;
+    void *private;
+} block_device_t;
 
 
 #endif
