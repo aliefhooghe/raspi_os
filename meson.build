@@ -117,9 +117,7 @@ kernel_sources = files(
   'src/kernel/lib/str.c',
   'src/kernel/lib/str.h',
   'src/kernel/lib/fnv_hash.c',
-  'src/kernel/lib/fnv_hash.h',
   'src/kernel/lib/hashmap.c',
-  'src/kernel/lib/hashmap.h',
   'src/kernel/memory/bitfield.c',
   'src/kernel/memory/section_allocator.c',
   'src/kernel/memory/memory_allocator.c',
@@ -132,6 +130,7 @@ kernel_sources = files(
   'src/kernel/vfs/dev/tty.c',
   'src/kernel/vfs/dev/zero.c',
   'src/kernel/vfs/filesystems/ramfs.c',
+  'src/kernel/vfs/filesystems/fat32_fs.c',
 
   'src/arm_runtime/eabi_rt.c',
 )
