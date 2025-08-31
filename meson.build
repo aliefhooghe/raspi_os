@@ -106,13 +106,16 @@ kernel_sources = files(
   'src/kernel/utils.c',
   'src/kernel/elf_loader/elf_loader.c',
   'src/kernel/hardware/cpu.S',
+
   'src/kernel/hardware/interupts.c',
   'src/kernel/hardware/interupts.S',
   'src/kernel/hardware/mini_uart.c',
   'src/kernel/hardware/mmio.S',
   'src/kernel/hardware/mmu.c',
   'src/kernel/hardware/mmu.S',
+  'src/kernel/hardware/sdio.c',
   'src/kernel/hardware/watchdog.c',
+
   'src/kernel/kernel.c',
   'src/kernel/lib/str.c',
   'src/kernel/lib/str.h',
