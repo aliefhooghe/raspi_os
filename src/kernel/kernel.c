@@ -7,6 +7,7 @@
 #include "hardware/io_registers.h"
 #include "hardware/mini_uart.h"
 #include "hardware/mmu.h"
+#include "hardware/sd_host.h"
 #include "hardware/watchdog.h"
 
 #include "memory/memory_allocator.h"
@@ -35,7 +36,6 @@ extern unsigned char init_elf[];
 
 extern unsigned int lucifer_elf_len;
 extern unsigned char lucifer_elf[];
-
 //
 // # Kernel Memory Layout:
 // 
@@ -86,6 +86,9 @@ static void kernel_init(void)
     // initialize the mini UART
     mini_uart_init();
     mini_uart_kernel_puts("Satan OS kernel is starting...\r\n");
+
+    // initialize the sdio controller
+    sdhost_init();
 
     // Initialize the section allocator
     mini_uart_kernel_log("kernel: initialize the section allocator");
