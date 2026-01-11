@@ -126,12 +126,11 @@ static int32_t _syscall__WRITE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     return vfs_file_write(file, data, size);
 }
 
-
 static int32_t _syscall__MOUNT(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
-    const char *dev = (const char*)arg0;
-    const char *target = (const char*)arg1;
-    const char *fstype = (const char*)arg2;
+    const char *dev = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
+    const char *target = (const char*)scheduler_cur_proc_get_kernel_address(arg1);
+    const char *fstype = (const char*)scheduler_cur_proc_get_kernel_address(arg2);
     (void)dev;
     (void)target;
     (void)fstype;
@@ -142,14 +141,14 @@ static int32_t _syscall__MOUNT(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 static int32_t _syscall__MKDIR(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     (void)arg2;
-    const char *path = (const char*)arg0;
+    const char *path = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
     const mode_t mode = arg1;
     return vfs_mkdir(path, mode);
 }
 
 static int32_t _syscall__MKNOD(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
-    const char *path = (const char*)arg0;
+    const char *path = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
     const mode_t mode = arg1;
     const dev_t device = arg2;
     return vfs_mknod(path, mode, device);
