@@ -29,10 +29,10 @@ static const char *_syscall_names[SYSCALL_COUNT] = {
  */
 static int32_t _syscall__YIELD(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
-    (void)arg0;
+    const int32_t status = arg0;
     (void)arg1;
     (void)arg2;
-    return 0;
+    return status;
 }
 
 static int32_t _syscall__REBOOT(uint32_t arg0, uint32_t arg1, uint32_t arg2)
