@@ -40,8 +40,7 @@ static int32_t _syscall__REBOOT(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     (void)arg0;
     (void)arg1;
     (void)arg2;
-    watchdog_init(0x100);
-    for (;;);  // hang: avoid executing something before reboot
+    watchdog_reboot();
     return 0;
 }
 
