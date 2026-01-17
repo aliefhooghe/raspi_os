@@ -18,7 +18,13 @@ void mini_uart_wait_tx_idle(void);
 #define KERNEL_ENABLE_LOG
 
 void mini_uart_kernel_puts(const char* str);
+
+
+#ifdef KERNEL_ENABLE_LOG
 void mini_uart_kernel_log(const char *restrict format, ...);
+#else
+#define mini_uart_kernel_log(...)
+#endif
 
 
 #endif

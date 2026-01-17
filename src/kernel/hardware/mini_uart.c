@@ -112,6 +112,8 @@ void mini_uart_kernel_puts(const char* str)
     }
 }
 
+#ifdef KERNEL_ENABLE_LOG
+
 static void _mini_uart_put_uint(uint32_t x)
 {
     char result[11] = "";
@@ -154,9 +156,6 @@ static void _mini_uart_put_uint_bin(uint32_t x)
 
 void mini_uart_kernel_log(const char *restrict format, ...)
 {
-#ifndef KERNEL_ENABLE_LOG
-    return;
-#endif
 
     va_list ap;
     int escape = 0;
@@ -218,3 +217,5 @@ void mini_uart_kernel_log(const char *restrict format, ...)
     va_end(ap);
     mini_uart_kernel_puts("\x1b[0m\r\n");
 }
+
+#endif
