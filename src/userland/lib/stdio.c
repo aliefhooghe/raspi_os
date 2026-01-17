@@ -177,6 +177,17 @@ static void _fput_uint(FILE *stream, uint32_t x)
     fwrite(result + index, 11 - index, 1, stream);
 }
 
+static void _fput_int(FILE *stream, int32_t x)
+{
+    if (x < 0) {
+        fputs("-", stream);
+        _fput_uint(stream, (uint32_t)-x);
+    }
+    else {
+        _fput_uint(stream, (uint32_t)x);
+    }
+}
+
 static void _fput_uint_hex(FILE *stream, uint32_t x)
 {
     static const char cars[] = "0123456789abcdef";
@@ -238,6 +249,12 @@ int vfprintf(FILE *restrict stream, const char *restrict format, va_list ap)
                     {
                         const uint32_t value = va_arg(ap, uint32_t);
                         _fput_uint(stream, value);
+                    }
+                    break;
+                case 'd':
+                    {
+                        const int32_t value = va_arg(ap, int32_t);
+                        _fput_int(stream, value);
                     }
                     break;
                 case 'x':
