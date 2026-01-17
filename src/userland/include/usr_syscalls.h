@@ -12,7 +12,7 @@
 //
 //  System
 // 
-int32_t usr_syscall_yield(void);
+int32_t usr_syscall_yield(int32_t status);
 int32_t usr_syscall_reboot(void);
 
 //

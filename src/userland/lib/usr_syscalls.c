@@ -15,9 +15,9 @@ static inline int32_t syscall(uint32_t syscall_num, uint32_t arg0, uint32_t arg1
 
 // -- SYSTEM
 
-int32_t usr_syscall_yield(void)
+int32_t usr_syscall_yield(int32_t status)
 {
-    return syscall(SYSCALL__YIELD, 0u, 0u, 0u);
+    return syscall(SYSCALL__YIELD, (uint32_t)status, 0u, 0u);
 }
 
 int32_t usr_syscall_reboot(void)
