@@ -127,6 +127,17 @@ static void _mini_uart_put_uint(uint32_t x)
     mini_uart_kernel_puts(result + index);
 }
 
+static void _mini_uart_put_int(int32_t x)
+{
+    if (x < 0) {
+        mini_uart_putc('-');
+        _mini_uart_put_uint((uint32_t)(-x));
+    }
+    else {
+        _mini_uart_put_uint((uint32_t)x);
+    }
+}
+
 static void _mini_uart_put_uint_hex(uint32_t x)
 {
     static const char cars[] = "0123456789abcdef";
@@ -172,6 +183,12 @@ void mini_uart_kernel_log(const char *restrict format, ...)
                     {
                         const uint32_t value = va_arg(ap, uint32_t);
                         _mini_uart_put_uint(value);
+                    }
+                    break;
+                case 'd':
+                    {
+                        const int32_t value = va_arg(ap, int32_t);
+                        _mini_uart_put_int(value);
                     }
                     break;
                 case 'x':
