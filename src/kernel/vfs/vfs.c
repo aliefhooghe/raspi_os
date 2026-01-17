@@ -251,17 +251,23 @@ int32_t vfs_mkdir(const char *path, mode_t mode)
         path, mode);
 
     dentry_t *dentry = _vfs_dentry_lookup(path);
-    if (dentry == NULL)
-        return -1; // no parent dir
-    else if (dentry->inode != NULL)
+    if (dentry == NULL) {
+        mini_uart_kernel_log("vfs: mkdir: parent dir does not exist");
+        return -1;
+    }
+    else if (dentry->inode != NULL) {
+        mini_uart_kernel_log("vfs: mkdir: a file already exists at this path");
         return -1; // a file already exists at this path
+    }
 
     inode_t *parent = dentry->parent->inode;
     inode_t *new_node = parent->inode_ops->mkdir(
         parent, dentry->name, mode);
 
-    if (new_node == NULL)
+    if (new_node == NULL) {
+        mini_uart_kernel_log("vfs: mkdir: inode ops mkdir failure");
         return -1;
+    }
 
     // update dentry
     dentry->inode = new_node;
@@ -309,11 +315,13 @@ file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
         }
         else
         {
+            mini_uart_kernel_log("vfs: file not found, no creation requested");
             return NULL;  // file not found, no creation requested
         }
     }
     else if (flags & O_EXCL)
     {
+        mini_uart_kernel_log("vfs: file already exists, requested exclusive creation");
         return NULL;  // file already exists
     }
     
@@ -323,6 +331,7 @@ file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
     
     // there is an existing inode
     if ((flags & O_DIRECTORY) && ((inode->mode & S_IFMT) != S_IFDIR)) {
+        mini_uart_kernel_log("vfs: file is not a directory, requested a directory");
         return NULL;
     }
     else if(inode->file_ops == NULL ||
