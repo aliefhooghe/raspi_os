@@ -42,7 +42,7 @@ FILE *fopen(const char *restrict path, const char *restrict mode)
     const int fd = usr_syscall_open(path, 0, 0);
     if (fd < 0)
         return NULL;
-    
+
     FILE *desc = fdopen(fd, mode);
     if (desc == NULL) {
         usr_syscall_close(fd);

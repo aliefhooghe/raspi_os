@@ -33,8 +33,9 @@ int dirfd(DIR *dirp)
 struct dirent *readdir(DIR *dirp)
 {
     const size_t count = usr_syscall_readdir(dirp->fd, &dirp->last_read, 1u);
-    if (count != 1u)
+    if (count != 1u) {
         return NULL;
+    }
     return &dirp->last_read;
 }
 
