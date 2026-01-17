@@ -82,9 +82,9 @@ uint8_t mini_uart_getc(void)
     while (1)
     {
         if ((mmio_read(REG__AUX_MU_LSR_REG) & 0x01) != 0) {
-            asm volatile ("wfe");
             break; // Bit 0: Data ready
         }
+        asm volatile ("wfe");
     }
 
     // Read the character from the data register
