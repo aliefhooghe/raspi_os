@@ -38,24 +38,24 @@ typedef struct __attribute__((packed))
     uint8_t boot_signature;
     uint32_t volume_id;
     uint8_t volume_label[11];
-    uint8_t fat_type_label[8];        // ="FAT32"
+    uint8_t fat_type_label[8];       // ="FAT32"
 } fat_extended_boot_sector32_t;
 
 typedef struct __attribute__((packed))
 {
-    char filename[8];                 // filename padded with space
-    char file_extension[3];           // file extension
-    uint8_t attributes;               // attributes (read only, hidden, ..)
-    uint8_t reserved;                 // reserved for windows NT
-    uint8_t creation_time_ms;         // creation date (1/10 of seconds)
-    uint16_t creation_time;           // creation hour
-    uint16_t creation_date;           // creation date
-    uint16_t last_access_date;        //
-    uint16_t starting_cluster_high;   //
-    uint16_t last_write_time;         // last modification hour
-    uint16_t last_write_date;         // last modification date
-    uint16_t starting_cluster_low;    //
-    uint32_t file_size;               // file size in bytes
+    char filename[8];                // filename padded with space
+    char file_extension[3];          // file extension
+    uint8_t attributes;              // attributes (read only, hidden, ..)
+    uint8_t reserved;                // reserved for windows NT
+    uint8_t creation_time_ms;        // creation date (1/10 of seconds)
+    uint16_t creation_time;          // creation hour
+    uint16_t creation_date;          // creation date
+    uint16_t last_access_date;       //
+    uint16_t starting_cluster_high;  //
+    uint16_t last_write_time;        // last modification hour
+    uint16_t last_write_date;        // last modification date
+    uint16_t starting_cluster_low;   //
+    uint32_t file_size;              // file size in bytes
 } fat_directory_entry_t;
 
 _Static_assert(
@@ -119,6 +119,7 @@ static uint32_t _fat32_cluster_sector_index(
 // 
 super_block_t *fat32_create_filesystem(block_device_t *blk_dev)
 {
+    (void)blk_dev;
     return NULL;
 }
 
@@ -164,16 +165,16 @@ void test_fat32(const uint8_t *fat32_base, size_t data_size)
     // read fat32 extended boot sector
     fat_extended_boot_sector32_t *ebs = (fat_extended_boot_sector32_t*)(&boot_sector[1]);
 
-    mini_uart_kernel_log("[FAT32] ext bs.table_size_32 = %x", ebs->table_size_32);
-    mini_uart_kernel_log("[FAT32] ext bs.extended_flags = %x", ebs->extended_flags);
-    mini_uart_kernel_log("[FAT32] ext bs.fat_version = %x", ebs->fat_version);
-    mini_uart_kernel_log("[FAT32] ext bs.root_cluster = %x", ebs->root_cluster);
-    mini_uart_kernel_log("[FAT32] ext bs.fat_info = %x", ebs->fat_info);
+    mini_uart_kernel_log("[FAT32] ext bs.table_size_32    = %x", ebs->table_size_32);
+    mini_uart_kernel_log("[FAT32] ext bs.extended_flags   = %x", ebs->extended_flags);
+    mini_uart_kernel_log("[FAT32] ext bs.fat_version      = %x", ebs->fat_version);
+    mini_uart_kernel_log("[FAT32] ext bs.root_cluster     = %x", ebs->root_cluster);
+    mini_uart_kernel_log("[FAT32] ext bs.fat_info         = %x", ebs->fat_info);
     mini_uart_kernel_log("[FAT32] ext bs.backup_BS_sector = %x", ebs->backup_BS_sector);
-    mini_uart_kernel_log("[FAT32] ext bs.drive_number = %x", ebs->drive_number);
-    mini_uart_kernel_log("[FAT32] ext bs.reserved_1 = %x", ebs->reserved_1);
-    mini_uart_kernel_log("[FAT32] ext bs.boot_signature = %x", ebs->boot_signature);
-    mini_uart_kernel_log("[FAT32] ext bs.volume_id = %x", ebs->volume_id);
+    mini_uart_kernel_log("[FAT32] ext bs.drive_number     = %x", ebs->drive_number);
+    mini_uart_kernel_log("[FAT32] ext bs.reserved_1       = %x", ebs->reserved_1);
+    mini_uart_kernel_log("[FAT32] ext bs.boot_signature   = %x", ebs->boot_signature);
+    mini_uart_kernel_log("[FAT32] ext bs.volume_id        = %x", ebs->volume_id);
 
     //
     // Locate the first sector of the root dictory cluster
@@ -186,8 +187,6 @@ void test_fat32(const uint8_t *fat32_base, size_t data_size)
 
     fat_directory_entry_t *entry = (fat_directory_entry_t*)(
         fat32_base + root_cluster_sector * boot_sector->bytes_per_sector);
-
-    const int aa = sizeof(fat_directory_entry_t);
 
     for (; entry->filename[0] != 0x0u; entry++) {
         if (entry->filename[0] == 0xE5u) {
