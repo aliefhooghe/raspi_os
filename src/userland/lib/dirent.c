@@ -11,7 +11,7 @@ struct DIR {
 
 DIR *opendir(const char *name)
 {
-    int fd = usr_syscall_open(name, O_DIRECTORY, 0u);
+    const int fd = usr_syscall_open(name, O_DIRECTORY, 0u);
     if (fd < 0)
         return NULL;
 
