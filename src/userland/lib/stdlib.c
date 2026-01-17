@@ -15,9 +15,12 @@ void *malloc(size_t size)
 {
     size_t *cursor = (size_t*)HEAP_CURSOR;
     if (*cursor == 0u)
-        *cursor = HEAP_START;   
+        *cursor = HEAP_START;
+
     const size_t old_cursor = *cursor;
-    const size_t new_cursor = (old_cursor + size + sizeof(uint32_t) - 1u) | 0x3u;
+    const size_t new_cursor = (old_cursor + size + 3u) & 0xFFFFFCu;
+
+
     if (new_cursor > HEAP_END)
         return NULL;
     *cursor = new_cursor;
