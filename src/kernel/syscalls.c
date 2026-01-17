@@ -243,10 +243,16 @@ void kernel_syscall_handler(
         mini_uart_kernel_log("syscall: status=0x%x", status);
 
         // if the calling process was removed: do not write status
-        if (calling_pid == scheduler_cur_proc_get_id())
+        const int32_t current_proc_id = scheduler_cur_proc_get_id();
+        if (calling_pid == current_proc_id)
         {
             // if the process was not descheduled
             scheduler_cur_proc_set_syscall_status(status);
+        }
+        else {
+            mini_uart_kernel_log(
+                "syscall: process %d was descheduled (cur proc = %d). Do not write syscall status (%d)",
+                calling_pid, current_proc_id, status);
         }
     }
 }
