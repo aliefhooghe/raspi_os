@@ -86,12 +86,12 @@ static size_t _size_t_max(size_t a, size_t b)
 //
 // Regular files operations
 static ssize_t _ramfs_reg_file_read(
-    file_t *file, void *data, size_t size, off_t *offset)
+    file_t *file, void *data, size_t size)
 {
     mini_uart_kernel_log("ramfs: reg_file_ops: read");
     KERNEL_ASSERT(file->inode != NULL);
 
-    const off_t start = *offset;
+    const off_t start = file->pos;
     if (start < 0)
         return -1;
 
@@ -108,16 +108,16 @@ static ssize_t _ramfs_reg_file_read(
         data,
         start + (uint8_t*)ramfs_file->data,
         act_size);
-    *offset = act_end;
+    file->pos = act_end;
     
     return act_size;
 }
 
 static ssize_t _ramfs_reg_file_write(
-    file_t *file, const void *data, size_t size, off_t *offset)
+    file_t *file, const void *data, size_t size)
 {
     mini_uart_kernel_log("ramfs: reg_file_ops: write");
-    const off_t start = *offset;
+    const off_t start = file->pos;
     if (start < 0)
         return -1;
 
@@ -145,7 +145,7 @@ static ssize_t _ramfs_reg_file_write(
     _memcpy(
         start + (uint8_t*)ramfs_file->data,
         data, size);
-    *offset = end;
+    file->pos = end;
     file->inode->size = new_size;
 
     return size;
@@ -195,7 +195,7 @@ static int _ramfs_reg_file_release(inode_t *inode, file_t *file)
     KERNEL_ASSERT(inode != NULL);
     KERNEL_ASSERT(file != NULL);
     KERNEL_ASSERT(file->fd_count == 0u);
-     memory_free(file);
+    memory_free(file);
     return 0;
 }
 

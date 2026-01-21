@@ -10,7 +10,6 @@
 // #define BLOCK_DEVICE_COUNT (1u)
 // #define CHAR_DEVICE_COUNT (2u)
 
-
 #define DEV_TTY_MAJOR (0u)
 #define DEV_TTY_MINI_UART_MINOR (0u)
 

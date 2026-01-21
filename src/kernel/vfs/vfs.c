@@ -361,7 +361,7 @@ ssize_t vfs_file_read(file_t *file, void *data, size_t size)
     if (file->inode->file_ops == NULL ||
         file->inode->file_ops->read == NULL)
         return -1;
-    return file->inode->file_ops->read(file, data, size, &file->pos);
+    return file->inode->file_ops->read(file, data, size);
 }
 
 ssize_t vfs_file_readdir(file_t *file, dirent *entries, size_t count)
@@ -377,7 +377,7 @@ ssize_t vfs_file_write(file_t *file, const void *data, size_t size)
     if (file->inode->file_ops == NULL ||
         file->inode->file_ops->write == NULL)
         return -1;
-    return file->inode->file_ops->write(file, data, size, &file->pos);
+    return file->inode->file_ops->write(file, data, size);
 }
 
 ssize_t vfs_file_lseek(file_t *file, int32_t offset, int32_t whence)

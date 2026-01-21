@@ -26,8 +26,8 @@ struct file {
 
 
 struct file_ops {
-    ssize_t (*read) (file_t *file, void *data, size_t size, off_t *offset);
-    ssize_t (*write) (file_t *file, const void *data, size_t size, off_t *offset);
+    ssize_t (*read) (file_t *file, void *data, size_t size);
+    ssize_t (*write) (file_t *file, const void *data, size_t size);
     ssize_t (*seek) (file_t *file, int32_t offset, int32_t whence);
     int (*readdir)(file_t *file, struct dirent *entries, size_t count);
     file_t *(*open) (inode_t *inode);
@@ -60,9 +60,3 @@ struct inode {
 };
 
 #endif
-
-// create a file:
-// 1 - allocate an inode (super block)
-// 2 - create a dentry holding the inode
-// 3 - update parent childs
-// 4 - 

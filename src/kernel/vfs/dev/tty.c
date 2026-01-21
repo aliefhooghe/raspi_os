@@ -10,10 +10,9 @@
 //
 
 static ssize_t _tty_mini_uart_read(
-    file_t *file, void *data, size_t size, off_t *offset)
+    file_t *file, void *data, size_t size)
 {
     (void)file;
-    (void)offset;
     
     uint8_t *car_buf = (uint8_t*)data;
 
@@ -37,10 +36,9 @@ static ssize_t _tty_mini_uart_read(
 }
 
 static ssize_t _tty_mini_uart_write(
-    file_t *file, const void *data, size_t size, off_t *offset)
+    file_t *file, const void *data, size_t size)
 {
     (void)file;
-    (void)offset;
 
     const uint8_t *car_buf = (const uint8_t*)data;
 
