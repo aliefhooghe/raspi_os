@@ -6,6 +6,7 @@
 #include "lib/str.h"
 
 #include "memory/bitfield.h"
+#include "memory/memory_allocator.h"
 #include "memory/section_allocator.h"
 
 #include "vfs/filesystems/ramfs.h"
@@ -335,25 +336,28 @@ file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
         mini_uart_kernel_log("vfs: file is not a directory, requested a directory");
         return NULL;
     }
-    else if(inode->file_ops == NULL ||
-       inode->file_ops->open == NULL)
-    {
-        mini_uart_kernel_log(
-            "vfs: open: inode at '%s' does not implement open file operation",
-            path);
+
+    // common impl for open.
+    mini_uart_kernel_log("vfs: allocate file_t");
+    file_t *file = memory_calloc(sizeof(file_t));
+    if (file == NULL) {
         return NULL;
     }
+    file->fd_count = 0u;
+    file->inode = inode;
+    file->pos = 0u;
 
-    mini_uart_kernel_log("vfs: call inode.open");
-    return inode->file_ops->open(inode);
+    return file;
 }
 
 int32_t vfs_file_close(file_t *file)
 {
-    if (file->inode->file_ops == NULL ||
-        file->inode->file_ops->release == NULL)
-        return -1;
-    return file->inode->file_ops->release(file->inode, file);
+    // common impl for release
+    KERNEL_ASSERT(file != NULL);
+    KERNEL_ASSERT(file->inode != NULL);
+    KERNEL_ASSERT(file->fd_count == 0u);
+    memory_free(file);
+    return 0;
 }
 
 ssize_t vfs_file_read(file_t *file, void *data, size_t size)

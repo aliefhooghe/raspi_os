@@ -13,25 +13,19 @@ typedef uint32_t ino_t;
 typedef struct super_block super_block_t;
 typedef struct super_block_ops super_block_ops_t;
 
-
-
 //
 //  Open file structure
 struct file {
     size_t fd_count;     // fd  reference count
     inode_t *inode;
     off_t pos;           // current offset
-    // void *private;       // fs driver stuff
 };
-
 
 struct file_ops {
     ssize_t (*read) (file_t *file, void *data, size_t size);
     ssize_t (*write) (file_t *file, const void *data, size_t size);
     ssize_t (*seek) (file_t *file, int32_t offset, int32_t whence);
     int (*readdir)(file_t *file, struct dirent *entries, size_t count);
-    file_t *(*open) (inode_t *inode);
-    int (*release) (inode_t *inode, file_t *file);
 };
 
 //

@@ -52,23 +52,11 @@ static ssize_t _tty_mini_uart_write(
     return size;
 }
 
-static file_t *_tty_mini_uart_open(inode_t *inode)
-{
-    // TODO: a default implem for that one and some others ??
-    file_t *file = memory_calloc(sizeof(file_t));
-    file->inode = inode;
-    file->pos = 0u;
-    // file->private = NULL;
-    return file; 
-}
-
 const character_device_ops_t dev_tty_ops = {
     .read = _tty_mini_uart_read,
     .write = _tty_mini_uart_write,
     .seek = NULL,
-    .readdir = NULL,
-    .open = _tty_mini_uart_open,
-    .release = NULL,
+    .readdir = NULL
 };
 
 

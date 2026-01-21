@@ -176,36 +176,11 @@ static ssize_t _ramfs_reg_file_seek(
     return file->pos;
 }
 
-static file_t *_ramfs_reg_file_open(inode_t *inode)
-{
-    mini_uart_kernel_log("ramfs: reg_file_ops: open");
-    KERNEL_ASSERT(inode != NULL);
-    file_t *file = memory_calloc(sizeof(file_t));
-    if (file == NULL)
-        return file;
-    file->fd_count = 0u;
-    file->inode = inode;
-    file->pos = 0u;
-    // file->private = NULL;
-    return file;
-}
-
-static int _ramfs_reg_file_release(inode_t *inode, file_t *file)
-{
-    KERNEL_ASSERT(inode != NULL);
-    KERNEL_ASSERT(file != NULL);
-    KERNEL_ASSERT(file->fd_count == 0u);
-    memory_free(file);
-    return 0;
-}
-
 static const file_ops_t _ramfs_reg_file_ops = {
     .read = _ramfs_reg_file_read,
     .write = _ramfs_reg_file_write,
     .seek = _ramfs_reg_file_seek,
-    .readdir = NULL,
-    .open = _ramfs_reg_file_open,
-    .release = _ramfs_reg_file_release,
+    .readdir = NULL
 };
 
 //
@@ -277,37 +252,11 @@ static ssize_t _ramfs_dir_file_seek(
     return file->pos;
 }
 
-static file_t *_ramfs_dir_file_open(inode_t *inode)
-{
-    mini_uart_kernel_log("ramfs: dir_file_ops: open");
-    KERNEL_ASSERT(inode != NULL);
-    file_t *file = memory_calloc(sizeof(file_t));
-    if (file == NULL)
-        return file;
-    file->fd_count = 0u;
-    file->inode = inode;
-    file->pos = 0u;
-    // file->private = NULL;
-    return file;
-}
-
-static int _ramfs_dir_file_release(inode_t *inode, file_t *file)
-{
-    mini_uart_kernel_log("ramfs: dir_file_ops: release");
-    KERNEL_ASSERT(inode != NULL);
-    KERNEL_ASSERT(file != NULL);
-    KERNEL_ASSERT(file->fd_count == 0u);
-    memory_free(file);
-    return 0;
-}
-
 static const file_ops_t _ramfs_dir_file_ops = {
     .read = NULL,
     .write = NULL,
     .seek = _ramfs_dir_file_seek,
     .readdir = _ramfs_dir_readdir,
-    .open = _ramfs_dir_file_open,
-    .release = _ramfs_dir_file_release,
 };
 
 //
