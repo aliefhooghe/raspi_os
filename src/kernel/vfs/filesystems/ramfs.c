@@ -3,6 +3,7 @@
 #include "kernel_types.h"
 #include "lib/str.h"
 #include "memory/memory_allocator.h"
+#include "vfs/device_ops.h"
 #include "vfs/inode.h"
 #include "vfs/super_block.h"
 #include "vfs/driver_registry.h"
@@ -418,10 +419,9 @@ static inode_t *_ramfs_inode_mknod(
     ramfs_t *ramfs = (ramfs_t*)dir->super_block->private;
     inode_t *inode = dir->super_block->ops->alloc_inode(dir->super_block);
     ramfs_dir_private_t *priv_dir = (ramfs_dir_private_t*)dir->private;
-    
+
     inode->device = dev;
     inode->inode_ops = NULL;
-    inode->file_ops = load_char_device();
     inode->private = NULL;
     inode->size = 0u; // ?
     inode->ino = ++ramfs->ino_gen;
@@ -431,7 +431,15 @@ static inode_t *_ramfs_inode_mknod(
     // inode ops does not make sense for a char device
     // it may make sense for special devices
     inode->inode_ops = NULL;
-    
+
+    // TODO: handle block devices
+    KERNEL_ASSERT(mode & S_IFCHR);
+    // if (mode & S_IFCHR) {
+    //  TODO: what to do with device.private ?
+        const char_device_t *device = get_character_device(dev);
+        inode->file_ops = device->ops;
+    // }
+
     _add_inode_child(priv_dir, name, inode);
     return inode;
 }

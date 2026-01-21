@@ -189,6 +189,7 @@ static super_block_t *_sb_by_dev_fs_type(const char *dev, const char *fstype)
 {
     (void)dev;
     (void)fstype;
+    KERNEL_ASSERT(_strcmp("ramfs", fstype) == 0);
     return create_ramfs_super_block();
 }
 
@@ -247,7 +248,7 @@ int32_t vfs_mknod(const char *path, mode_t mode, dev_t dev)
 int32_t vfs_mkdir(const char *path, mode_t mode)
 {
     mini_uart_kernel_log(
-        "vfs: mknod: path='%s', mode=0x%x",
+        "vfs: mkdir: path='%s', mode=0x%x",
         path, mode);
 
     dentry_t *dentry = _vfs_dentry_lookup(path);

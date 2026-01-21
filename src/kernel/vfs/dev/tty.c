@@ -64,7 +64,7 @@ static file_t *_tty_mini_uart_open(inode_t *inode)
     return file; 
 }
 
-static const character_device_ops_t _dev_tty_ops = {
+const character_device_ops_t dev_tty_ops = {
     .read = _tty_mini_uart_read,
     .write = _tty_mini_uart_write,
     .seek = NULL,
@@ -73,8 +73,4 @@ static const character_device_ops_t _dev_tty_ops = {
     .release = NULL,
 };
 
-const character_device_ops_t *dev_tty_create(void)
-{
-    return &_dev_tty_ops;
-}
 

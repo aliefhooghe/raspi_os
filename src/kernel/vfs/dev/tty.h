@@ -3,7 +3,11 @@
 
 #include "vfs/device_ops.h"
 
-const character_device_ops_t *dev_tty_create(void);
+
+// do we need a character_device_t ? (probably yes to hold private data)
+// const character_device_ops_t *dev_tty_create(void);
+
+extern const character_device_ops_t dev_tty_ops;
 
 #endif
 
