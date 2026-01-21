@@ -411,8 +411,16 @@ static inode_t *_ramfs_inode_mknod(
         name, mode, dev);
 
     // only chr device for now
+    // TODO: block devices
     if ((mode & S_IFMT) != S_IFCHR) {
         mini_uart_kernel_log("ramfs: mknode: error: only character device are supported");
+        return NULL;
+    }
+
+    const char_device_t *device = get_char_device(dev);
+    if (device == NULL) {
+        mini_uart_kernel_log(
+            "ramfs: inode_ops: mknod: failed to open device");
         return NULL;
     }
 
@@ -422,6 +430,8 @@ static inode_t *_ramfs_inode_mknod(
 
     inode->device = dev;
     inode->inode_ops = NULL;
+    //  TODO: what to do with device.private ?
+    inode->file_ops = device->ops;
     inode->private = NULL;
     inode->size = 0u; // ?
     inode->ino = ++ramfs->ino_gen;
@@ -431,14 +441,6 @@ static inode_t *_ramfs_inode_mknod(
     // inode ops does not make sense for a char device
     // it may make sense for special devices
     inode->inode_ops = NULL;
-
-    // TODO: handle block devices
-    KERNEL_ASSERT(mode & S_IFCHR);
-    // if (mode & S_IFCHR) {
-    //  TODO: what to do with device.private ?
-        const char_device_t *device = get_character_device(dev);
-        inode->file_ops = device->ops;
-    // }
 
     _add_inode_child(priv_dir, name, inode);
     return inode;

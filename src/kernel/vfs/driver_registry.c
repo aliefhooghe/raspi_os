@@ -27,7 +27,7 @@ static const char_device_t _char_devices[1][1] = {
     } 
 };
 
-const char_device_t *get_character_device(dev_t dev)
+const char_device_t *get_char_device(dev_t dev)
 {
     const uint16_t major = DEV_MAJOR(dev);
     const uint16_t minor = DEV_MINOR(dev);
@@ -44,4 +44,9 @@ const char_device_t *get_character_device(dev_t dev)
     KERNEL_ASSERT(minor == 0u);
 
     return &_char_devices[major][minor];
+}
+
+const block_device_t *get_block_device(dev_t dev)
+{
+    return NULL;
 }
