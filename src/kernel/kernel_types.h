@@ -5,8 +5,6 @@
 #include <stdint.h>
 
 
-
-
 // user <-> kernel communications models
 //
 typedef int32_t ssize_t;
@@ -14,6 +12,9 @@ typedef int32_t off_t;
 typedef int64_t loff_t;
 
 typedef uint32_t dev_t;
+
+#define DEV_MAJOR(dev) ((uint16_t)((dev & 0xFF00u) >> 16))
+#define DEV_MINOR(dev) ((uint16_t)(dev & 0xFFu))
 
 //
 // open flags
@@ -44,13 +45,13 @@ typedef uint32_t dev_t;
 // inode mode
 typedef uint32_t mode_t;
 
-#define S_IFREG	  0x8000u
-#define S_IFDIR	  0x4000u
-#define S_IFCHR	  0x2000u
-#define S_IFBLK 	0x6000u
-#define S_IFIFO	  0x1000u
-#define S_IFSOCK	0xC000u
-#define S_IFLNK	  0xA000u
+#define S_IFREG     0x8000u  // regular file
+#define S_IFDIR     0x4000u  // directory
+#define S_IFCHR     0x2000u  // character device file
+#define S_IFBLK     0x6000u  // block device file
+#define S_IFIFO     0x1000u
+#define S_IFSOCK    0xC000u
+#define S_IFLNK     0xA000u
 
 #define S_IFMT 0xF000
 
