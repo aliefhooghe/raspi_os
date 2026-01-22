@@ -198,6 +198,7 @@ static int _ramfs_dir_readdir(
         switch (S_IFMT & child->inode->mode) {
             case S_IFDIR: entry->d_type = DT_DIR; break;
             case S_IFCHR: entry->d_type = DT_CHR; break;
+            case S_IFBLK: entry->d_type = DT_BLK; break;
             case S_IFREG: entry->d_type = DT_REG; break;
             default:
                 kernel_fatal_error("ramfs: readdir: unhandled mode");

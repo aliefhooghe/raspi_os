@@ -114,6 +114,10 @@ static void kernel_init(void)
     mmu_set_dacr(0x55555555);
     mmu_enable();
 
+    // Initialize the driver registry
+    mini_uart_kernel_log("kernel: initialize drivers");
+    driver_registry_init();
+
     // Initialize the scheduler
     mini_uart_kernel_log("kernel: initialize the scheduler");
     scheduler_init();
@@ -146,6 +150,7 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     //// create device files
     KERNEL_ASSERT(0 == vfs_mkdir("/dev", S_IFDIR));
     KERNEL_ASSERT(0 == vfs_mknod("/dev/tty", S_IFCHR, 0u));
+    KERNEL_ASSERT(0 == vfs_mknod("/dev/ramdisk", S_IFBLK, 0u));
 
     //// init files from resources
     KERNEL_ASSERT(0 == vfs_mkdir("/bin", S_IFDIR));

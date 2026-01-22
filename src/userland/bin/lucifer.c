@@ -26,6 +26,7 @@ __attribute__((noinline)) void ls(FILE *stdout, const char *path)
                 entity->d_type == DT_DIR ? "dir" :
                 entity->d_type == DT_REG ? "reg" :
                 entity->d_type == DT_CHR ? "character device" :
+                entity->d_type == DT_BLK ? "block device" :
                 "unknown");
     }
 
