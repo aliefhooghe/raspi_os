@@ -3,13 +3,14 @@
 #include "kernel_types.h"
 #include "lib/str.h"
 #include "memory/memory_allocator.h"
-#include "utils.h"
 #include "vfs/dev/block_device_file_ops.h"
 #include "vfs/device_ops.h"
+#include "vfs/driver_registry.h"
 #include "vfs/inode.h"
 #include "vfs/super_block.h"
-#include "vfs/driver_registry.h"
+
 #include "ramfs.h"
+#include "utils.h"
 
 #define RAMFS_ROOT_NODE_ID (1u)
 
@@ -347,18 +348,40 @@ static inode_t *_ramfs_inode_mknod(
         "ramfs: inode_ops: mknod: name='%s' mode=0x%x dev=0x%x",
         name, mode, dev);
 
-    // only chr device for now
-    // TODO: block devices
-    if ((mode & S_IFMT) != S_IFCHR) {
-        mini_uart_kernel_log("ramfs: mknode: error: only character device are supported");
-        return NULL;
-    }
+    const file_ops_t *file_ops = NULL;
+    void *inode_private = NULL;
 
-    const char_device_t *device = get_char_device(dev);
-    if (device == NULL) {
-        mini_uart_kernel_log(
-            "ramfs: inode_ops: mknod: failed to open device");
-        return NULL;
+    const uint16_t dev_fmt = mode & S_IFMT;
+    switch (dev_fmt) {
+        case S_IFCHR:
+            {
+                char_device_t *device = get_char_device(dev);
+                if (device == NULL) {
+                    mini_uart_kernel_log(
+                        "ramfs: inode_ops: mknod: failed to open char device");
+                    return NULL;
+                }
+                file_ops = device->ops;
+                inode_private = device;
+            }
+            break;
+        case S_IFBLK:
+            {
+                block_device_t *device = get_block_device(dev);
+                if (device == NULL) {
+                    mini_uart_kernel_log(
+                        "ramfs: inode_ops: mknod: failed to open block device");
+                    return NULL;
+                }
+                file_ops = &block_device_file_ops;
+                inode_private = device;
+            }
+            break;
+        default:
+            mini_uart_kernel_log(
+                "ramfs: mknode: error: unsuported device format: 0x%x",
+                dev_fmt);
+            return NULL;
     }
 
     ramfs_t *ramfs = (ramfs_t*)dir->super_block->private;
@@ -367,15 +390,16 @@ static inode_t *_ramfs_inode_mknod(
 
     inode->device = dev;
     inode->inode_ops = NULL;
-    //  TODO: what to do with device.private ?
-    inode->file_ops = device->ops;
-    inode->private = NULL;
+    inode->file_ops = file_ops;
+    inode->private = inode_private;
     inode->size = 0u; // ?
     inode->ino = ++ramfs->ino_gen;
     inode->link_count = 0u;
     inode->mode = mode;
 
-    // inode ops does not make sense for a char device
+    // inode ops does not make sense for a device
+    // and mknod only handle device
+    //
     // it may make sense for special devices
     inode->inode_ops = NULL;
 
