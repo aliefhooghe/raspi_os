@@ -3,6 +3,8 @@
 #include "kernel_types.h"
 #include "lib/str.h"
 #include "memory/memory_allocator.h"
+#include "utils.h"
+#include "vfs/dev/block_device_file_ops.h"
 #include "vfs/device_ops.h"
 #include "vfs/inode.h"
 #include "vfs/super_block.h"
