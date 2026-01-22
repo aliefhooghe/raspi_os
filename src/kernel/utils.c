@@ -25,3 +25,23 @@ void load_resource_as_file(
     const ssize_t loaded_size = vfs_file_write(file, resource_data, resource_size);
     KERNEL_ASSERT((size_t)loaded_size == resource_size);
 }
+
+off_t off_t_min(off_t a, off_t b)
+{
+    return a <= b ? a : b;
+}
+
+off_t off_t_max(off_t a, off_t b)
+{
+    return a >= b ? a : b;
+}
+
+size_t size_t_max(size_t a, size_t b)
+{
+    return a >= b ? a : b;
+}
+
+size_t size_t_min(size_t a, size_t b)
+{
+    return a <= b ? a : b;
+}

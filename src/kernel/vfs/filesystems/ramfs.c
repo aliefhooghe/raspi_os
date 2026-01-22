@@ -69,20 +69,6 @@ static void _add_inode_child(
 //
 // VFS Interface Implementation
 // 
-static off_t _off_t_min(off_t a, off_t b)
-{
-    return a <= b ? a : b;
-}
-
-// static off_t _off_t_max(off_t a, off_t b)
-// {
-//     return a >= b ? a : b;
-// }
-
-static size_t _size_t_max(size_t a, size_t b)
-{
-    return a >= b ? a : b;
-}
 
 //
 //
@@ -98,7 +84,7 @@ static ssize_t _ramfs_reg_file_read(
         return -1;
 
     const off_t req_end = start + size;
-    const off_t act_end = _off_t_min(req_end, file->inode->size);
+    const off_t act_end = off_t_min(req_end, file->inode->size);
     if (start >= act_end)
         return -1;
 
@@ -128,7 +114,7 @@ static ssize_t _ramfs_reg_file_write(
         return -1;
 
     const size_t end = start + size;
-    const size_t new_size = _size_t_max(end, file->inode->size);
+    const size_t new_size = size_t_max(end, file->inode->size);
     ramfs_file_private_t *ramfs_file = (ramfs_file_private_t*)file->inode->private;
 
     // compute new alloc size
