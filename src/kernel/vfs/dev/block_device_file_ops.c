@@ -6,7 +6,6 @@
 #include "utils.h"
 #include "vfs/device_ops.h"
 #include "vfs/inode.h"
-#include <stdint.h>
 
 // assertion on block size
 #define BLOCK_SIZE (512u)
