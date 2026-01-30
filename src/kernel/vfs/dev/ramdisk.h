@@ -7,10 +7,10 @@
 // Expose a ram section as a block device
 // 
 
+int create_ramdisk(block_device_t *device, void *mem, size_t size);
 int create_section_ramdisk(block_device_t *device);
 // void section_ramdisk_free(block_device_t *device);
 
-// remove ? sh: line 1: wxa: command not found
 
 
 #endif

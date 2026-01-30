@@ -25,7 +25,7 @@ static int _section_ramdisk_read_block(void *private, uint64_t index, void *bloc
     }
 
     _memcpy(block, ram_block, SECTION_RAMDISK_BLOCK_SIZE);
-    return SECTION_RAMDISK_BLOCK_SIZE;
+    return 1;
 }
 
 static int _section_ramdisk_write_block(void *private, uint64_t index, const void *block)
@@ -38,13 +38,24 @@ static int _section_ramdisk_write_block(void *private, uint64_t index, const voi
     }
 
     _memcpy(ram_block, block, SECTION_RAMDISK_BLOCK_SIZE);
-    return SECTION_RAMDISK_BLOCK_SIZE;
+    return 1;
 }
 
 static const block_device_ops_t _section_ramdisk_ops = {
     .read_block = _section_ramdisk_read_block,
     .write_block = _section_ramdisk_write_block
 };
+
+int create_ramdisk(block_device_t *device, void *mem, size_t size)
+{
+    device->ops = &_section_ramdisk_ops;
+    device->block_size = SECTION_RAMDISK_BLOCK_SIZE ;
+    device->private = mem;
+
+    // TODO: horrible
+
+    return 0;
+}
 
 int create_section_ramdisk(block_device_t *device)
 {
