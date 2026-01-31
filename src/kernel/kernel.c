@@ -196,10 +196,9 @@ void kernel_fatal_error(const char *reason)
     mini_uart_kernel_puts(reason);
     mini_uart_kernel_puts("\r\npress a key...");
     mini_uart_getc();
-    watchdog_init(0x0);
 
-    // hang. The watchdog will reset
-    for (;;);
+    // trigger a reboot
+    watchdog_reboot();
 }
 
 void kernel_unhandled_interupt_fatal_error(void)
