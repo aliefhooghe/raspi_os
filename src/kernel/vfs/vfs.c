@@ -236,6 +236,11 @@ int32_t vfs_mount(const char *dev, const char *target, const char *fstype)
 
     // Load root inode from fs super block
     super_block_t *sb = _sb_by_dev_fs_type(device, fstype);
+    if (sb == NULL) {
+        mini_uart_kernel_log("vfs: mount: failed to load fs super block");
+        return -1;
+    }
+
     inode_t *root = sb->ops->alloc_inode(sb);
     KERNEL_ASSERT(root != NULL);
     const int load_status = sb->ops->read_inode(sb, sb->root_ino, root);
@@ -244,7 +249,7 @@ int32_t vfs_mount(const char *dev, const char *target, const char *fstype)
     // Mount the root inode on the target dentry
     target_dentry->inode = root;
     target_dentry->child_count = 0u;  // flush dentry child cache
-    
+
     return 0;
 }
 

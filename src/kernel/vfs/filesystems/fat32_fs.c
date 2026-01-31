@@ -49,6 +49,8 @@ static uint32_t _fat32_cluster_sector_index(
 
 static fat32_sb_private_t *_fat32_init_fs_private(block_device_t *device)
 {
+    // Load a fat32 filesystem from a block device
+    // 
     uint8_t block[FAT32_SECTOR_SIZE];
 
     // only handle 512 bytes sectors
@@ -431,14 +433,17 @@ super_block_t *fat32_create_filesystem(block_device_t *blk_dev)
 {
     mini_uart_kernel_log("fat32fs: create superblock");
 
+    // allocate private data
+    fat32_sb_private_t* private = _fat32_init_fs_private(blk_dev);
+    if (private == NULL) {
+        mini_uart_kernel_log("fat32fs: failed to load a fat32 fs from device\n");
+        return NULL;
+    }
+
     // allocate superblock
     super_block_t *sb = (super_block_t*)memory_calloc(sizeof(super_block_t));
     if (sb == NULL)
         return NULL;
-
-    // allocate private data
-    fat32_sb_private_t* private = _fat32_init_fs_private(blk_dev);
-    KERNEL_ASSERT(private != NULL);
 
     // return the fat 32 superblock
     sb->ops = &_fat32fs_sb_ops;
