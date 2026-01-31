@@ -128,6 +128,24 @@ static fat32_sb_private_t *_fat32_init_fs_private(block_device_t *device)
     return private;
 }
 
+static void _fat32_read_entry_filename(
+    const fat_directory_entry_t *entry,
+    char filename[16])
+{
+    char entry_name[9];
+    char extension[4];
+
+    _memcpy(entry_name, entry->filename, 8);
+    _memcpy(extension, entry->file_extension, 3);
+
+    entry_name[8] = '\0';
+    extension[3] = '\0';
+
+    _strcpy(filename, entry_name);
+    _strcat(filename, ".");
+    _strcat(filename, extension);
+}
+
 //
 // FAT32 VFS interface implementation
 //
@@ -206,29 +224,17 @@ static int _fat32_fs_dir_readdir(
         }
 
         // retrieve entry name as a C string
-        char entry_name[9];
-        char extension[4];
-        char filename[9 + 4 + 1];
-
-        _memcpy(entry_name, entry->filename, 8);
-        _memcpy(extension, entry->file_extension, 3);
-
-        entry_name[8] = '\0';
-        extension[3] = '\0';
-
-        _strcpy(filename, entry_name);
-        _strcat(filename, ".");
-        _strcat(filename, extension);
+        char filename[16];
+        _fat32_read_entry_filename(entry, filename);
 
         // check for Long File Name entry first
         if (entry->attributes & FAT_DIR_ENTRY_ATTR_LFN) {
-            mini_uart_kernel_log("[FAT32] skip LFN entry: %s.%s", entry_name, extension);
+            mini_uart_kernel_log("[FAT32] skip LFN entry: %s", filename);
             continue;
         }
-
         // check if the entry is a volume ID
-        if (entry->attributes & FAT_DIR_ENTRY_ATTR_VOLUME_ID) {
-            mini_uart_kernel_log("[FAT32] volume id: %s", entry_name);
+        else if (entry->attributes & FAT_DIR_ENTRY_ATTR_VOLUME_ID) {
+            mini_uart_kernel_log("[FAT32] volume id: %s", filename);
             continue;
         }
 
@@ -290,29 +296,17 @@ static inode_t *_fat32fs_inode_lookup(inode_t *dir, const char *name)
         }
 
         // retrieve entry name as a C string
-        char entry_name[9];
-        char extension[4];
-        char filename[9 + 4 + 1];
-
-        _memcpy(entry_name, entry->filename, 8);
-        _memcpy(extension, entry->file_extension, 3);
-
-        entry_name[8] = '\0';
-        extension[3] = '\0';
-
-        _strcpy(filename, entry_name);
-        _strcat(filename, ".");
-        _strcat(filename, extension);
+        char filename[16];
+        _fat32_read_entry_filename(entry, filename);
 
         // check for Long File Name entry first
         if (entry->attributes & FAT_DIR_ENTRY_ATTR_LFN) {
-            mini_uart_kernel_log("[FAT32] skip LFN entry: %s.%s", entry_name, extension);
+            mini_uart_kernel_log("[FAT32] skip LFN entry: %s", filename);
             continue;
         }
-
         // check if the entry is a volume ID
-        if (entry->attributes & FAT_DIR_ENTRY_ATTR_VOLUME_ID) {
-            mini_uart_kernel_log("[FAT32] volume id: %s", entry_name);
+        else if (entry->attributes & FAT_DIR_ENTRY_ATTR_VOLUME_ID) {
+            mini_uart_kernel_log("[FAT32] volume id: %s", filename);
             continue;
         }
 
@@ -321,20 +315,20 @@ static inode_t *_fat32fs_inode_lookup(inode_t *dir, const char *name)
             continue;
         }
 
-        // found an entry
+        // found an matching entry
 
         // for now: ignore directories
         if (entry->attributes & FAT_DIR_ENTRY_ATTR_DIRECTORY) {
+            continue;
         }
 
         // entry is a file
-        const uint32_t first_file_cluster = (
+        const uint32_t first_cluster = (
             (uint32_t)entry->starting_cluster_high << 16) | (entry->starting_cluster_low);
-        const uint32_t first_file_sector = _fat32_cluster_sector_index(
-            sb_private, first_file_cluster);
+        const uint32_t first_sector = _fat32_cluster_sector_index(sb_private, first_cluster);
 
         // do we need to call read inode here ???????
-        const ino_t ino = first_file_sector;
+        const ino_t ino = first_sector;
         inode_t *inode = sb->ops->alloc_inode(sb);
 
         inode->device = 0u;
@@ -405,7 +399,7 @@ static int _fat32_sb_read_inode(super_block_t *fat32_sb, ino_t ino, inode_t *ino
     inode->inode_ops = &_fat32fs_inode_ops;
     inode->link_count = 0u;
     inode->mode = S_IFDIR;
-    inode->private = NULL; // memory_calloc(sizeof(ramfs_dir_private_t));  
+    inode->private = NULL;
     inode->size = 0;
 
     return 0;
