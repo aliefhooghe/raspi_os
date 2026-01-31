@@ -53,10 +53,12 @@ static ssize_t _tty_mini_uart_write(
 }
 
 const character_device_ops_t dev_tty_ops = {
+    .open = default_file_open,
+    .release = default_file_release,
     .read = _tty_mini_uart_read,
     .write = _tty_mini_uart_write,
     .seek = NULL,
-    .readdir = NULL
+    .readdir = NULL,
 };
 
 

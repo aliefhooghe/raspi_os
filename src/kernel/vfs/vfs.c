@@ -6,7 +6,6 @@
 #include "lib/str.h"
 
 #include "memory/bitfield.h"
-#include "memory/memory_allocator.h"
 #include "memory/section_allocator.h"
 
 #include "vfs/device_ops.h"
@@ -367,27 +366,21 @@ file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
         return NULL;
     }
 
-    // common impl for open.
-    mini_uart_kernel_log("vfs: allocate file_t");
-    file_t *file = memory_calloc(sizeof(file_t));
-    if (file == NULL) {
-        return NULL;
-    }
-    file->fd_count = 0u;
-    file->inode = inode;
-    file->pos = 0u;
+    // call inode file ops open
+    KERNEL_ASSERT(inode->file_ops != NULL);
+    KERNEL_ASSERT(inode->file_ops->open != NULL);
 
-    return file;
+    return inode->file_ops->open(inode);
 }
 
 int32_t vfs_file_close(file_t *file)
 {
-    // common impl for release
+    // call inode file ops release
     KERNEL_ASSERT(file != NULL);
     KERNEL_ASSERT(file->inode != NULL);
-    KERNEL_ASSERT(file->fd_count == 0u);
-    memory_free(file);
-    return 0;
+    KERNEL_ASSERT(file->inode->file_ops != NULL);
+    KERNEL_ASSERT(file->inode->file_ops->release != NULL);
+    return file->inode->file_ops->release(file->inode, file);
 }
 
 ssize_t vfs_file_read(file_t *file, void *data, size_t size)

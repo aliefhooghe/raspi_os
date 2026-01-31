@@ -19,9 +19,12 @@ struct file {
     size_t fd_count;     // fd  reference count
     inode_t *inode;
     off_t pos;           // current offset
+    void *private;
 };
 
 struct file_ops {
+    file_t *(*open) (inode_t *inode);
+    int (*release) (inode_t *inode, file_t *file);
     ssize_t (*read) (file_t *file, void *data, size_t size);
     ssize_t (*write) (file_t *file, const void *data, size_t size);
     ssize_t (*seek) (file_t *file, int32_t offset, int32_t whence);
@@ -52,5 +55,10 @@ struct inode {
     super_block_t *super_block;
     void * private;
 };
+
+//
+// Default implementations for file open / release
+file_t *default_file_open(inode_t *inode);
+int default_file_release(inode_t *inode, file_t *file);
 
 #endif

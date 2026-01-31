@@ -166,6 +166,8 @@ static ssize_t _ramfs_reg_file_seek(
 }
 
 static const file_ops_t _ramfs_reg_file_ops = {
+    .open = default_file_open,
+    .release = default_file_release,
     .read = _ramfs_reg_file_read,
     .write = _ramfs_reg_file_write,
     .seek = _ramfs_reg_file_seek,
@@ -243,6 +245,8 @@ static ssize_t _ramfs_dir_file_seek(
 }
 
 static const file_ops_t _ramfs_dir_file_ops = {
+    .open = default_file_open,
+    .release = default_file_release,
     .read = NULL,
     .write = NULL,
     .seek = _ramfs_dir_file_seek,
