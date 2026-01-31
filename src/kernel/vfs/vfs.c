@@ -11,9 +11,8 @@
 
 #include "vfs/device_ops.h"
 #include "vfs/driver_registry.h"
-#include "vfs/filesystems/ramfs.h"
-#include "vfs/filesystems/fat32_fs.h"
-
+#include "vfs/filesystems/ramfs/ramfs.h"
+#include "vfs/filesystems/fat32/fat32_fs.h"
 #include "vfs/super_block.h"  // IWYU pragma: keep
 
 #include "vfs/vfs.h"

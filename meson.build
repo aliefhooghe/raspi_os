@@ -134,8 +134,8 @@ kernel_sources = files(
   'src/kernel/vfs/dev/tty.c',
   'src/kernel/vfs/dev/ramdisk.c',
   'src/kernel/vfs/dev/zero.c',
-  'src/kernel/vfs/filesystems/ramfs.c',
-  'src/kernel/vfs/filesystems/fat32_fs.c',
+  'src/kernel/vfs/filesystems/ramfs/ramfs.c',
+  'src/kernel/vfs/filesystems/fat32/fat32_fs.c',
 
   'src/arm_runtime/eabi_rt.c',
 )
