@@ -35,6 +35,10 @@ char *_strcpy(
     char *dst,
     const char *src);
 
+char *_strcat(
+    char *dst,
+    const char *src);
+
 int32_t _strcmp(
     const char *s1,
     const char *s2);

@@ -25,6 +25,7 @@ typedef struct char_device {
 typedef struct block_device_ops block_device_ops_t;
 
 struct block_device_ops {
+    // seems bad: shouuld return 0
     // return the number of block read on sucess (1)
     int (*read_block)(void *private, uint64_t index, void *block);
 

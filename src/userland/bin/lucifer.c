@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "src/kernel/lib/str.h"
 #include "usr_syscalls.h"
 
 #define LINE_SIZE 128u
@@ -21,7 +22,7 @@ __attribute__((noinline)) void ls(FILE *stdout, const char *path)
     struct dirent *entity = NULL;
     while ((entity = readdir(dir))) {
         fprintf(stdout,
-            "%s (%s)\n",
+            " %s (%s)\n",
             entity->d_name,
                 entity->d_type == DT_DIR ? "dir" :
                 entity->d_type == DT_REG ? "reg" :
@@ -167,6 +168,48 @@ __attribute__((noinline)) void fork_exec(FILE *stdout, const char *exec)
     }
 }
 
+__attribute__((noinline)) void test_read_data(FILE *stdout)
+{
+    char buffer[256] = "";
+    FILE *f = fopen("/data/text.txt", "r");
+
+    if (f == NULL) {
+        fprintf(stdout, "failed to open data file\n");
+        return;
+    }
+
+    const int status = fread(buffer, 256, 1, f);
+    if (status < 0) {
+        fprintf(stdout, "error reading fiile\n");
+    }
+    else {
+        buffer[status] = '\0';
+        fprintf(stdout, "data: %s\n", buffer);
+    }
+
+    fclose(f);
+}
+__attribute__((noinline)) void test_read_dataa(FILE *stdout)
+{
+    char buffer[256] = "";
+    int fd = usr_syscall_open("/data/text.txt", 0, 0);
+
+    if (fd < 0 ) {
+        fprintf(stdout, "failed to open data file\n");
+        return;
+    }
+
+    const int status = usr_syscall_read(fd, buffer, 256);
+    if (status < 0) {
+        fprintf(stdout, "error reading fiile\n");
+    }
+    else {
+        buffer[status] = '\0';
+        fprintf(stdout, "data: %s\n", buffer);
+    }
+
+    usr_syscall_close(fd);
+}
 
 int main(void)
 {
@@ -188,10 +231,22 @@ int main(void)
             fprintf(stdout, "[%u] reboot now !\n", pid);
             usr_syscall_reboot();
         }
+        else if (strcmp(line, "loop") == 0) {
+            for (int i = 0; i < 256;i++) {
+                fprintf(stdout, "yield %u\n", i);
+                const int status = usr_syscall_yield(i);
+                if (status != i) {
+                    fprintf(stdout, "=> invalid return status %d instead of %d", status, i);
+                }
+            }
+            fprintf(stdout, "done\n");
+        }
         else if (strcmp(line, "switch") == 0)
         {
             fprintf(stdout, "[%u] switch to next process\n", pid);
-            usr_syscall_yield();
+            const int status = usr_syscall_yield(42);
+            fprintf(stdout, "[%u] switch returned %d\n", pid, status);
+            
         }
         else if (strcmp(line, "exit") == 0)
         {
@@ -218,12 +273,20 @@ int main(void)
             fprintf(stdout, "[%u] test elf loader:\n", pid);
             fork_exec(stdout, "/bin/hello");
         }
-        else if (strcmp(line, "ls") == 0)
+        else if ('l' == line[0] && 's' == line[1])
         {
-            fprintf(stdout, "[%u] call ls test procedure:\n", pid);
-            ls(stdout, "/");
-            ls(stdout, "/bin");
-            ls(stdout, "/dev");
+            const char *arg = line + 3;
+
+            if (line[2] == '\0')
+            {
+                arg = "/";
+            }
+            else if (strlen(line) <= 3 || line[2] != ' ') {
+                fprintf(stdout, "ls: bad syntax\n");
+                continue;
+            }
+
+            ls(stdout, arg);
         }
         else if (strcmp(line, "mkdir") == 0)
         {
@@ -231,6 +294,12 @@ int main(void)
             const int status = usr_syscall_mkdir("/data", S_IFDIR);
             fprintf(stdout, "[%u] mkdir /data => return 0x%x\n", pid, status);
             ls(stdout, "/");
+        }
+        else if (strcmp(line, "zz") == 0) {
+            test_read_data(stdout);
+        }
+        else if (strcmp(line, "ed") == 0) {
+            test_read_dataa(stdout);
         }
         else
         {

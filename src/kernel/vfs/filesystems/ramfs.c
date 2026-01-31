@@ -7,7 +7,7 @@
 #include "vfs/device_ops.h"
 #include "vfs/driver_registry.h"
 #include "vfs/inode.h"
-#include "vfs/super_block.h"
+#include "vfs/super_block.h"  // IWYU pragma: keep
 
 #include "ramfs.h"
 #include "utils.h"
@@ -21,7 +21,7 @@
 #define RAMFS_MAX_INODE_COUNT (32u)
 
 
-// ramfs
+// ramfs super block private data
 typedef struct {
     // inode number generator
     ino_t ino_gen;
@@ -479,8 +479,10 @@ static int _ramfs_sb_read_inode(super_block_t *ram_sb, ino_t ino, inode_t *inode
     mini_uart_kernel_log("ramfs: super-block: read inode %u", ino);
 
     // this is the only one which should be read one time on the ramfs
-    if (ino != RAMFS_ROOT_NODE_ID)
-        return -1;
+    KERNEL_ASSERT(ino == RAMFS_ROOT_NODE_ID);
+
+    // should haave been set by alloc
+    KERNEL_ASSERT(inode->super_block == ram_sb);
 
     // Load root node
     inode->device = 0u;

@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include "kernel.h"
+#include "kernel_types.h"
 
 #include "hardware/cpu.h"
 #include "hardware/io_registers.h"
@@ -16,8 +17,10 @@
 
 #include "scheduler/scheduler.h"
 
-#include "utils.h"
+#include "vfs/driver_registry.h"
 #include "vfs/vfs.h"
+
+#include "utils.h"
 
 //
 // Kernel banners
@@ -36,6 +39,7 @@ extern unsigned char init_elf[];
 
 extern unsigned int lucifer_elf_len;
 extern unsigned char lucifer_elf[];
+
 //
 // # Kernel Memory Layout:
 // 
@@ -85,7 +89,7 @@ static void kernel_init(void)
 {
     // initialize the mini UART
     mini_uart_init();
-    mini_uart_kernel_puts("Satan OS kernel is starting...\r\n");
+    mini_uart_kernel_puts("kernel: Satan OS kernel is starting...\r\n");
 
     // initialize the sdio controller
     sdhost_init();
@@ -144,7 +148,7 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     // Prepare filesystem 
    
     //// Mount a ramfs on /
-    const int32_t root_mount_status = vfs_mount("ramfs", "/", "ramfs");
+    const int32_t root_mount_status = vfs_mount(NULL, "/", "ramfs");
     KERNEL_ASSERT(0 == root_mount_status);
 
     //// create device files
@@ -157,6 +161,14 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     load_resource_as_file("/bin/init", init_elf, init_elf_len);
     load_resource_as_file("/bin/lucifer", lucifer_elf, lucifer_elf_len);
     load_resource_as_file("/bin/hello", hello_elf, hello_elf_len);
+
+    const char data[] = "hello from data file\n";
+    KERNEL_ASSERT(0 == vfs_mkdir("/data", S_IFDIR));
+    load_resource_as_file("/data/text.txt", data, sizeof(data));
+
+    //// mount a fat32 fs
+    KERNEL_ASSERT(0 == vfs_mkdir("/mnt", S_IFDIR));
+    KERNEL_ASSERT(0 == vfs_mount("/dev/ramdisk", "/mnt", "fat32"));
 
     // wait a first input
     mini_uart_kernel_puts("Satan OS is initialized.\r\n");

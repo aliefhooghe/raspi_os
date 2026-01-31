@@ -8,6 +8,10 @@
 #include "vfs/device_ops.h"
 #include <stdint.h>
 
+//
+// Mock a block device from static data
+extern unsigned int ___resources_fat32_img_len;
+extern unsigned char ___resources_fat32_img[];
 
 //
 // Character device registry
@@ -34,9 +38,12 @@ static block_device_t _block_devices[BLOCK_DEV_MAJOR_COUNT][1];
 
 void driver_registry_init(void)
 {
-    mini_uart_kernel_log("[driver registry] initialize ramdisk");
-    create_section_ramdisk(
-        &_block_devices[DEV_RAMDISK_MAJOR][DEV_RAMDISK_MINOR]);
+    mini_uart_kernel_log("[driver registry] initialize fat32 mock ramdisk");
+    mini_uart_kernel_log("[driver registry] fat32: size = %u", ___resources_fat32_img_len);
+    create_ramdisk(
+        &_block_devices[DEV_RAMDISK_MAJOR][DEV_RAMDISK_MINOR],
+        ___resources_fat32_img,
+        ___resources_fat32_img_len);
 }
 
 char_device_t *get_char_device(dev_t dev)

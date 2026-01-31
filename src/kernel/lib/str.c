@@ -65,6 +65,13 @@ char *_strcpy(char *dst, const char *src)
     return ret;  
 }
 
+char *_strcat(char *dst, const char *src)
+{
+    const size_t dst_len = _strlen(dst);
+    _strcpy(dst + dst_len, src);
+    return dst;
+}
+
 int32_t _strcmp(const char *s1, const char *s2)
 {
     while (*s1 != '\0' && (*s1 == *s2)) {s1++; s2++;}
