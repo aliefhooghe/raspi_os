@@ -7,6 +7,7 @@
 #include "kernel_types.h"
 #include "lib/str.h"
 #include "memory/memory_allocator.h"
+#include "utils.h"
 #include "vfs/device_ops.h"
 #include "vfs/inode.h"
 #include "vfs/super_block.h"  // IWYU pragma: keep
@@ -51,7 +52,6 @@ typedef struct {
 typedef struct {
     fat32_sector_loc_t sector_loc;          // sector location
     uint32_t offset;
-    size_t file_size;
 } fat32_file_reg_private_t;
 
 // fat32 directory file private data
@@ -300,7 +300,7 @@ static const fat_directory_entry_t *fat_32_directory_entry_iterator_next(
 //
 // FAT32 Regular file operations
 
-static file_t *_fat32fs_reg_file_open(inode_t *inode)
+static file_t *_fat32_fs_reg_file_open(inode_t *inode)
 {
     mini_uart_kernel_log("fat32_fs: reg_file_ops: open");
     fat32_file_reg_private_t *reg_private =
@@ -321,23 +321,71 @@ static file_t *_fat32fs_reg_file_open(inode_t *inode)
     return file;
 }
 
-static int _fat32fs_reg_file_release(inode_t *inode, file_t *file)
+static int _fat32_fs_reg_file_release(inode_t *inode, file_t *file)
 {
     memory_free(file->private);
     return default_file_release(inode, file);
 }
 
-static ssize_t _fat32fs_reg_file_read(
+static ssize_t _fat32_fs_reg_file_read(
     file_t *file, void *data, size_t size)
 {
-    (void)file;
-    (void)data;
-    (void)size;
-    kernel_fatal_error(__FUNCTION__);
-    return -1;
+    mini_uart_kernel_log("fat32fs: dir_file_ops: readdir");
+
+    inode_t *inode = file->inode;
+    KERNEL_ASSERT(inode != NULL);
+
+    super_block_t *sb = inode->super_block;
+    fat32_sb_private_t *sb_private = (fat32_sb_private_t*)sb->private;
+    KERNEL_ASSERT(file->private != NULL);
+
+    fat32_file_reg_private_t *file_private =
+        (fat32_file_reg_private_t*)file->private;
+
+    uint8_t sector_cache[FAT32_SECTOR_SIZE];
+    uint8_t *dst = (uint8_t*)data;
+
+    size_t total_read_size = 0u;
+    size_t file_remain = inode->size - file->pos;
+
+    while (size > 0 && file_remain > 0)
+    {
+        // read sector from disk
+        _fat_read_sector(sb_private, &file_private->sector_loc, sector_cache);
+
+        // 
+        const size_t sector_remain = FAT32_SECTOR_SIZE - file_private->offset;
+        const size_t max_readable_size = size_t_min(sector_remain, file_remain);
+        const size_t readable_size = size_t_min(size, max_readable_size);
+
+        // read data in the current sector
+        _memcpy(
+            dst,
+            sector_cache + file_private->offset,
+            readable_size);
+
+        // update src cursor
+        file_private->offset += readable_size;
+        if (file_private->offset >= FAT32_SECTOR_SIZE)
+        {
+            // TODO: what if file end is EXACLTY a sector end ? 
+            // goto next sector
+            _fat_next_sector_location(sb_private, &file_private->sector_loc);
+            file_private->offset = 0u;
+        }
+
+        // update dst cursor
+        file->pos += readable_size;
+        dst += readable_size;
+        size -= readable_size;
+        total_read_size += readable_size;
+        file_remain -= readable_size;
+    }
+
+    return total_read_size;
 }
 
-static ssize_t _fat32fs_reg_file_write(
+static ssize_t _fat32_fs_reg_file_write(
     file_t *file, const void *data, size_t size)
 {
     (void)file;
@@ -347,7 +395,7 @@ static ssize_t _fat32fs_reg_file_write(
     return -1;
 }
 
-static ssize_t _fat32fs_reg_file_seek(
+static ssize_t _fat32_fs_reg_file_seek(
     file_t *file, int32_t offset, int32_t whence)
 {
     (void)file;
@@ -358,11 +406,11 @@ static ssize_t _fat32fs_reg_file_seek(
 }
 
 static const file_ops_t _fat32_fs_reg_file_ops = {
-    .open = _fat32fs_reg_file_open,
-    .release = _fat32fs_reg_file_release,
-    .read = _fat32fs_reg_file_read,
-    .write = _fat32fs_reg_file_write,
-    .seek = _fat32fs_reg_file_seek,
+    .open = _fat32_fs_reg_file_open,
+    .release = _fat32_fs_reg_file_release,
+    .read = _fat32_fs_reg_file_read,
+    .write = _fat32_fs_reg_file_write,
+    .seek = _fat32_fs_reg_file_seek,
     .readdir = NULL
 };
 

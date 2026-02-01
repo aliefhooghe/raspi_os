@@ -464,7 +464,7 @@ static void _ramfs_sb_free_inode(super_block_t* sb, inode_t *inode)
 {
     //
     //  TODO: what about childs ????
-    // 
+    //  TODO: link count ? 
     (void)sb;
     KERNEL_ASSERT(inode!= NULL);
     KERNEL_ASSERT(inode->super_block == sb);
