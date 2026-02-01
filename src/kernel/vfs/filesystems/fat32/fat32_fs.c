@@ -287,6 +287,13 @@ static const fat_directory_entry_t *fat_32_directory_entry_iterator_next(
         ) {
             continue;
         }
+        else if ((entry->attributes & FAT_DIR_ENTRY_ATTR_DIRECTORY) &&
+                  entry->filename[0] == '.')
+        {
+            // UGLY: in order to skip ., ..
+            // We need to decide what to do with thme
+            continue;
+        }
 
         *entry_ino = entry_offset;
         return entry;
