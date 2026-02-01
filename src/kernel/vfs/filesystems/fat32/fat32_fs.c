@@ -24,11 +24,16 @@
 #define FAT32_SECTOR_SIZE 512u       // we only handle 512 sectors
 #define FAT32_ROOT_INO    2u
 
+// locate a sector in the disk
+typedef struct {
+    uint32_t cluster;       // cluster number
+    uint32_t sector_index;  // sector index in the cluster
+} fat32_sector_loc_t;
+
 // locate a fat directory entry in the disk
 typedef struct {
-    uint32_t entry_index;    // entry index in sector (0-15 for 512b sector)
-    uint32_t sector_index;   // sector index in the cluster
-    uint32_t cluster;        // cluster in the disk
+    fat32_sector_loc_t sector_loc;         // sector location
+    uint32_t entry_index;                  // entry index in sector (0-15 for 512b sector)
 } fat32_dir_entry_loc_t;
 
 // fat32 super block private data
@@ -44,9 +49,8 @@ typedef struct {
 
 // fat 32 regular file private data
 typedef struct {
+    fat32_sector_loc_t sector_loc;          // sector location
     uint32_t offset;
-    uint32_t sector_index;
-    uint32_t cluster;
     size_t file_size;
 } fat32_file_reg_private_t;
 
@@ -142,13 +146,18 @@ static void _fat32_read_entry_filename(
     filename[fi++] = '\0';
 }
 
-// return the inode CONTENT cluster number
-static uint32_t _fat32_get_inode_cluster(const inode_t *inode)
+// return the inode CONTENT first sector location
+static fat32_sector_loc_t _fat32_get_inode_start_sector(const inode_t *inode)
 {
     // inode private is the cluster number.
     // This is not data duplication: we initialize the CURRENT cluster
     // which may move through call to readdir / seek
-    return (uint32_t)inode->private;
+    const uint32_t cluster = (uint32_t)inode->private;
+    const fat32_sector_loc_t loc = {
+        .cluster = cluster,
+        .sector_index = 0u
+    };
+    return loc;
 }
 
 // create an inode abstraction on fat directory entry
@@ -157,24 +166,61 @@ static inode_t *_fat32_create_inode(
     super_block_t *sb,
     ino_t ino);
 
-// entry loc utils
-static uint32_t _fat32_entry_loc_sector(
+// sector loc utils
+static uint32_t _fat32_sector_index(
     fat32_sb_private_t *sb_private,
-    const fat32_dir_entry_loc_t *entry_loc)
+    const fat32_sector_loc_t *location)
 {
     return
-        _fat32_cluster_sector_index(sb_private, entry_loc->cluster) +
-        entry_loc->sector_index;
+        _fat32_cluster_sector_index(sb_private, location->cluster) +
+        location->sector_index;
 }
 
 static uint32_t _fat32_entry_loc_offset(
     fat32_sb_private_t *sb_private,
     const fat32_dir_entry_loc_t *entry_loc)
 {
-    const uint32_t entry_sector = _fat32_entry_loc_sector(sb_private, entry_loc);
+    const uint32_t entry_sector =
+        _fat32_sector_index(sb_private, &entry_loc->sector_loc);
     return
         (entry_sector * FAT32_SECTOR_SIZE) +
         entry_loc->entry_index * sizeof(fat_directory_entry_t);
+}
+
+
+// generalised sector iterator
+
+//
+// Read the sector located at location
+//
+static void _fat_read_sector(
+    fat32_sb_private_t *sb_private,
+    const fat32_sector_loc_t *location,
+    uint8_t *dst)
+{
+    block_device_t *device = sb_private->device;
+
+    // compute the absolute sector index
+    const uint32_t sector =
+        _fat32_cluster_sector_index(sb_private, location->cluster) +
+        location->sector_index;
+    const int block_count = device->ops->read_block(
+        device->private, sector, dst);
+    KERNEL_ASSERT(block_count == 1);
+
+}
+
+static void _fat_next_sector_location(
+    fat32_sb_private_t *sb_private,
+    fat32_sector_loc_t *location)
+{
+    // move location to next sector
+    location->sector_index++;
+    if (location->sector_index == sb_private->sectors_per_cluster)
+    {
+        // TODO: read FAT
+        kernel_fatal_error("reached end of cluster (sector it)");
+    }
 }
 
 // directory entry iterator helper:
@@ -197,27 +243,18 @@ static const fat_directory_entry_t *fat_32_directory_entry_iterator_next(
     fat32_sb_private_t *sb_private,
     ino_t *entry_ino)
 {
-    block_device_t *device = sb_private->device;
-
     for (;;)
     {
         // load from device to cache if required
         if (it->cache_is_dirty) {
-            // compute current sector index
-            const uint32_t sector = _fat32_entry_loc_sector(
-                sb_private, &it->entry_loc);
-            // load sector
-            mini_uart_kernel_log("fat32: block device: load sector n°%u", sector);
-            const int block_count = device->ops->read_block(
-                device->private, sector, it->sector_cache);
-            KERNEL_ASSERT(block_count == 1);
+            _fat_read_sector(sb_private, &it->entry_loc.sector_loc, it->sector_cache);
             it->cache_is_dirty = 0;
         }
 
         // retrieve entry from sector (cache)
         mini_uart_kernel_log("fat32: retrieve entry @ cluster=%u sector=%u index=%u",
-            it->entry_loc.cluster,
-            it->entry_loc.sector_index,
+            it->entry_loc.sector_loc.cluster,
+            it->entry_loc.sector_loc.sector_index,
             it->entry_loc.entry_index);
         const fat_directory_entry_t *entry =
             it->entry_loc.entry_index + (fat_directory_entry_t*)it->sector_cache;
@@ -236,17 +273,10 @@ static const fat_directory_entry_t *fat_32_directory_entry_iterator_next(
         // index goto next entry
         it->entry_loc.entry_index++;
         if (it->entry_loc.entry_index >= 16) {
-            // reached the end of sector
-            it->entry_loc.sector_index++;
+            // reached the end of sector: goto next sector
+            _fat_next_sector_location(sb_private, &it->entry_loc.sector_loc);
             it->entry_loc.entry_index = 0u;
             it->cache_is_dirty = 1;
-
-            // do not handle 
-            if (it->entry_loc.sector_index >= sb_private->sectors_per_cluster)
-            {
-                mini_uart_kernel_log("fat32: sector per cluster = %u", sb_private->sectors_per_cluster);
-                kernel_fatal_error("fat32: reached end of cluster");
-            }
         }
 
         // skip unused entries
@@ -255,11 +285,9 @@ static const fat_directory_entry_t *fat_32_directory_entry_iterator_next(
             (entry->attributes & FAT_DIR_ENTRY_ATTR_LFN) ||    // skip long file name entries
             (entry->attributes & FAT_DIR_ENTRY_ATTR_VOLUME_ID) // skip volume id
         ) {
-            mini_uart_kernel_log("fat32: skip entry");
             continue;
         }
 
-        mini_uart_kernel_log("fat32: keep entry");
         *entry_ino = entry_offset;
         return entry;
     }
@@ -288,7 +316,7 @@ static file_t *_fat32fs_reg_file_open(inode_t *inode)
         return NULL;
     }
 
-    reg_private->cluster = _fat32_get_inode_cluster(inode);
+    reg_private->sector_loc = _fat32_get_inode_start_sector(inode);
     file->private = reg_private;
     return file;
 }
@@ -357,7 +385,7 @@ static file_t *_fat32_fs_dir_open(inode_t *inode)
         return NULL;
     }
 
-    dir_private->cluster = _fat32_get_inode_cluster(inode);
+    dir_private->sector_loc = _fat32_get_inode_start_sector(inode);
     file->private = dir_private;
     return file;
 }
@@ -440,8 +468,7 @@ static inode_t *_fat32fs_inode_lookup(inode_t *dir, const char *name)
 
     // start at first cluster entry
     const fat32_dir_entry_loc_t entry_loc = {
-        .cluster = _fat32_get_inode_cluster(dir),
-        .sector_index = 0u,
+        .sector_loc = _fat32_get_inode_start_sector(dir),
         .entry_index = 0u
     };
     fat_32_directory_entry_iterator_init(&it, &entry_loc);
