@@ -9,6 +9,7 @@
 #include "memory/memory_allocator.h"
 #include "utils.h"
 #include "vfs/device_ops.h"
+#include "vfs/fs_utils.h"
 #include "vfs/inode.h"
 #include "vfs/super_block.h"  // IWYU pragma: keep
 
@@ -223,6 +224,19 @@ static void _fat_next_sector_location(
     }
 }
 
+static void _fat_prev_sector_location(
+    fat32_sb_private_t *sb_private,
+    fat32_sector_loc_t *location)
+{
+    if (location->sector_index == 0)
+    {
+        kernel_fatal_error("reached begin of cluster (sector it)");
+    }
+
+    // move location to prev sector
+    location->sector_index--;
+}
+
 // directory entry iterator helper:
 typedef struct {
     int cache_is_dirty;
@@ -405,11 +419,53 @@ static ssize_t _fat32_fs_reg_file_write(
 static ssize_t _fat32_fs_reg_file_seek(
     file_t *file, int32_t offset, int32_t whence)
 {
-    (void)file;
-    (void)offset;
-    (void)whence;
-    kernel_fatal_error(__FUNCTION__);
-    return -1;
+    mini_uart_kernel_log("fat32fs: dir_file_ops: readdir");
+
+    inode_t *inode = file->inode;
+    KERNEL_ASSERT(inode != NULL);
+
+    super_block_t *sb = inode->super_block;
+    fat32_sb_private_t *sb_private = (fat32_sb_private_t*)sb->private;
+    KERNEL_ASSERT(file->private != NULL);
+
+    fat32_file_reg_private_t *file_private =
+        (fat32_file_reg_private_t*)file->private;
+
+    // compute new position
+    const off_t reference = get_seek_ref_offset(file, whence);
+    const off_t new_pos = reference + offset;
+
+    if (file->pos == new_pos)
+    {
+        return file->pos;
+    }
+
+    // 
+    const ssize_t relative_offset = new_pos - file->pos;
+    const ssize_t total_new_offset = file_private->offset + relative_offset;
+
+    // move to another sector
+    const ssize_t sector_offset = total_new_offset >> 9;
+    if (sector_offset >= 0)
+    {
+        for (int i = 0; i < sector_offset; i++)
+        {
+            _fat_next_sector_location(sb_private, &file_private->sector_loc);
+        }
+    }
+    else
+    {
+        for (int i = 0; i < -sector_offset; i++)
+        {
+            _fat_prev_sector_location(sb_private, &file_private->sector_loc);
+        }
+    }
+
+    //
+    file_private->offset = total_new_offset & 0x1FF;
+    file->pos = new_pos;
+
+    return file->pos;
 }
 
 static const file_ops_t _fat32_fs_reg_file_ops = {
