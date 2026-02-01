@@ -43,9 +43,12 @@ typedef struct {
 // fat 32 inode private data is content cluster num
 
 // fat 32 regular file private data
-// typedef struct {
-    
-// } fat32_file_reg_private_t;
+typedef struct {
+    uint32_t offset;
+    uint32_t sector_index;
+    uint32_t cluster;
+    size_t file_size;
+} fat32_file_reg_private_t;
 
 // fat32 directory file private data
 typedef fat32_dir_entry_loc_t fat32_file_dir_private_t;
@@ -269,6 +272,33 @@ static const fat_directory_entry_t *fat_32_directory_entry_iterator_next(
 //
 // FAT32 Regular file operations
 
+static file_t *_fat32fs_reg_file_open(inode_t *inode)
+{
+    mini_uart_kernel_log("fat32_fs: reg_file_ops: open");
+    fat32_file_reg_private_t *reg_private =
+        memory_calloc(sizeof(fat32_file_reg_private_t ));
+
+    if (reg_private == NULL) {
+        return NULL;
+    }
+
+    file_t *file = default_file_open(inode);
+    if (file == NULL) {
+        memory_free(reg_private);
+        return NULL;
+    }
+
+    reg_private->cluster = _fat32_get_inode_cluster(inode);
+    file->private = reg_private;
+    return file;
+}
+
+static int _fat32fs_reg_file_release(inode_t *inode, file_t *file)
+{
+    memory_free(file->private);
+    return default_file_release(inode, file);
+}
+
 static ssize_t _fat32fs_reg_file_read(
     file_t *file, void *data, size_t size)
 {
@@ -300,6 +330,8 @@ static ssize_t _fat32fs_reg_file_seek(
 }
 
 static const file_ops_t _fat32_fs_reg_file_ops = {
+    .open = _fat32fs_reg_file_open,
+    .release = _fat32fs_reg_file_release,
     .read = _fat32fs_reg_file_read,
     .write = _fat32fs_reg_file_write,
     .seek = _fat32fs_reg_file_seek,
