@@ -68,6 +68,7 @@ static uint32_t _fat32_cluster_sector_index(
         (cluster_num - 2u) * private->sectors_per_cluster;
 }
 
+// load a fat32 filesystem
 static fat32_sb_private_t *_fat32_init_fs_private(block_device_t *device)
 {
     // Load a fat32 filesystem from a block device
@@ -119,6 +120,7 @@ static fat32_sb_private_t *_fat32_init_fs_private(block_device_t *device)
     return private;
 }
 
+// compute directory entry filename (short)
 static void _fat32_read_entry_filename(
     const fat_directory_entry_t *entry,
     char filename[16])
@@ -127,11 +129,23 @@ static void _fat32_read_entry_filename(
     for (int i = 0; i < 8 && entry->filename[i] != ' '; i++, fi++) {
         filename[fi] = entry->filename[i];
     }
-    filename[fi++] = '.';
-    filename[fi++] = entry->file_extension[0];
-    filename[fi++] = entry->file_extension[1];
-    filename[fi++] = entry->file_extension[2];
+    if (0 == (entry->attributes & FAT_DIR_ENTRY_ATTR_DIRECTORY))
+    {
+        filename[fi++] = '.';
+        filename[fi++] = entry->file_extension[0];
+        filename[fi++] = entry->file_extension[1];
+        filename[fi++] = entry->file_extension[2];
+    }
     filename[fi++] = '\0';
+}
+
+// return the inode CONTENT cluster number
+static uint32_t _fat32_get_inode_cluster(const inode_t *inode)
+{
+    // inode private is the cluster number.
+    // This is not data duplication: we initialize the CURRENT cluster
+    // which may move through call to readdir / seek
+    return (uint32_t)inode->private;
 }
 
 // create an inode abstraction on fat directory entry
@@ -141,7 +155,6 @@ static inode_t *_fat32_create_inode(
     ino_t ino);
 
 // entry loc utils
-
 static uint32_t _fat32_entry_loc_sector(
     fat32_sb_private_t *sb_private,
     const fat32_dir_entry_loc_t *entry_loc)
@@ -312,11 +325,7 @@ static file_t *_fat32_fs_dir_open(inode_t *inode)
         return NULL;
     }
 
-    // inode private is the cluster number.
-    // This is not data duplication: we initialize the CURRENT cluster
-    // which may move through call to readdir / seek
-    dir_private->cluster = (uint32_t)inode->private;
-
+    dir_private->cluster = _fat32_get_inode_cluster(inode);
     file->private = dir_private;
     return file;
 }
@@ -390,8 +399,6 @@ static const file_ops_t _fat32_fs_dir_file_ops = {
 // FAT32 Inode operations
 static inode_t *_fat32fs_inode_lookup(inode_t *dir, const char *name)
 {
-    const uint32_t dir_cluster = (uint32_t)dir->private;
-
     super_block_t *sb = dir->super_block;
     fat32_sb_private_t *sb_private = (fat32_sb_private_t*)sb->private;
 
@@ -401,7 +408,7 @@ static inode_t *_fat32fs_inode_lookup(inode_t *dir, const char *name)
 
     // start at first cluster entry
     const fat32_dir_entry_loc_t entry_loc = {
-        .cluster = dir_cluster,
+        .cluster = _fat32_get_inode_cluster(dir),
         .sector_index = 0u,
         .entry_index = 0u
     };
@@ -512,6 +519,15 @@ static inode_t *_fat32_create_inode(
     ino_t ino)
 {
     const int is_dir = (entry->attributes & FAT_DIR_ENTRY_ATTR_DIRECTORY);
+    const uint32_t cluster_num = (
+        entry->starting_cluster_low | (entry->starting_cluster_high << 16)
+    );
+
+    mini_uart_kernel_log(
+        "fat32: create inode: ino=%u cluster num=%u mode=%s",
+        ino, cluster_num, is_dir ? "DIR" : "REG");
+
+    // create inode
     inode_t *inode = sb->ops->alloc_inode(sb);
 
     inode->device = 0u;
@@ -520,7 +536,7 @@ static inode_t *_fat32_create_inode(
     inode->inode_ops = is_dir ? &_fat32_fs_inode_ops : NULL;
     inode->link_count = 0u;
     inode->mode = is_dir ? S_IFDIR : S_IFREG;
-    inode->private = NULL;
+    inode->private = (void*)cluster_num;
     inode->size = entry->file_size;
 
     return inode;
