@@ -228,6 +228,8 @@ static void _fat_prev_sector_location(
     fat32_sb_private_t *sb_private,
     fat32_sector_loc_t *location)
 {
+    (void)sb_private;
+
     if (location->sector_index == 0)
     {
         kernel_fatal_error("reached begin of cluster (sector it)");
@@ -440,11 +442,11 @@ static ssize_t _fat32_fs_reg_file_seek(
         return file->pos;
     }
 
-    // 
+    // compute relative offset
     const ssize_t relative_offset = new_pos - file->pos;
-    const ssize_t total_new_offset = file_private->offset + relative_offset;
 
     // move to another sector
+    const ssize_t total_new_offset = file_private->offset + relative_offset;
     const ssize_t sector_offset = total_new_offset >> 9;
     if (sector_offset >= 0)
     {
@@ -461,7 +463,7 @@ static ssize_t _fat32_fs_reg_file_seek(
         }
     }
 
-    //
+    // compute remaining offset (in sector)
     file_private->offset = total_new_offset & 0x1FF;
     file->pos = new_pos;
 
