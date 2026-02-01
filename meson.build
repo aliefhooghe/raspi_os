@@ -128,6 +128,8 @@ kernel_sources = files(
   'src/kernel/scheduler/scheduler.c',
   'src/kernel/scheduler/scheduler.S',
   'src/kernel/syscalls.c',
+  'src/kernel/vfs/inode.c',
+  'src/kernel/vfs/fs_utils.c',
   'src/kernel/vfs/vfs.c',
   'src/kernel/vfs/driver_registry.c',
   'src/kernel/vfs/dev/block_device_file_ops.c',

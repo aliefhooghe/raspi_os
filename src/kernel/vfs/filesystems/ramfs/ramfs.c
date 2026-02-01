@@ -6,6 +6,7 @@
 #include "vfs/dev/block_device_file_ops.h"
 #include "vfs/device_ops.h"
 #include "vfs/driver_registry.h"
+#include "vfs/fs_utils.h"
 #include "vfs/inode.h"
 #include "vfs/super_block.h"  // IWYU pragma: keep
 
@@ -145,18 +146,7 @@ static ssize_t _ramfs_reg_file_seek(
 {
     mini_uart_kernel_log("ramfs: reg_file_ops: seek");
     // compute reference
-    off_t reference;
-    switch (whence) {
-        case SEEK_SET: reference = 0u; break;
-        case SEEK_END: reference = file->inode->size; break;
-        case SEEK_CUR: reference = file->pos; break;
-        default:
-            mini_uart_kernel_log(
-                "ramfs: reg_file_seek: invalid whence: %u",
-                whence);
-            return -1;
-    }
-
+    const off_t reference = get_seek_ref_offset(file, whence);
     const off_t new_pos = reference + offset;
     if (new_pos < 0)
         return -1;
