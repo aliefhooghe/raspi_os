@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 
+#include "hardware/gpio.h"
 #include "hardware/mmio.h"
 #include "hardware/cpu.h"
 #include "hardware/io_registers.h"
@@ -8,7 +9,7 @@
 
 void mini_uart_init(void)
 {
-    unsigned int ra;
+    // unsigned int ra;
 
     // GPIO14  TXD0 and TXD1
     // GPIO15  RXD0 and RXD1
@@ -36,17 +37,15 @@ void mini_uart_init(void)
     mmio_write(REG__AUX_MU_BAUD_REG, 270);
 
     // Configure GPIO14 as TXD and GPIO15 as RXD (ALT5 function)
-    ra = mmio_read(REG__GPFSEL1);
-    ra &= ~((7 << 12) | (7 << 15));  // Clear bits 12-14 (GPIO14) and 15-17 (GPIO15)
-    ra |= (2 << 12) | (2 << 15);     // Set ALT5 function for GPIO14 (TXD) and GPIO15 (RXD)
-    mmio_write(REG__GPFSEL1, ra);
+    gpio_select_function(14, GPIO_F_ALT_5);
+    gpio_select_function(15, GPIO_F_ALT_5);
 
     // Optional: Disable pull-up/down resistors for GPIO14 and GPIO15
-    mmio_write(REG__GPPUD, 0);
+    mmio_write(REG__GPIO_GPPUD, 0);
     cpu_delay(150);
-    mmio_write(REG__GPPUDCLK0, (1 << 14) | (1 << 15));
+    mmio_write(REG__GPIO_GPPUDCLK0, (1 << 14) | (1 << 15));
     cpu_delay(150);
-    mmio_write(REG__GPPUDCLK0, 0);
+    mmio_write(REG__GPIO_GPPUDCLK0, 0);
 
     // Enable the transmitter (TX) and receiver (RX)
     mmio_write(REG__AUX_MU_CNTL_REG, 3);
@@ -167,7 +166,6 @@ static void _mini_uart_put_uint_bin(uint32_t x)
 
 void mini_uart_kernel_log(const char *restrict format, ...)
 {
-
     va_list ap;
     int escape = 0;
     char c;

@@ -105,8 +105,9 @@ kernel_sources = files(
   'src/kernel/banner.c',
   'src/kernel/utils.c',
   'src/kernel/elf_loader/elf_loader.c',
-  'src/kernel/hardware/cpu.S',
 
+  'src/kernel/hardware/cpu.S',
+  'src/kernel/hardware/gpio.c',
   'src/kernel/hardware/interupts.c',
   'src/kernel/hardware/interupts.S',
   'src/kernel/hardware/mini_uart.c',

@@ -51,14 +51,13 @@
 // 
 // GPIO: registers
 // 
-#define REG__GPFSEL1                0x20200004u  // GPIO Function Select Register
-#define REG__GPFSEL3                0x2020000Cu  //
-#define REG__GPFSEL4                0x20200010u  //
+#define REG__GPIO_GPFSEL(n)              (0x20200000u + 4u * n)  // GPIO Function Select Registers (n in [0, 5])
+#define GPIO_GPFSEL_COUNT                0x6u
 
-#define REG__GPSET0                 0x2020001Cu  // GPIO Pin Output Set Register
-#define REG__GPCLR0                 0x20200028u  // GPIO Pin Output Clear Register
-#define REG__GPPUD                  0x20200094u  // GPIO Pull-up/down Register
-#define REG__GPPUDCLK0              0x20200098u  // GPIO Pull-up/down Clock Register
+#define REG__GPIO_GPSET0                 0x2020001Cu  // GPIO Pin Output Set Register
+#define REG__GPIO_GPCLR0                 0x20200028u  // GPIO Pin Output Clear Register
+#define REG__GPIO_GPPUD                  0x20200094u  // GPIO Pull-up/down Register
+#define REG__GPIO_GPPUDCLK0              0x20200098u  // GPIO Pull-up/down Clock Register
 
 // --------------------------------------------------------------------------------
 // 
