@@ -94,35 +94,35 @@
 
 // --------------------------------------------------------------------------------
 // 
-//  SD_HOST_CONTROLER: TODO
+//  SDCARD: TODO
 //
 //  Note: the EMMC module registrers can only be accessed as 32 bit register:
 //  i.e the two Leasst Significant Bits of the addresss are always zero
 //
-#define REG__EMMC_ARG2              0x20300000u  // ACMD23 Argument
-#define REG__EMMC_BLKSIZECNT        0x20300004u  // Block size and count
-#define REG__EMMC_ARG1              0x20300008u  // Argument
-#define REG__EMMC_CMDTM             0x2030000Cu  // Command and Transfer Mode
-#define REG__EMMC_RESP0             0x20300010u  // Response buts 031:000
-#define REG__EMMC_RESP1             0x20300014u  // Response buts 063:032
-#define REG__EMMC_RESP2             0x20300018u  // Response buts 095:064
-#define REG__EMMC_RESP3             0x2030001Cu  // Response buts 127:096
-#define REG__EMMC_DATA              0x20300020u  // Data
-#define REG__EMMC_STATUS            0x20300024u  // Status
-#define REG__EMMC_CONTROL0          0x20300028u  // Host Configuration bits
-#define REG__EMMC_CONTROL1          0x2030002Cu  // Host Configuration bits
-#define REG__EMMC_INTERRUPT         0x20300030u  // Interrupt Flags
-#define REG__EMMC_IRPT_MASK         0x20300034u  // Interrupt Flag Enable
-#define REG__EMMC_IRPT_EN           0x20300038u  // Interrupt Generation Enable
-#define REG__EMMC_CONTROL2          0x2030003Cu  // Host Configuration bits
-#define REG__EMMC_FORCE_IRPT        0x20300050u  // Force Interrupt Event
-#define REG__EMMC_BOOT_TIMEOUT      0x20300070u  // Timeout in boot mode
-#define REG__EMMC_DBG_SEL           0x20300074u  // Debug Bus Configuration
-#define REG__EMMC_EXRDFIFO_EN       0x20300084u  // Extension FIFO Enable
-#define REG__EMMC_TUNE_STEP         0x20300088u  // Delay per card clock tuning step
-#define REG__EMMC_TUNE_STEP_STD     0x2030008Cu  // Card clock tuning steps for SDR
-#define REG__EMMC_TUNE_STEPS_DDR    0x20300090u  // Card clock tuning steps for DDR
-#define REG__EMMC_SPI_INT_SPT       0x203000F0u  // SPI Interrupt Support
-#define REG__EMMC_SLOT_ISR_VER      0x203000FCu  // Slot Interrupt Status and Version
+#define REG__SDCARD_ARG2              0x20300000u  // ACMD23 Argument
+#define REG__SDCARD_BLKSIZECNT        0x20300004u  // Block size and count
+#define REG__SDCARD_ARG1              0x20300008u  // Argument
+#define REG__SDCARD_CMDTM             0x2030000Cu  // Command and Transfer Mode
+#define REG__SDCARD_RESP0             0x20300010u  // Response buts 031:000
+#define REG__SDCARD_RESP1             0x20300014u  // Response buts 063:032
+#define REG__SDCARD_RESP2             0x20300018u  // Response buts 095:064
+#define REG__SDCARD_RESP3             0x2030001Cu  // Response buts 127:096
+#define REG__SDCARD_DATA              0x20300020u  // Data
+#define REG__SDCARD_STATUS            0x20300024u  // Status: intended for debug, not polling
+#define REG__SDCARD_CONTROL0          0x20300028u  // Host Configuration bits
+#define REG__SDCARD_CONTROL1          0x2030002Cu  // Host Configuration bits
+#define REG__SDCARD_INTERRUPT         0x20300030u  // Interrupt Flags
+#define REG__SDCARD_IRPT_MASK         0x20300034u  // Interrupt Flag Enable
+#define REG__SDCARD_IRPT_EN           0x20300038u  // Interrupt Generation Enable
+#define REG__SDCARD_CONTROL2          0x2030003Cu  // Host Configuration bits
+#define REG__SDCARD_FORCE_IRPT        0x20300050u  // Force Interrupt Event
+#define REG__SDCARD_BOOT_TIMEOUT      0x20300070u  // Timeout in boot mode
+#define REG__SDCARD_DBG_SEL           0x20300074u  // Debug Bus Configuration
+#define REG__SDCARD_EXRDFIFO_EN       0x20300084u  // Extension FIFO Enable
+#define REG__SDCARD_TUNE_STEP         0x20300088u  // Delay per card clock tuning step
+#define REG__SDCARD_TUNE_STEP_STD     0x2030008Cu  // Card clock tuning steps for SDR
+#define REG__SDCARD_TUNE_STEPS_DDR    0x20300090u  // Card clock tuning steps for DDR
+#define REG__SDCARD_SPI_INT_SPT       0x203000F0u  // SPI Interrupt Support
+#define REG__SDCARD_SLOT_ISR_VER      0x203000FCu  // Slot Interrupt Status and Version
 
 #endif
