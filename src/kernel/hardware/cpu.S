@@ -4,6 +4,7 @@
 .globl cpu_delay
 cpu_delay:
     subs r0, r0, #1
+    nop
     bne cpu_delay
     bx lr
 
@@ -27,3 +28,8 @@ cpu_irq_disable:
     msr cpsr_c, r0     // write Program Status Register Control
     bx lr
     
+.globl cpu_wait_for_interupt
+cpu_wait_for_interupt:
+    wfi
+    bx lr
+

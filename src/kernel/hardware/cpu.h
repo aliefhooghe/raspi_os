@@ -60,16 +60,18 @@ extern void cpu_delay(uint32_t cycle_count);
 
 //
 // Enable irq globally
-// 
 void cpu_irq_enable(void);
 
 //
 // Disable irq globally
-// 
 void cpu_irq_disable(void);
 
-
+//
+// get cpu execution mode
 uint8_t cpu_get_execution_mode(void);
 
+//
+// wait for interupt
+void cpu_wait_for_interupt(void);
 
 #endif
