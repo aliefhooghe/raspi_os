@@ -41,11 +41,8 @@ void mini_uart_init(void)
     gpio_select_function(15, GPIO_F_ALT_5);
 
     // Optional: Disable pull-up/down resistors for GPIO14 and GPIO15
-    mmio_write(REG__GPIO_GPPUD, 0);
-    cpu_delay(150);
-    mmio_write(REG__GPIO_GPPUDCLK0, (1 << 14) | (1 << 15));
-    cpu_delay(150);
-    mmio_write(REG__GPIO_GPPUDCLK0, 0);
+    gpio_set_pin_mode(14, GPIO_MODE_PULL_FLOATING);
+    gpio_set_pin_mode(15, GPIO_MODE_PULL_FLOATING);
 
     // Enable the transmitter (TX) and receiver (RX)
     mmio_write(REG__AUX_MU_CNTL_REG, 3);

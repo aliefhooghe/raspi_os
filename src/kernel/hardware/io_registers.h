@@ -57,7 +57,8 @@
 #define REG__GPIO_GPSET0                 0x2020001Cu  // GPIO Pin Output Set Register
 #define REG__GPIO_GPCLR0                 0x20200028u  // GPIO Pin Output Clear Register
 #define REG__GPIO_GPPUD                  0x20200094u  // GPIO Pull-up/down Register
-#define REG__GPIO_GPPUDCLK0              0x20200098u  // GPIO Pull-up/down Clock Register
+#define REG__GPIO_GPPUDCLK0              0x20200098u  // GPIO Pull-up/down Clock 0 Register
+#define REG__GPIO_GPPUDCLK1              0x2020009Cu  // GPIO Pull-up/down Clock 1 Register
 
 // --------------------------------------------------------------------------------
 // 
