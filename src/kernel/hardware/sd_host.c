@@ -113,12 +113,68 @@ static void __dump_sdhost_registers(const char *description)
     mini_uart_kernel_log("REG__SDCARD_SLOT_ISR_VER   : 0x%x // Slot Interrupt Status and Version", mmio_read(0x203000FCu));  // Slot Interrupt Status and Version
 }
 
-//
+static void _sdhost_wait_for_cmd_done(void)
+{
+    int counter = 0;
+    for (;;) {
+        const uint32_t interupt = mmio_read(REG__SDCARD_INTERRUPT);
+        if (SDCARD_INTERUPT_CMD_DONE & interupt) {
+            mini_uart_kernel_log("sdcard: CMD was done");
+            mmio_write(REG__SDCARD_INTERRUPT, 0x1); // reset interupt register
+            break;
+        }
+        if (interupt & SDCARD_INTERUPT_CTO_ERR) {
+            mini_uart_kernel_log("sdcard: timeout on commmand line");
+        }
+        if (interupt & SDCARD_INTERUPT_CTO_ERR) {
+            mini_uart_kernel_log("sdcard: command crc error");
+        }
+        counter++;
+        cpu_delay(150);
+        if (!(counter & 0xFF)) {
+           __dump_sdhost_registers("during polling");
+           if (counter > 2048)
+               kernel_fatal_error("failed to wait for a commmand");
+       }
+    }
+}
+
+// type of expected response from card
+#define SDCARD_CMDTM_RESP_TYPE_NONE            0x0u //  no response
+#define SDCARD_CMDTM_RESP_TYPE_136_BITS        0x1u //  136 bits response
+#define SDCARD_CMDTM_RESP_TYPE_48_BITS         0x2u //  48 bits response
+#define SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY    0x3u //  48 bits response using busy
+
+// 
+#define SDCARD_CMDTM_DIR_HOST_TO_CARD 0x0u
+#define SDCARD_CMDTM_DIR_CARD_TO_HOST 0x1u
+
+static void _sdhost_send_command(
+    uint8_t cmd_index,
+    uint8_t is_data,
+    uint8_t resp_type,
+    uint8_t direction)
+{
+    mini_uart_kernel_log("sdcard: send CMD%u to sdcard", cmd_index);
+    uint32_t cmdtm = 0u;
+
+    cmdtm |= (cmd_index & 0x3Fu) << 24;  // CMD_INDEX:       29:24
+    cmdtm |= ((!!is_data) << 21);        // CMD_ISDATA:      21
+    cmdtm |= (0x3u & resp_type) << 16;   // CMD_RSPNS_TYPE:  17:16
+    cmdtm |= ((!!direction) << 4);       // TM_DAT_DIR:      4
+
+    // if a response is expected, check CRC and cmd index
+    if (resp_type != SDCARD_CMDTM_RESP_TYPE_NONE)
+    {
+        cmdtm |= (1u << 19); // CMD_CRCCHK_EN:  19, check the response CRC
+        cmdtm |= (1u << 20); // CMD_IXCHK_EN: 20, check that the response has same index as command
+    }
+
+    mmio_write(REG__SDCARD_CMDTM, cmdtm);
+}
+
 //  Public API
 //
-
-// TODO: check for GPIO 47 to 53 for mode alternate function 3
-// we need to enable pull up for theses pins
 
 void sdhost_init(void)
 {
@@ -143,16 +199,18 @@ void sdhost_init(void)
     mmio_write(REG__SDCARD_IRPT_MASK, 0xFFFFFFFFu);
 
     // GPIO config
-    // GPIO 47 : SD_CARD_DET (Détection) -> Alt 3
-    // GPIO 48 : SD_CLK (Horloge) -> Alt 3
-    // GPIO 49 : SD_CMD (Commande) -> Alt 3
-    // GPIO 50 à 53 : SD_DAT0 à SD_DAT3 (Données) -> Alt 3
+
+    // Select appropriate alt functions for pins 47:53
+    // GPIO 47 : SD_CARD_DET (Detection) -> Alt 3
+    // GPIO 48 : SD_CLK (Clock) -> Alt 3
+    // GPIO 49 : SD_CMD (Command) -> Alt 3
+    // GPIO 50 à 53 : SD_DAT0 à SD_DAT3 (Data) -> Alt 3
     for (int i = 47; i <= 53; i++)
     {
         gpio_select_function(i, GPIO_F_ALT_3);
     }
 
-    //
+    // Select Mode
     gpio_set_pin_mode(47, GPIO_MODE_PULL_UP);
     gpio_set_pin_mode(48, GPIO_MODE_PULL_DOWN);
     gpio_set_pin_mode(49, GPIO_MODE_PULL_UP);
@@ -168,6 +226,7 @@ void sdhost_init(void)
     // divider = base / target
     // thus: divider = 250 = 0xFA
     // also, set timeout = max_timeout = 0xE
+    // TODO: document INTLEN
     const uint32_t clk_ctl1 = (0xFA << 8) | (0xE << 16) | SDCARD_CONTROL1_INTLEN;
     mmio_write(REG__SDCARD_CONTROL1, clk_ctl1);
     __dump_sdhost_registers("after clock configured");
@@ -180,30 +239,22 @@ void sdhost_init(void)
 
     // send CMD0: GOTO IDLE state
     mmio_write(REG__SDCARD_ARG1, 0x0u);
-    mmio_write(REG__SDCARD_CMDTM, 0x0u);
+    _sdhost_send_command(0u, 0u, SDCARD_CMDTM_RESP_TYPE_NONE, SDCARD_CMDTM_DIR_HOST_TO_CARD);
 
     __dump_sdhost_registers("after CMD0 was sent");
+    _sdhost_wait_for_cmd_done();
 
-    // wait for command to be done
-    int counter = 0;
-    for (;;) {
-        const uint32_t interupt = mmio_read(REG__SDCARD_INTERRUPT);
-        if (1 & interupt) {
-            mini_uart_kernel_log("sdcard: CMD0 was successfully sent");
-            break;
-        }
-        if (interupt & (1 << 16)) {
-            mini_uart_kernel_log("sdcard: timeout on commmand line");
-        }
-        if (interupt & (1 << 17)) {
-            mini_uart_kernel_log("sdcard: crc error");
-        }
-        counter++;
-        cpu_delay(150);
-        if (!(counter & 0xFF)) {
-           __dump_sdhost_registers("during polling");
-           if (counter > 2048)
-               kernel_fatal_error("failed to initialize sdcard controler");
-       }
-    }
+    // send CMD8: check if high capacity memory
+    //
+    // check voltage, send an arbitrary pattern
+    mmio_write(REG__SDCARD_ARG1, 0x000001AAu);  // 0x1: 2.7-3.6V / 0xAA: the pattern
+    _sdhost_send_command(0x8u, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_wait_for_cmd_done();
+
+    // read back pattern: check correct echo. CARD agree on voltage and return the pattern.
+    // So it is a SDHC/SDXC card. An old SDCARD 1.0 would have timedout
+    // TODO: check or handle 1.0 card (if not too complicated)
+    const uint32_t response = mmio_read(REG__SDCARD_RESP0);
+    KERNEL_ASSERT(response == 0x1AAu);
+
 }
