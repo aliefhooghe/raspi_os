@@ -57,7 +57,39 @@
 #define SDCARD_CONTROL1_STABLE                 0x00000002u  //
 #define SDCARD_CONTROL1_INTLEN                 0x00000001u  // Clock enable for internal EMMC clocks for power saving
 
-// supported standards:
+//
+// command send parameter
+//
+
+// type of expected response from card
+#define SDCARD_CMDTM_RESP_TYPE_NONE            0x0u //  no response
+#define SDCARD_CMDTM_RESP_TYPE_136_BITS        0x1u //  136 bits response
+#define SDCARD_CMDTM_RESP_TYPE_48_BITS         0x2u //  48 bits response
+#define SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY    0x3u //  48 bits response using busy
+
+// command direction
+#define SDCARD_CMDTM_DIR_HOST_TO_CARD 0x0u
+#define SDCARD_CMDTM_DIR_CARD_TO_HOST 0x1u
+
+//
+// ACMD41 response bits
+// - high capacity card detection
+// - confirm card is powered up
+// - confirm voltage negotiation
+#define SDCARD_ACMD41_RESP_HIGH_CAPACITY 0x40000000u
+#define SDCARD_ACMD41_RESP_POWER_UP      0x80000000u
+// also bit 23:15  -> voltage bits
+
+// Some CMDS
+//
+#define SDCARD_CMD_ALL_SEND_CID 2u                  // Read Card Identification
+#define SDCARD_CMD_APP                         55u  // Application sepcific command.
+// TODO: CMD0, CMD3
+
+// ACMD41 : Définir les conditions de fonctionnement (Tension, support des hautes capacités).
+// ACMD6 : Changer la largeur du bus de données (passer de 1 bit à 4 bits pour plus de vitesse).
+// ACMD51 : Lire le registre SCR (SD Configuration Register) pour connaître les capacités de la carte.// supported standards:
+
 //  - SD Host Controller Standard Specification Version 3.0 Draft 1.0: base controller spec
 //  - SDIO card specification version 3.0: ignored, for exemples wifi cards, etc...
 //  - SD Memory Card Specification Draft version 3.0: how to talk with an SD memory card
@@ -68,7 +100,6 @@
 //
 // notes from BCM2835 ARM Peripherals documentation. p 65
 //
-
 
 // - Command execution is commenced by writing the command plus the appropriate flags to the
 //   CMDTM register after loading any required argument into the ARG1 register. The EMMC
@@ -120,6 +151,8 @@ static void _sdhost_wait_for_cmd_done(void)
         const uint32_t interupt = mmio_read(REG__SDCARD_INTERRUPT);
         if (SDCARD_INTERUPT_CMD_DONE & interupt) {
             mini_uart_kernel_log("sdcard: CMD was done");
+
+            // we should read response now in case we are interupted
             mmio_write(REG__SDCARD_INTERRUPT, 0x1); // reset interupt register
             break;
         }
@@ -139,15 +172,6 @@ static void _sdhost_wait_for_cmd_done(void)
     }
 }
 
-// type of expected response from card
-#define SDCARD_CMDTM_RESP_TYPE_NONE            0x0u //  no response
-#define SDCARD_CMDTM_RESP_TYPE_136_BITS        0x1u //  136 bits response
-#define SDCARD_CMDTM_RESP_TYPE_48_BITS         0x2u //  48 bits response
-#define SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY    0x3u //  48 bits response using busy
-
-// 
-#define SDCARD_CMDTM_DIR_HOST_TO_CARD 0x0u
-#define SDCARD_CMDTM_DIR_CARD_TO_HOST 0x1u
 
 static void _sdhost_send_command(
     uint8_t cmd_index,
@@ -166,6 +190,7 @@ static void _sdhost_send_command(
     // if a response is expected, check CRC and cmd index
     if (resp_type != SDCARD_CMDTM_RESP_TYPE_NONE)
     {
+        // it *may* append that 48_BIT_BUSY resp have a bad CRC ??
         cmdtm |= (1u << 19); // CMD_CRCCHK_EN:  19, check the response CRC
         cmdtm |= (1u << 20); // CMD_IXCHK_EN: 20, check that the response has same index as command
     }
@@ -178,8 +203,7 @@ static void _sdhost_send_command(
 
 void sdhost_init(void)
 {
-    mini_uart_kernel_log("sdcar: initialize controller");
-    __dump_sdhost_registers("at init");
+    mini_uart_kernel_log("sdcard: initialize controller");
 
     // RESET
     const uint32_t mask = (1u << 24);
@@ -189,11 +213,9 @@ void sdhost_init(void)
         asm("nop");
     }
     mini_uart_kernel_log("sdcard: RESET DONE:");
-    __dump_sdhost_registers("after reset");
 
     // disable all SD interupts
     mmio_write(REG__SDCARD_IRPT_EN, 0x0u);
-    __dump_sdhost_registers("after interupt disabled");
 
     // enabled irpt mask bit so interupt register is updated
     mmio_write(REG__SDCARD_IRPT_MASK, 0xFFFFFFFFu);
@@ -229,7 +251,6 @@ void sdhost_init(void)
     // TODO: document INTLEN
     const uint32_t clk_ctl1 = (0xFA << 8) | (0xE << 16) | SDCARD_CONTROL1_INTLEN;
     mmio_write(REG__SDCARD_CONTROL1, clk_ctl1);
-    __dump_sdhost_registers("after clock configured");
 
     cpu_delay(8048);
 
@@ -241,7 +262,6 @@ void sdhost_init(void)
     mmio_write(REG__SDCARD_ARG1, 0x0u);
     _sdhost_send_command(0u, 0u, SDCARD_CMDTM_RESP_TYPE_NONE, SDCARD_CMDTM_DIR_HOST_TO_CARD);
 
-    __dump_sdhost_registers("after CMD0 was sent");
     _sdhost_wait_for_cmd_done();
 
     // send CMD8: check if high capacity memory
@@ -254,7 +274,84 @@ void sdhost_init(void)
     // read back pattern: check correct echo. CARD agree on voltage and return the pattern.
     // So it is a SDHC/SDXC card. An old SDCARD 1.0 would have timedout
     // TODO: check or handle 1.0 card (if not too complicated)
-    const uint32_t response = mmio_read(REG__SDCARD_RESP0);
-    KERNEL_ASSERT(response == 0x1AAu);
+    const uint32_t negotiation_resp = mmio_read(REG__SDCARD_RESP0);
+    KERNEL_ASSERT(negotiation_resp == 0x1AAu);
+    mini_uart_kernel_log("sdcard: negotiation is done.");
 
+    // power up the card
+    // Send application specific command 41
+    // send SDCARD_C
+
+    // send CMD_APP
+    for (;;) {
+        mmio_write(REG__SDCARD_ARG1, 0x0u);
+        _sdhost_send_command(SDCARD_CMD_APP, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+        _sdhost_wait_for_cmd_done();
+
+        // send 41
+        mmio_write(REG__SDCARD_ARG1, 0x40FF8000);
+        _sdhost_send_command(41, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+        _sdhost_wait_for_cmd_done();
+
+        const uint32_t operation_condition = mmio_read(REG__SDCARD_RESP0);
+        // here: 
+        mini_uart_kernel_log("sdcard: response for ACMD41 is 0x%x", operation_condition );
+
+
+        if (operation_condition & SDCARD_ACMD41_RESP_POWER_UP)
+        {
+            mini_uart_kernel_log("sdcard: card is powered up.");
+
+            if (operation_condition & SDCARD_ACMD41_RESP_HIGH_CAPACITY)
+            {
+                mini_uart_kernel_log("sdcard: card type: SDHC/SDXC");
+            }
+            else
+            {
+                mini_uart_kernel_log("sdcard: card type: SDSC");
+            }
+            break;
+        }
+        else
+        {
+            cpu_delay(512);
+        }
+    }
+
+    // Read Card Identification CID
+    mmio_write(REG__SDCARD_ARG1, 0x0u);
+    _sdhost_send_command(SDCARD_CMD_ALL_SEND_CID, 0, SDCARD_CMDTM_RESP_TYPE_136_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_wait_for_cmd_done();
+
+    // TODO: extract response.
+    const uint32_t resps[5] = {
+        mmio_read(REG__SDCARD_RESP0),
+        mmio_read(REG__SDCARD_RESP1),
+        mmio_read(REG__SDCARD_RESP2),
+        mmio_read(REG__SDCARD_RESP3),
+        0
+    };
+
+    // 2. Le piège des registres RESP sur BCM2835
+    // Il y a une subtilité propre au contrôleur EMMC de la Raspberry Pi : pour les réponses longues (R2), les bits
+    // sont décalés de 8 bits vers la gauche car le contrôleur "pousse" les données en omettant l'octet d'en-tête de la
+    // spécification SD.
+    // C'est pour cela que votre "QEMU" (qui devrait être sur 4 octets alignés) peut paraître un peu étrange si
+    // vous essayez de mapper la structure exacte de la spec SD directement sur les registres. Mais pour l'instant,
+    // l'important est que vous recevez des données cohérentes.
+    for (int i = 0; i < 4; i++) {
+        mini_uart_kernel_log("sdcard: CID: RESP%d = 0x%x", i, resps[i]);
+    }
+
+    // Publish RCA: Relative Card Address
+    // send CMD3
+    mmio_write(REG__SDCARD_ARG1, 0x0u);
+    _sdhost_send_command(0x3, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_wait_for_cmd_done();
+
+    const uint32_t relative_card_address = mmio_read(REG__SDCARD_RESP0) & 0xFFFFu;
+    mini_uart_kernel_log("sdcard: Relative Card Address = 0x%x", relative_card_address);
+    mini_uart_kernel_log("sdcard: card identification is done");
+
+    // NOW: card is in STANDBY mode. We want to switch to TRANSFER MODE
 }
