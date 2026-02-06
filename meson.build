@@ -114,7 +114,7 @@ kernel_sources = files(
   'src/kernel/hardware/mmio.S',
   'src/kernel/hardware/mmu.c',
   'src/kernel/hardware/mmu.S',
-  'src/kernel/hardware/sdio.c',
+  'src/kernel/hardware/sd_host/sd_host.c',
   'src/kernel/hardware/watchdog.c',
 
   'src/kernel/kernel.c',
