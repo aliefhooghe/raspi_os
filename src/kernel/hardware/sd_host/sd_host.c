@@ -79,6 +79,25 @@ static void _sdhost_wait_for_cmd_done(void)
     }
 }
 
+static void _sdhost_enable_clock(uint16_t freq_khz)
+{
+    // Congigure clock:
+    // base clock = 100Mhz = 100000Khz
+    // divider = base / target (10 bits)
+
+    const uint16_t divider = 100000u / freq_khz;
+    const uint8_t timeout = 0xEu; // max_timeout
+
+    const uint32_t clk_ctl1 = (
+        (divider & 0xFF) << 8) |
+        ((divider & 0x300) >> 2) |
+        (timeout << 16) |
+        SDCARD_CONTROL1_INTLEN;
+
+    mmio_write(REG__SDCARD_CONTROL1, clk_ctl1);
+    cpu_delay(8048);
+    mmio_write(REG__SDCARD_CONTROL1, clk_ctl1 | SDCARD_CONTROL1_CLK_EN);
+}
 
 static void _sdhost_send_command(
     uint8_t cmd,
@@ -150,25 +169,14 @@ void sdhost_init(void)
     cpu_delay(2048);
 
     // Congigure clock to 400khz
-    //
-    // base clock = 100Mhz
-    // divider = base / target
-    // thus: divider = 250 = 0xFA
-    // also, set timeout = max_timeout = 0xE
-    // TODO: document INTLEN
-    const uint32_t clk_ctl1 = (0xFA << 8) | (0xE << 16) | SDCARD_CONTROL1_INTLEN;
-    mmio_write(REG__SDCARD_CONTROL1, clk_ctl1);
-
-    cpu_delay(8048);
-
-    mmio_write(REG__SDCARD_CONTROL1, clk_ctl1 | SDCARD_CONTROL1_CLK_EN);
-
+    _sdhost_enable_clock(400);
     cpu_delay(248);
 
     // send CMD0: GOTO IDLE state
     mmio_write(REG__SDCARD_ARG1, 0x0u);
-    _sdhost_send_command(SDCARD_CMD_GO_IDLE_STATE, 0u, SDCARD_CMDTM_RESP_TYPE_NONE, SDCARD_CMDTM_DIR_HOST_TO_CARD);
-
+    _sdhost_send_command(
+        SDCARD_CMD_GO_IDLE_STATE, 0u,
+        SDCARD_CMDTM_RESP_TYPE_NONE, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
     // send CMD8: check if high capacity memory
@@ -176,7 +184,9 @@ void sdhost_init(void)
     // check voltage, send an arbitrary pattern
     // TODO: clarify the mapping
     mmio_write(REG__SDCARD_ARG1, 0x000001AAu);  // 0x1: 2.7-3.6V / 0xAA: the pattern
-    _sdhost_send_command(SDCARD_CMD_SEND_IF_COND, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_send_command(
+        SDCARD_CMD_SEND_IF_COND, 0,
+        SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
     // read back pattern: check correct echo. CARD agree on voltage and return the pattern.
@@ -193,12 +203,16 @@ void sdhost_init(void)
     // send CMD_APP
     for (;;) {
         mmio_write(REG__SDCARD_ARG1, 0x0u);
-        _sdhost_send_command(SDCARD_CMD_APP, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+        _sdhost_send_command(
+            SDCARD_CMD_APP, 0,
+            SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
         _sdhost_wait_for_cmd_done();
 
-        // send 41
-        mmio_write(REG__SDCARD_ARG1, 0x40FF8000);
-        _sdhost_send_command(SDCARD_ACMD_SD_SEND_OP_COND, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+        // send ACMD41
+        mmio_write(REG__SDCARD_ARG1, 0x40FF8000); // TODO: document this value
+        _sdhost_send_command(
+            SDCARD_ACMD_SD_SEND_OP_COND, 0,
+            SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY, SDCARD_CMDTM_DIR_HOST_TO_CARD);
         _sdhost_wait_for_cmd_done();
 
         const uint32_t operation_condition = mmio_read(REG__SDCARD_RESP0);
@@ -227,7 +241,9 @@ void sdhost_init(void)
 
     // Read Card Identification CID
     mmio_write(REG__SDCARD_ARG1, 0x0u);
-    _sdhost_send_command(SDCARD_CMD_ALL_SEND_CID, 0, SDCARD_CMDTM_RESP_TYPE_136_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_send_command(
+        SDCARD_CMD_ALL_SEND_CID, 0,
+        SDCARD_CMDTM_RESP_TYPE_136_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
     // TODO: extract response.
@@ -253,7 +269,9 @@ void sdhost_init(void)
     // Read RCA: Relative Card Address
     // send CMD3
     mmio_write(REG__SDCARD_ARG1, 0x0u);
-    _sdhost_send_command(SDCARD_CMD_SEND_RELATIVE_ADDR, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_send_command(
+        SDCARD_CMD_SEND_RELATIVE_ADDR, 0,
+        SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
     // RCA response fmt
@@ -266,14 +284,18 @@ void sdhost_init(void)
 
     // NOW: card is in STANDBY mode. We want to switch to TRANSFER MODE
     mmio_write(REG__SDCARD_ARG1, relative_card_address << SDCARD_RCA_LSB);
-    _sdhost_send_command(SDCARD_CMD_SELECT_DESELECT, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_send_command(
+        SDCARD_CMD_SELECT_DESELECT, 0,
+        SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
     // TODO: resp0 is now the internal state of card WHEN it received the command. bit 12:9  (3 stby / 4 transfert)
 
     // Read card status: ensure it is in the correct state.
     mmio_write(REG__SDCARD_ARG1, relative_card_address << SDCARD_RCA_LSB);
-    _sdhost_send_command(SDCARD_CMD_SEND_STATUS, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_send_command(
+        SDCARD_CMD_SEND_STATUS, 0,
+        SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
     const uint32_t card_status = mmio_read(REG__SDCARD_RESP0);
