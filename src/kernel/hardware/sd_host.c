@@ -10,17 +10,16 @@
 #include "kernel.h"
 
 
-// Status register: REG__SDCARD_STATUS
+// Status register: REG__SDCARD_HOST_STATUS
 //
-#define SDCARD_STATUS_DAT_LEVEL1_MASK          0x1E000000u  // value of data lines DAT7 to DAT4
-#define SDCARD_STATUS_CMD_LEVEL_MASK           0x01000000u  // value of command line CMD
-#define SDCARD_STATUS_DAT_LEVEL0_MASK          0x00F00000u  // value of data lines DAT3 to DAT0
-#define SDCARD_STATUS_READ_TRANSFER_MASK       0x00000200u  // new data can be read from EMMC
-#define SDCARD_STATUS_WRITE_TRANSFER_MASK      0x00000100u  // new data can be written to EMMC
-#define SDCARD_STATUS_DAT_ACTIVE               0x00000004u  // at least one data line is active
-#define SDCARD_STATUS_DAT_INHIBIT              0x00000002u  // data lines still used by previous data transfer
-#define SDCARD_STATUS_CMD_INHIBIT              0x00000001u  // command line still used by previous command
-
+#define SDCARD_HOST_STATUS_DAT_LEVEL1_MASK          0x1E000000u  // value of data lines DAT7 to DAT4
+#define SDCARD_HOST_STATUS_CMD_LEVEL_MASK           0x01000000u  // value of command line CMD
+#define SDCARD_HOST_STATUS_DAT_LEVEL0_MASK          0x00F00000u  // value of data lines DAT3 to DAT0
+#define SDCARD_HOST_STATUS_READ_TRANSFER_MASK       0x00000200u  // new data can be read from EMMC
+#define SDCARD_HOST_STATUS_WRITE_TRANSFER_MASK      0x00000100u  // new data can be written to EMMC
+#define SDCARD_HOST_STATUS_DAT_ACTIVE               0x00000004u  // at least one data line is active
+#define SDCARD_HOST_STATUS_DAT_INHIBIT              0x00000002u  // data lines still used by previous data transfer
+#define SDCARD_HOST_STATUS_CMD_INHIBIT              0x00000001u  // command line still used by previous command
 
 // Interupt register: REG__SDCARD_INTERUPT
 #define SDCARD_INTERUPT_ACMD_ERR               0x01000000u  // auto command erro
@@ -58,37 +57,76 @@
 #define SDCARD_CONTROL1_INTLEN                 0x00000001u  // Clock enable for internal EMMC clocks for power saving
 
 //
-// command send parameter
-//
-
-// type of expected response from card
-#define SDCARD_CMDTM_RESP_TYPE_NONE            0x0u //  no response
-#define SDCARD_CMDTM_RESP_TYPE_136_BITS        0x1u //  136 bits response
-#define SDCARD_CMDTM_RESP_TYPE_48_BITS         0x2u //  48 bits response
-#define SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY    0x3u //  48 bits response using busy
-
-// command direction
-#define SDCARD_CMDTM_DIR_HOST_TO_CARD 0x0u
-#define SDCARD_CMDTM_DIR_CARD_TO_HOST 0x1u
-
-//
 // ACMD41 response bits
 // - high capacity card detection
 // - confirm card is powered up
 // - confirm voltage negotiation
-#define SDCARD_ACMD41_RESP_HIGH_CAPACITY 0x40000000u
-#define SDCARD_ACMD41_RESP_POWER_UP      0x80000000u
+#define SDCARD_ACMD41_RESP_HIGH_CAPACITY       0x40000000u  // card is SDHC/SDXC
+#define SDCARD_ACMD41_RESP_POWER_UP            0x80000000u  // card is powered up
 // also bit 23:15  -> voltage bits
 
-// Some CMDS
-//
-#define SDCARD_CMD_ALL_SEND_CID 2u                  // Read Card Identification
-#define SDCARD_CMD_APP                         55u  // Application sepcific command.
-// TODO: CMD0, CMD3
 
-// ACMD41 : Définir les conditions de fonctionnement (Tension, support des hautes capacités).
-// ACMD6 : Changer la largeur du bus de données (passer de 1 bit à 4 bits pour plus de vitesse).
-// ACMD51 : Lire le registre SCR (SD Configuration Register) pour connaître les capacités de la carte.// supported standards:
+//
+// sdcard internal status, read with CMD13 or CMD7
+#define SDCARD_STATUS_ERROR_FLAGS              0xFF000000u
+#define SDCARD_STATUS_CURRENT_STATE_LSB        9u
+#define SDCARD_STATUS_CURRENT_STATE_MASK       0x00001E00u
+typedef enum {
+    SDCARD_STATUS_CURRENT_STATE_IDLE       = 0x0u,
+    SDCARD_STATUS_CURRENT_STATE_READY      = 0x1u,
+    SDCARD_STATUS_CURRENT_STATE_IDENT      = 0x2u,
+    SDCARD_STATUS_CURRENT_STATE_STDBY      = 0x3u,
+    SDCARD_STATUS_CURRENT_STATE_TRANSFERT  = 0x4u,
+} sdcard_status_current_state_t;
+
+#define SDCARD_STATUS_READY_FOR_DATA           0x00000100u  // card is ready for data transfert
+#define SDCARD_STATUS_APP_CMD                  0x00000020u  // card is awaiting an application command (ACMD)
+
+//
+// SEND RCA response format (CMD3)
+// RCA at [31:16]
+#define SDCARD_RCA_LSB   16u
+#define SDCARD_RCA_MASK  0xFFFF0000u
+
+//
+// command send parameter
+//
+
+// type of expected response from card
+typedef enum {
+    SDCARD_CMDTM_RESP_TYPE_NONE             = 0x0u, //  no response
+    SDCARD_CMDTM_RESP_TYPE_136_BITS         = 0x1u, //  136 bits response
+    SDCARD_CMDTM_RESP_TYPE_48_BITS          = 0x2u, //  48 bits response
+    SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY     = 0x3u, //  48 bits response using busy (wait DAT0 goto 0 before DONE)
+} sdcard_cmd_resp_type_t;
+
+// command direction
+typedef enum {
+    SDCARD_CMDTM_DIR_HOST_TO_CARD           = 0x0u,
+    SDCARD_CMDTM_DIR_CARD_TO_HOST           = 0x1u,
+} sdcard_cmd_dir_t;
+
+// sd commands
+typedef enum {
+    SDCARD_CMD_GO_IDLE_STATE                = 0,    // CMD0   : Reset card to idle state
+    SDCARD_CMD_ALL_SEND_CID                 = 2,    // CMD2   : Ask all cards to send CID
+    SDCARD_CMD_SEND_RELATIVE_ADDR           = 3,    // CMD3   : Ask card to publish RCA
+    SDCARD_CMD_SELECT_DESELECT              = 7,    // CMD7   : Select or deselect a card
+    SDCARD_CMD_SEND_IF_COND                 = 8,    // CMD8   : Send interface condition
+    SDCARD_CMD_SEND_CSD                     = 9,    // CMD9   : Read Card-Specific Data
+    SDCARD_CMD_SEND_STATUS                  = 13,   // CMD13  : Read card status register
+    SDCARD_CMD_SET_BLOCKLEN                 = 16,   // CMD16  : Set block length (SDSC only)
+    SDCARD_CMD_READ_SINGLE_BLOCK            = 17,   // CMD17  : Read a single data block
+    SDCARD_CMD_WRITE_SINGLE_BLOCK           = 24,   // CMD24  : Write a single data block
+    SDCARD_CMD_APP                          = 55,   // CMD55  : Prefix for application commands
+} sdcard_cmd_t;
+
+// sdcard application commands
+typedef enum {
+    SDCARD_ACMD_SET_BUS_WIDTH               = 6,    // ACMD6  : Set data bus width
+    SDCARD_ACMD_SD_SEND_OP_COND             = 41,   // ACMD41 : Send operating condition (init)
+    SDCARD_ACMD_SEND_SCR                    = 51,   // ACMD51 : Read SD Configuration Register
+} sdcard_acmd_t;
 
 //  - SD Host Controller Standard Specification Version 3.0 Draft 1.0: base controller spec
 //  - SDIO card specification version 3.0: ignored, for exemples wifi cards, etc...
@@ -107,12 +145,6 @@
 //   response and checks its CRC. Once the command has executed or timed-out bit 0 of register
 //   INTERRUPT will be set. Please note that the INTERRUPT register is not self clearing, so the
 //   software has first to reset it by writing 1 before using it to detect if a command has finished.
-
-static void __dump_sdhost_infos(void)
-{
-    const uint32_t status = mmio_read(REG__SDCARD_STATUS);
-    mini_uart_kernel_log("sdcard.status.dat_active: %u", !!(status & SDCARD_STATUS_DAT_ACTIVE));
-}
 
 static void __dump_sdhost_registers(const char *description)
 {
@@ -174,15 +206,15 @@ static void _sdhost_wait_for_cmd_done(void)
 
 
 static void _sdhost_send_command(
-    uint8_t cmd_index,
+    uint8_t cmd,
     uint8_t is_data,
-    uint8_t resp_type,
-    uint8_t direction)
+    sdcard_cmd_resp_type_t resp_type,
+    sdcard_cmd_dir_t direction)
 {
-    mini_uart_kernel_log("sdcard: send CMD%u to sdcard", cmd_index);
+    mini_uart_kernel_log("sdcard: send CMD%u to sdcard", cmd);
     uint32_t cmdtm = 0u;
 
-    cmdtm |= (cmd_index & 0x3Fu) << 24;  // CMD_INDEX:       29:24
+    cmdtm |= (cmd & 0x3Fu) << 24;        // CMD_INDEX:       29:24
     cmdtm |= ((!!is_data) << 21);        // CMD_ISDATA:      21
     cmdtm |= (0x3u & resp_type) << 16;   // CMD_RSPNS_TYPE:  17:16
     cmdtm |= ((!!direction) << 4);       // TM_DAT_DIR:      4
@@ -260,15 +292,16 @@ void sdhost_init(void)
 
     // send CMD0: GOTO IDLE state
     mmio_write(REG__SDCARD_ARG1, 0x0u);
-    _sdhost_send_command(0u, 0u, SDCARD_CMDTM_RESP_TYPE_NONE, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_send_command(SDCARD_CMD_GO_IDLE_STATE, 0u, SDCARD_CMDTM_RESP_TYPE_NONE, SDCARD_CMDTM_DIR_HOST_TO_CARD);
 
     _sdhost_wait_for_cmd_done();
 
     // send CMD8: check if high capacity memory
     //
     // check voltage, send an arbitrary pattern
+    // TODO: clarify the mapping
     mmio_write(REG__SDCARD_ARG1, 0x000001AAu);  // 0x1: 2.7-3.6V / 0xAA: the pattern
-    _sdhost_send_command(0x8u, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_send_command(SDCARD_CMD_SEND_IF_COND, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
     // read back pattern: check correct echo. CARD agree on voltage and return the pattern.
@@ -290,13 +323,12 @@ void sdhost_init(void)
 
         // send 41
         mmio_write(REG__SDCARD_ARG1, 0x40FF8000);
-        _sdhost_send_command(41, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+        _sdhost_send_command(SDCARD_ACMD_SD_SEND_OP_COND, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY, SDCARD_CMDTM_DIR_HOST_TO_CARD);
         _sdhost_wait_for_cmd_done();
 
         const uint32_t operation_condition = mmio_read(REG__SDCARD_RESP0);
         // here: 
         mini_uart_kernel_log("sdcard: response for ACMD41 is 0x%x", operation_condition );
-
 
         if (operation_condition & SDCARD_ACMD41_RESP_POWER_UP)
         {
@@ -308,7 +340,7 @@ void sdhost_init(void)
             }
             else
             {
-                mini_uart_kernel_log("sdcard: card type: SDSC");
+                kernel_fatal_error("sdcard: card type SDSC is NOT supported.");
             }
             break;
         }
@@ -343,15 +375,42 @@ void sdhost_init(void)
         mini_uart_kernel_log("sdcard: CID: RESP%d = 0x%x", i, resps[i]);
     }
 
-    // Publish RCA: Relative Card Address
+    // Read RCA: Relative Card Address
     // send CMD3
     mmio_write(REG__SDCARD_ARG1, 0x0u);
-    _sdhost_send_command(0x3, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_send_command(SDCARD_CMD_SEND_RELATIVE_ADDR, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
-    const uint32_t relative_card_address = mmio_read(REG__SDCARD_RESP0) & 0xFFFFu;
+    // RCA response fmt
+    // [31:16] : L'adresse RCA (New Published RCA)
+    // [15:0] card status (bit de status R1)
+    const uint32_t rca_resp = mmio_read(REG__SDCARD_RESP0);
+    const uint32_t relative_card_address = (rca_resp & SDCARD_RCA_MASK) >> SDCARD_RCA_LSB;
     mini_uart_kernel_log("sdcard: Relative Card Address = 0x%x", relative_card_address);
     mini_uart_kernel_log("sdcard: card identification is done");
 
     // NOW: card is in STANDBY mode. We want to switch to TRANSFER MODE
+    mmio_write(REG__SDCARD_ARG1, relative_card_address << SDCARD_RCA_LSB);
+    _sdhost_send_command(SDCARD_CMD_SELECT_DESELECT, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_wait_for_cmd_done();
+
+    // TODO: resp0 is now the internal state of card WHEN it received the command. bit 12:9  (3 stby / 4 transfert)
+
+    // Read card status: ensure it is in the correct state.
+    mmio_write(REG__SDCARD_ARG1, relative_card_address << SDCARD_RCA_LSB);
+    _sdhost_send_command(SDCARD_CMD_SEND_STATUS, 0, SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
+    _sdhost_wait_for_cmd_done();
+
+    const uint32_t card_status = mmio_read(REG__SDCARD_RESP0);
+    const sdcard_status_current_state_t state = (card_status & SDCARD_STATUS_CURRENT_STATE_MASK) >> SDCARD_STATUS_CURRENT_STATE_LSB;
+
+    mini_uart_kernel_log("sdcard: sdcard status is %x", state);
+
+    if (state == SDCARD_STATUS_CURRENT_STATE_TRANSFERT)
+    {
+        mini_uart_kernel_log("sdcard: card is ready for transfert");
+    }
+
+    // TODO: try to read the Master Boot Record
+    // for now keep the bus clock to 400 Hz
 }

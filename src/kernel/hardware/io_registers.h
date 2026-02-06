@@ -108,7 +108,7 @@
 #define REG__SDCARD_RESP2             0x20300018u  // Response buts 095:064
 #define REG__SDCARD_RESP3             0x2030001Cu  // Response buts 127:096
 #define REG__SDCARD_DATA              0x20300020u  // Data
-#define REG__SDCARD_STATUS            0x20300024u  // Status: intended for debug, not polling
+#define REG__SDCARD_HOST_STATUS       0x20300024u  // Host Status: intended for debug, not polling
 #define REG__SDCARD_CONTROL0          0x20300028u  // Host Configuration bits
 #define REG__SDCARD_CONTROL1          0x2030002Cu  // Host Configuration bits
 #define REG__SDCARD_INTERRUPT         0x20300030u  // Interrupt Flags
