@@ -1,10 +1,8 @@
-
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "src/kernel/lib/str.h"
 #include "usr_syscalls.h"
 
 #define LINE_SIZE 128u
@@ -96,14 +94,16 @@ __attribute__((noinline)) void test_w_file(FILE *stdout)
         fprintf(stdout, "open failed.\n");
         return;
     }
-    
+    fprintf(stdout, "mkdir: open return %d\n", fd);
+
     FILE *test = fdopen(fd, "w");
     if (test == NULL)
     {
         fprintf(stdout, "fdopen failed.\n");
         return;
     }
-    
+
+    fprintf(stdout, "will write\n");
     fprintf(test, "hello THE world\n");
 
     const int s2 = fclose(test);
@@ -126,8 +126,10 @@ __attribute__((noinline)) void test_r_file(FILE *stdout, const char *path)
         return;
     }
 
+    fprintf(stdout, "will read\n");
     char buffer[128];
     const ssize_t sz = fread(buffer, 1, 127, test);
+    fprintf(stdout, "check read result: %d\n", sz);
     if (sz < 0)
     {
         fprintf(stdout, "fread failed\n");
@@ -135,7 +137,7 @@ __attribute__((noinline)) void test_r_file(FILE *stdout, const char *path)
     }
     buffer[sz] = '\0';
     
-    fprintf(stdout, "file content is:\n%s\n----\n");
+    fprintf(stdout, "file content is:\n%s\n----\n", buffer);
 
     const int s2 = fclose(test);
     fprintf(stdout, "fclose: status=%x\n", s2);
@@ -143,44 +145,45 @@ __attribute__((noinline)) void test_r_file(FILE *stdout, const char *path)
 
 __attribute__((noinline)) void fork_exec(FILE *stdout, const char *exec)
 {
-    fprintf(stdout, "fork !");
+    fprintf(stdout, "fork-exec: path=%s\n", exec);
     const uint32_t status = usr_syscall_fork();
 
     if (status < 0) {
-        fprintf(stdout, "fork failed\n");
+        fprintf(stdout, "fork-exec: fork failed\n");
         return;
     }
 
     if (status == 0) {
-        fprintf(stdout, "in child: exec %s\n", exec);
+        fprintf(stdout, "fork-exec: in child: exec %s\n", exec);
         usr_syscall_exec(exec);
         usr_syscall_exit(0);
     }
     else {
         for (int i = 0; i < 2;i++) {
-            fprintf(stdout, "in parent: yield %u\n", i);
-            usr_syscall_yield();
+            fprintf(stdout, "fork-exec: in parent: yield %u\n", i);
+            usr_syscall_yield(i);
         }
-        fprintf(stdout, "in parent: wait child %u\n", status);
+        fprintf(stdout, "fork-exec: in parent: wait child %u\n", status);
         int32_t wstatus = 0;
         usr_syscall_waitpid(status, &wstatus);
-        fprintf(stdout, "from parent: child exited with status %u\n", wstatus);
+        fprintf(stdout, "fork-exec: from parent: child exited with status %u\n", wstatus);
     }
 }
 
-__attribute__((noinline)) void test_read_data(FILE *stdout)
+__attribute__((noinline)) void test_read_data(FILE *stdout, const char *path)
 {
     char buffer[256] = "";
-    FILE *f = fopen("/data/text.txt", "r");
+    fprintf(stdout, "open file %s in read mode\n", path);
+    FILE *f = fopen(path, "r");
 
     if (f == NULL) {
-        fprintf(stdout, "failed to open data file\n");
+        fprintf(stdout, "failed to open data file at %s\n", path);
         return;
     }
 
     const int status = fread(buffer, 256, 1, f);
     if (status < 0) {
-        fprintf(stdout, "error reading fiile\n");
+        fprintf(stdout, "error reading file\n");
     }
     else {
         buffer[status] = '\0';
@@ -273,6 +276,11 @@ int main(void)
             fprintf(stdout, "[%u] test elf loader:\n", pid);
             fork_exec(stdout, "/bin/hello");
         }
+        else if (strcmp(line, "felf") == 0)
+        {
+            fprintf(stdout, "[%u] test elf loader on FAT32:\n", pid);
+            fork_exec(stdout, "/mnt/BIN.EXE");
+        }
         else if ('l' == line[0] && 's' == line[1])
         {
             const char *arg = line + 3;
@@ -296,10 +304,13 @@ int main(void)
             ls(stdout, "/");
         }
         else if (strcmp(line, "zz") == 0) {
-            test_read_data(stdout);
+            test_read_data(stdout, "/mnt/TOTO/TI.TXT");
         }
-        else if (strcmp(line, "ed") == 0) {
-            test_read_dataa(stdout);
+        else if (strcmp(line, "ze") == 0) {
+            test_read_data(stdout, "/mnt/FILE_0.TXT");
+        }
+        else if (strcmp(line, "zr") == 0) {
+            test_read_data(stdout, "/mnt/FILE_42.TXT");
         }
         else
         {

@@ -4,15 +4,15 @@
 #include "usr_syscalls.h"
 #include "stdio.h"
 
-extern int main(void);
+extern int main(int argc, char **argv);
 
-void _start(void)
+void _start(int argc, char **argv)
 {
     // setup stdio
     stdout = fdopen(1, "w");
 
     // 
-    const int status = main();
+    const int status = main(argc, argv);
     usr_syscall_exit(status);
 
     // unreachable

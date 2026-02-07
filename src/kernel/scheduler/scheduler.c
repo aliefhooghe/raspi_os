@@ -13,7 +13,6 @@
 #include "lib/str.h"
 
 #include "memory/bitfield.h"
-#include "memory/memory_allocator.h"
 #include "memory/section_allocator.h"
 #include "memory/translation_table_allocator.h"
 
@@ -42,7 +41,7 @@
 //
 //  Process structure
 //
-#define MAX_FILE_DESCRIPTOR_COUNT (8u)
+#define MAX_FILE_DESCRIPTOR_COUNT (16u)
 #define FD_BITFIELD_COUNT (MAX_FILE_DESCRIPTOR_COUNT / 8)
 
 _Static_assert(
@@ -53,10 +52,11 @@ _Static_assert(
 #define SCHEDULER_MAX_TASK_COUNT  (32u)
 
 // Unix Standard Constants
-#define INIT_PROC_ID 1u
-#define FD_STDIN  0u
-#define FD_STDOUT 1u
-#define FD_STDERR 2u
+#define INIT_PROC_ID  1u   // init process have PID=1
+
+#define FD_STDIN      0u   // STanDard Input Output fd numbers
+#define FD_STDOUT     1u
+#define FD_STDERR     2u
 
 typedef struct {
     enum {
@@ -142,47 +142,6 @@ static scheduler_t _scheduler;
 //
 //
 
-static void _dump_task_context(task_context_t *context)
-{
-    mini_uart_kernel_log(
-        "\n"
-        "  r0     = %x\n"  
-        "  lr_usr = %x\n"
-        "  sp     = %x\n"
-        "  spsr   = %x\n"
-        "  r1     = %x\n"
-        "  r2     = %x\n"
-        "  r3     = %x\n"
-        "  r4     = %x\n"
-        "  r5     = %x\n"
-        "  r6     = %x\n"
-        "  r7     = %x\n"
-        "  r8     = %x\n"
-        "  r9     = %x\n"
-        "  r10    = %x\n"
-        "  r11    = %x\n"
-        "  r12    = %x\n"
-        "  lr_svc = %x",
-        context->r0,
-        context->lr_usr,  
-        context->sp,
-        context->spsr,
-        context->r1,
-        context->r2,
-        context->r3,
-        context->r4,
-        context->r5,
-        context->r6,
-        context->r7,
-        context->r8,
-        context->r9,
-        context->r10,
-        context->r11,
-        context->r12,
-        context->lr_svc
-    );
-}
-
 static void _remove_process(process_t *proc)
 {
     const size_t index = proc - _scheduler.processes;
@@ -233,9 +192,11 @@ static void _proc_context_init(
     task_context_t *context,
     uintptr_t stack_address,
     uint32_t entry,
-    uint32_t param)
+    uint32_t argc,
+    uint32_t argv)
 {
-    context->r0 = param;
+    context->r0 = argc;
+    context->r1 = argv;
     context->sp = stack_address;
     context->lr_svc = entry;
     context->spsr =
@@ -295,11 +256,13 @@ void _proc_rem_fd(
     process_t *proc,
     int32_t fd)
 {
-    file_t *file = proc->files[fd];
-    KERNEL_ASSERT(file->fd_count > 0);
-    file->fd_count--;
-    bitfield_clear(
-        proc->files_bitfield, FD_BITFIELD_COUNT, fd);
+    if (bitfield_bit(proc->files_bitfield, FD_BITFIELD_COUNT, fd)) {
+        file_t *file = proc->files[fd];
+        KERNEL_ASSERT(file->fd_count > 0);
+        file->fd_count--;
+        bitfield_clear(
+            proc->files_bitfield, FD_BITFIELD_COUNT, fd);
+    }
 }
 
 static file_t *_proc_get_fd(
@@ -343,7 +306,8 @@ static void _cleanup_proc_resources(process_t* proc)
 
 static int32_t __load_proc_from_elf(
     process_t *proc,
-    const char *path)
+    const char *path,
+    int argc, const char **argv)
 {
     // TODO: split this function: too long
     // important: check that elf exists before writing to the existing section
@@ -389,17 +353,6 @@ static int32_t __load_proc_from_elf(
         const ssize_t read_sz = vfs_file_read(
             elf_file.file, dst_kaddr, phdr.file_size);
         KERNEL_ASSERT(read_sz == (ssize_t)phdr.file_size);
-
-        // pad with zero if required
-        // TODO: not usefull because we have zeroed the section before
-        // if (phdr.mem_size > phdr.file_size) {
-            // const size_t padd_sz = phdr.mem_size - phdr.file_size;
-            // mini_uart_kernel_log(
-                // "scheduler: elf: pad %u zeros",
-                // padd_sz);
-            // _memset(
-                // dst_kaddr + phdr.file_size, 0, padd_sz);
-        // }
     }
 
     // TODO: error handling here
@@ -410,6 +363,45 @@ static int32_t __load_proc_from_elf(
     // TODO: do we need to invalidate the instruction cache here ? 
     // __invalidate_instruction_cache();
     // asm volatile ("" ::: "memory"); // memory barrier
+
+    //
+    //  Load Program Arguments
+    //
+    uint32_t proc_stack_pointer = PROCESS_STACK_VIRTUAL_ADDRRESS;
+    uint32_t v_argv[16];
+    KERNEL_ASSERT(argc < 16);
+
+    // copy argv strings
+    for (int i = 0; i < argc; i++)
+    {
+        const char *arg = argv[i];
+        const char arg_size = _strlen(arg) + 1;
+
+        // 
+        proc_stack_pointer -= arg_size;
+
+        uint8_t *const dst_kaddr = mmu_translate_virtual_address(
+            proc->translation_table,
+            proc_stack_pointer);
+        _memcpy(dst_kaddr, arg, arg_size);
+
+        v_argv[i] = proc_stack_pointer;
+    }
+
+    // copy argv values
+    const size_t argv_size = sizeof(uint32_t) * argc;
+    proc_stack_pointer -= argv_size;
+    uint8_t *const dst_kaddr = mmu_translate_virtual_address(
+        proc->translation_table,
+        proc_stack_pointer);
+    _memcpy(dst_kaddr, v_argv, argv_size);
+
+    // copy argv pointer
+    const uint32_t v_argv_ptr = proc_stack_pointer;
+
+    // ensure stack pointer is 4 bytes aligned
+    proc_stack_pointer -= sizeof(uint32_t);  // may not be usefull, for safety purpose
+    proc_stack_pointer &= 0xFFFFFFFCu;
 
     // 2 - reset cpu context
     const uint32_t entry = elf_file.header.entry;
@@ -423,8 +415,8 @@ static int32_t __load_proc_from_elf(
 
     _proc_context_init(
         &proc->context,
-        PROCESS_STACK_VIRTUAL_ADDRRESS,
-        entry, 0u);
+        proc_stack_pointer,
+        entry, argc, v_argv_ptr);
 
     const int32_t close_status = elf32_close(&elf_file);
     KERNEL_ASSERT(close_status == 0);
@@ -478,7 +470,9 @@ void scheduler_start(const char *init_path)
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 
     // initialize proc from elf
-    __load_proc_from_elf(init_proc, init_path);
+    const int elf_load_status =
+        __load_proc_from_elf(init_proc, init_path, 0, NULL);
+    KERNEL_ASSERT(elf_load_status == 0);
 
     // Setup Standard Input/Output
     mini_uart_kernel_log("scheduler: init: setup IOs");
@@ -517,7 +511,6 @@ void scheduler_save_current_context(const task_context_t *current_context)
     mini_uart_kernel_log(
         "scheduler: save current context: pid=%u",
         current_proc->id);
-    _dump_task_context(&current_proc->context);
 }
 
 const task_context_t *scheduler_switch_task(void)
@@ -528,7 +521,6 @@ const task_context_t *scheduler_switch_task(void)
     mini_uart_kernel_log(
         "scheduler: switch proc %u => %u (section=%x).",
         old_pid, next_proc->id, next_proc->memory_section);
-    _dump_task_context(&next_proc->context);
 
     // 1 - select the process translation table
     mmu_set_translation_table(next_proc->translation_table);
@@ -636,7 +628,7 @@ int32_t scheduler_cur_proc_exec(const char *path)
         path, _scheduler.current_proc, current_proc->id, current_proc->memory_section);
 
     // replace process memory image with elf content
-    return __load_proc_from_elf(current_proc, path);
+    return __load_proc_from_elf(current_proc, path, 0, NULL);
 }
 
 int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
