@@ -142,7 +142,7 @@ static char _to_lower(char c)
 
 // compute directory entry filename (short)
 static void _fat32_read_entry_filename(
-    const fat_directory_entry_t *entry,
+    const fat_sfn_directory_entry_t *entry,
     char filename[16])
 {
     // apply nt reserved hidden bit for lowercase
@@ -172,6 +172,55 @@ static void _fat32_read_entry_filename(
     filename[fi++] = '\0';
 }
 
+static char _dummy_utf16_to_ascii(uint16_t utf16)
+{
+    return utf16 & 0xFFu;
+}
+
+static void _copy_lfn_chars(const fat_lfn_directory_entry_t *lfn, char chars[13])
+{
+    int cur = 0;
+    for (int i = 0; i < 5; i++)
+    {
+        const char car = lfn->name1[i];
+        if (car == 0x0)
+        {
+            chars[cur++] = 0x0;
+            return;
+        }
+        else
+        {
+            chars[cur++] = _dummy_utf16_to_ascii(car);
+        }
+    }
+    for (int i = 0; i < 6; i++)
+    {
+        const char car = lfn->name2[i];
+        if (car == 0x0)
+        {
+            chars[cur++] = 0x0;
+            return;
+        }
+        else
+        {
+            chars[cur++] = _dummy_utf16_to_ascii(car);
+        }
+    }
+    for (int i = 0; i < 2; i++)
+    {
+        const char car = lfn->name3[i];
+        if (car == 0x0)
+        {
+            chars[cur++] = 0x0;
+            return;
+        }
+        else
+        {
+            chars[cur++] = _dummy_utf16_to_ascii(car);
+        }
+    }
+}
+
 // return the inode CONTENT first sector location
 static fat32_sector_loc_t _fat32_get_inode_start_sector(const inode_t *inode)
 {
@@ -188,7 +237,7 @@ static fat32_sector_loc_t _fat32_get_inode_start_sector(const inode_t *inode)
 
 // create an inode abstraction on fat directory entry
 static inode_t *_fat32_create_inode(
-    const fat_directory_entry_t *entry,
+    const fat_sfn_directory_entry_t *entry,
     super_block_t *sb,
     ino_t ino);
 
@@ -210,7 +259,7 @@ static uint32_t _fat32_entry_loc_offset(
         _fat32_sector_index(sb_private, &entry_loc->sector_loc);
     return
         (entry_sector * FAT32_SECTOR_SIZE) +
-        entry_loc->entry_index * sizeof(fat_directory_entry_t);
+        entry_loc->entry_index * sizeof(fat_sfn_directory_entry_t);
 }
 
 
@@ -280,11 +329,15 @@ static void fat_32_directory_entry_iterator_init(
     it->entry_loc = *entry_loc;
 }
 
-static const fat_directory_entry_t *fat_32_directory_entry_iterator_next(
+static const fat_sfn_directory_entry_t *fat_32_directory_entry_iterator_next(
     fat_directory_entry_iterator_t *it,
     fat32_sb_private_t *sb_private,
-    ino_t *entry_ino)
+    ino_t *entry_ino,
+    char filename[256])
 {
+    char long_filename[256] = "";
+    int reading_lfn = 0;
+
     for (;;)
     {
         // load from device to cache if required
@@ -298,8 +351,8 @@ static const fat_directory_entry_t *fat_32_directory_entry_iterator_next(
             it->entry_loc.sector_loc.cluster,
             it->entry_loc.sector_loc.sector_index,
             it->entry_loc.entry_index);
-        const fat_directory_entry_t *entry =
-            it->entry_loc.entry_index + (fat_directory_entry_t*)it->sector_cache;
+        const fat_sfn_directory_entry_t *entry =
+            it->entry_loc.entry_index + (fat_sfn_directory_entry_t*)it->sector_cache;
 
         // reached end
         if (entry->filename[0] == 0x0u)
@@ -321,20 +374,59 @@ static const fat_directory_entry_t *fat_32_directory_entry_iterator_next(
             it->cache_is_dirty = 1;
         }
 
+        if (entry->filename[0] == 0xE5u)
+        {
+            // skip deleted entries
+            continue;
+        }
+
+        // LFN
+        if (entry->attributes & FAT_DIR_ENTRY_ATTR_LFN)
+        {
+            const fat_lfn_directory_entry_t *lfn_entry =
+                (fat_lfn_directory_entry_t*)entry;
+
+            const uint16_t lfn_seq_num = (lfn_entry->sequence & FAT_LFN_SEQ_NUM_MASK);
+            const uint16_t lfn_seq_pos = FAT_LFN_CHAR_COUNT * (lfn_seq_num - 1u);
+
+            mini_uart_kernel_log("fat32: Retrieve LFN entry (seq=%u)", lfn_seq_num);
+
+            // start a LFN sequence
+            if (lfn_entry->sequence & FAT_LFN_SEQ_LAST_LONG_ENTRY)
+            {
+                const uint16_t lfn_seq_end = FAT_LFN_CHAR_COUNT * lfn_seq_num;
+                long_filename[lfn_seq_end] = '\0';
+                reading_lfn = 1;
+            }
+
+            // TODO: check coherence
+            _copy_lfn_chars(lfn_entry, long_filename + lfn_seq_pos);
+            continue;
+        }
+
         // skip unused entries
-        if (
-            (entry->filename[0] == 0xE5u) ||                   // skip deleted file
-            (entry->attributes & FAT_DIR_ENTRY_ATTR_LFN) ||    // skip long file name entries
-            (entry->attributes & FAT_DIR_ENTRY_ATTR_VOLUME_ID) // skip volume id
-        ) {
+        if (entry->attributes & FAT_DIR_ENTRY_ATTR_VOLUME_ID) // skip volume id
+        {
             continue;
         }
         else if ((entry->attributes & FAT_DIR_ENTRY_ATTR_DIRECTORY) &&
                   entry->filename[0] == '.')
         {
             // UGLY: in order to skip ., ..
-            // We need to decide what to do with thme
+            // We need to decide what to do with . and ...
             continue;
+        }
+
+        if (reading_lfn)
+        {
+            // read a Long File Name
+            _strcpy(filename, long_filename);
+            reading_lfn = 0;
+        }
+        else
+        {
+            // read a Short File Name
+            _fat32_read_entry_filename(entry, filename);
         }
 
         *entry_ino = entry_offset;
@@ -547,7 +639,7 @@ static int _fat32_fs_dir_readdir(
     fat32_sb_private_t *sb_private = (fat32_sb_private_t*)sb->private;
     KERNEL_ASSERT(file->private != NULL);
 
-    const fat_directory_entry_t *entry = NULL;
+    const fat_sfn_directory_entry_t *entry = NULL;
     ino_t entry_ino = 0u;
     fat_directory_entry_iterator_t it;
 
@@ -556,12 +648,15 @@ static int _fat32_fs_dir_readdir(
     fat_32_directory_entry_iterator_init(&it, entry_loc);
 
     size_t i = 0u; // dirent counter
+    char filename[32];
+
     while (
         (i < count) &&
-        (NULL != (entry = fat_32_directory_entry_iterator_next(&it, sb_private, &entry_ino))))
+        (NULL != (entry = fat_32_directory_entry_iterator_next(&it, sb_private, &entry_ino, filename))))
     {
         dirent *dir_entry = &entries[i];
-        _fat32_read_entry_filename(entry, dir_entry->d_name);
+        // _fat32_read_entry_filename(entry, dir_entry->d_name);
+        _strcpy(dir_entry->d_name, filename);
         dir_entry->d_type =
             (entry->attributes & FAT_DIR_ENTRY_ATTR_DIRECTORY) ?
             DT_DIR : DT_REG;
@@ -601,7 +696,7 @@ static inode_t *_fat32fs_inode_lookup(inode_t *dir, const char *name)
     super_block_t *sb = dir->super_block;
     fat32_sb_private_t *sb_private = (fat32_sb_private_t*)sb->private;
 
-    const fat_directory_entry_t *entry = NULL;
+    const fat_sfn_directory_entry_t *entry = NULL;
     ino_t entry_ino = 0u;
     fat_directory_entry_iterator_t it;
 
@@ -612,11 +707,10 @@ static inode_t *_fat32fs_inode_lookup(inode_t *dir, const char *name)
     };
     fat_32_directory_entry_iterator_init(&it, &entry_loc);
 
-    while (NULL != (entry = fat_32_directory_entry_iterator_next(&it, sb_private, &entry_ino)))
+    char filename[256];
+    while (NULL != (entry = fat_32_directory_entry_iterator_next(
+        &it, sb_private, &entry_ino, filename)))
     {
-        char filename[16];
-        _fat32_read_entry_filename(entry, filename);
-
         // check if name matche
         if (0 != _strcmp(filename, name))
         {
@@ -713,7 +807,7 @@ static const super_block_ops_t _fat32fs_sb_ops = {
 // Fat32 inode creation
 
 static inode_t *_fat32_create_inode(
-    const fat_directory_entry_t *entry,
+    const fat_sfn_directory_entry_t *entry,
     super_block_t *sb,
     ino_t ino)
 {
