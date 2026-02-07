@@ -44,7 +44,7 @@
 // PM: power management / watchdog
 // 
 
-#define REG__PM_BASE                0x20100000u  //
+#define REG__PM_BASE                0x20100000u  // TODO: doc
 #define REG__PM_RSTC                0x2010001Cu  //
 #define REG__PM_WDOG                0x20100024u  //
 #define REG__PM_RSTS                0x20100020u  //
