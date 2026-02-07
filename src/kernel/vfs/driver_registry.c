@@ -1,4 +1,6 @@
 
+#include <stdint.h>
+
 #include "driver_registry.h"
 #include "dev/tty.h"
 #include "hardware/mini_uart.h"
@@ -7,12 +9,11 @@
 #include "vfs/dev/ramdisk.h"
 #include "vfs/dev/sdcard.h"
 #include "vfs/device_ops.h"
-#include <stdint.h>
 
 //
 // Mock a block device from static data
-extern unsigned int ___resources_fat32_img_len;
-extern unsigned char ___resources_fat32_img[];
+// extern unsigned int ___resources_fat32_img_len;
+// extern unsigned char ___resources_fat32_img[];
 
 //
 // Character device registry
@@ -41,12 +42,10 @@ static block_device_t _block_devices[BLOCK_DEV_MAJOR_COUNT][1];
 
 void driver_registry_init(void)
 {
-    mini_uart_kernel_log("driver registry: initialize fat32 mock ramdisk");
-    mini_uart_kernel_log("driver registry: fat32: size = %u", ___resources_fat32_img_len);
-    create_ramdisk(
-        &_block_devices[DEV_RAMDISK_MAJOR][DEV_RAMDISK_MINOR],
-        ___resources_fat32_img,
-        ___resources_fat32_img_len);
+    mini_uart_kernel_log("driver registry: initialize section ramdisk");
+    // mini_uart_kernel_log("driver registry: fat32: size = %u", ___resources_fat32_img_len);
+    create_section_ramdisk(
+        &_block_devices[DEV_RAMDISK_MAJOR][DEV_RAMDISK_MINOR]);
 
     mini_uart_kernel_log("driver registry: initialize sdcard disk");
     create_sdcard_disk(
@@ -57,6 +56,10 @@ char_device_t *get_char_device(dev_t dev)
 {
     const uint16_t major = DEV_MAJOR(dev);
     const uint16_t minor = DEV_MINOR(dev);
+
+    mini_uart_kernel_log(
+        "driver registry: get char device major=%u minor=%u",
+        major, minor);
 
     // check major is in valid range
     if (major >= CHAR_DEV_MAJOR_COUNT) {
@@ -76,6 +79,10 @@ block_device_t *get_block_device(dev_t dev)
 {
     const uint16_t major = DEV_MAJOR(dev);
     const uint16_t minor = DEV_MINOR(dev);
+
+    mini_uart_kernel_log(
+        "driver registry: get block device major=%u minor=%u",
+        major, minor);
 
     // check major is in valid range
     if (major >= BLOCK_DEV_MAJOR_COUNT) {
