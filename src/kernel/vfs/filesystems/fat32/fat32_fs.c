@@ -128,22 +128,47 @@ static fat32_sb_private_t *_fat32_init_fs_private(block_device_t *device)
     return private;
 }
 
+static char _to_lower(char c)
+{
+    if (c >= 'A' && c <= 'Z')
+    {
+        return c + ('a' - 'A');
+    }
+    else
+    {
+        return c;
+    }
+}
+
 // compute directory entry filename (short)
 static void _fat32_read_entry_filename(
     const fat_directory_entry_t *entry,
     char filename[16])
 {
+    // apply nt reserved hidden bit for lowercase
+    const int name_is_lowercase = (entry->nt_reserved & FAT_SFN_ENTRY_NTRES_NAME_LOWER);
+    const int ext_is_lowercase = (entry->nt_reserved & FAT_SFN_ENTRY_NTRES_EXT_LOWER);
+
+    // read filename part
     int fi = 0u;
     for (int i = 0; i < 8 && entry->filename[i] != ' '; i++, fi++) {
-        filename[fi] = entry->filename[i];
+        filename[fi] = name_is_lowercase ?
+            _to_lower(entry->filename[i]) :
+            entry->filename[i];
     }
-    if (0 == (entry->attributes & FAT_DIR_ENTRY_ATTR_DIRECTORY))
+
+    // read extension. Skip '.' if extension is empty
+    if (entry->file_extension[0] != ' ')
     {
         filename[fi++] = '.';
-        filename[fi++] = entry->file_extension[0];
-        filename[fi++] = entry->file_extension[1];
-        filename[fi++] = entry->file_extension[2];
+        for (int i = 0; i < 3 && entry->filename[i] != ' '; i++) {
+            filename[fi++] = ext_is_lowercase ?
+            _to_lower(entry->file_extension[i]) :
+            entry->file_extension[i];
+        }
     }
+
+    // ensure a null terminated string
     filename[fi++] = '\0';
 }
 

@@ -47,7 +47,7 @@ typedef struct __attribute__((packed))
     char filename[8];                // filename padded with space
     char file_extension[3];          // file extension
     uint8_t attributes;              // attributes (read only, hidden, ..)
-    uint8_t reserved;                // reserved for windows NT
+    uint8_t nt_reserved;             // reserved for windows NT (hidden bit: lowercase file)
     uint8_t creation_time_ms;        // creation date (1/10 of seconds)
     uint16_t creation_time;          // creation hour
     uint16_t creation_date;          // creation date
@@ -57,12 +57,37 @@ typedef struct __attribute__((packed))
     uint16_t last_write_date;        // last modification date
     uint16_t starting_cluster_low;   //
     uint32_t file_size;              // file size in bytes
-} fat_directory_entry_t;
+} fat_sfn_directory_entry_t;
+
+#define FAT_SFN_ENTRY_NTRES_NAME_LOWER  0x08u  // set if SFN name should be in lowercase
+#define FAT_SFN_ENTRY_NTRES_EXT_LOWER   0x10u  // set if SFN extension should be in lowercase
+
+typedef struct __attribute__((packed))
+{
+    uint8_t sequence;
+    uint16_t name1[5];               // name part1: 5 utf16 chars
+    uint8_t attributes;              // attributes (read only, hidden, ..)
+    uint8_t type;                    // always zero
+    uint8_t checksum;                // Short File Name checksum
+    uint16_t name2[6];               // name part2: 6 utf16 chars
+    uint16_t cluster;                // always zero
+    uint16_t name3[2];               // name part3: 2 utf16 chars
+} fat_lfn_directory_entry_t;
+
+//
+// LFN entryies sequence layout
+#define FAT_LFN_CHAR_COUNT              13u    // 2 + 6 + 5 = number of char per LFN
+#define FAT_LFN_SEQ_LAST_LONG_ENTRY     0x40u  // if set: this is the last lfn entry (the first from offset pov)
+#define FAT_LFN_SEQ_NUM_MASK            0x1F   // sequence num mask. Go to
 
 // ensure that we actually match the expected size
 _Static_assert(
-    sizeof(fat_directory_entry_t) == 32,
-    "Fat32 directory entrry is required to be a 32 byte struct"
+    sizeof(fat_sfn_directory_entry_t) == 32,
+    "Fat32 Short File Name directory entry is required to be a 32 byte struct"
+);
+_Static_assert(
+    sizeof(fat_lfn_directory_entry_t) == 32,
+    "Fat32 Long File Name directory entry is required to be a 32 byte struct"
 );
 
 typedef struct __attribute__((packed))
