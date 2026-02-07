@@ -63,6 +63,8 @@ _reset_handler:
 
     // jump to kernel entrypoint
     bl kernel_main
+
+    // TODO: display a fatal error
 hang: b hang
 
 _svc_handler:
