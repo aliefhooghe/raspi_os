@@ -158,6 +158,57 @@ static dentry_t *_vfs_dentry_lookup(const char *path)
 }
 
 //
+// Block device mount implementation
+//
+
+static super_block_t *_sb_by_dev_fs_type(
+    block_device_t *device,
+    const char *fstype)
+{
+    if (0 == _strcmp(fstype, "ramfs")) {
+        return create_ramfs_super_block();
+    }
+    else if (0 == _strcmp(fstype, "fat32")) {
+        KERNEL_ASSERT(device != NULL);
+        return fat32_create_filesystem(device);
+    }
+    else {
+        kernel_fatal_error("unknown fstype");
+        return NULL;
+    }
+}
+
+static int32_t _vfs_mount_dev(
+    block_device_t *device,
+    dentry_t *target_dentry,  // supposed to be a non null dir dentry
+    const char *fstype)
+{
+    // Load root inode from fs super block
+    super_block_t *sb = _sb_by_dev_fs_type(device, fstype);
+    if (sb == NULL) {
+        mini_uart_kernel_log("vfs: mount: failed to load fs super block");
+        return -1;
+    }
+
+    inode_t *root = sb->ops->alloc_inode(sb);
+    KERNEL_ASSERT(root != NULL);
+    const int load_status = sb->ops->read_inode(sb, sb->root_ino, root);
+    KERNEL_ASSERT(load_status == 0);
+
+    // Mount the root inode on the target dentry
+    target_dentry->inode = root;
+    target_dentry->child_count = 0u;  // flush dentry child cache
+
+    return 0;
+}
+
+//
+//
+//  VFS: Public API
+//
+//
+
+//
 //  VFS: Initialization
 //
 void vfs_init(void)
@@ -188,21 +239,18 @@ void vfs_init(void)
 //  VFS: Filesystem interface
 //
 
-static super_block_t *_sb_by_dev_fs_type(
-    block_device_t *device,
-    const char *fstype)
+
+int32_t vfs_mount_dev(block_device_t *device, const char *target, const char *fstype)
 {
-    if (0 == _strcmp(fstype, "ramfs")) {
-        return create_ramfs_super_block();
+    // Check if target is a directory
+    dentry_t *target_dentry = _vfs_dentry_lookup(target);
+    if (!_dentry_is_fmt(target_dentry, S_IFDIR)) {
+        mini_uart_kernel_log(
+            "vfs: mount: no directory at '%s'", target);
+        return -1;
     }
-    else if (0 == _strcmp(fstype, "fat32")) {
-        KERNEL_ASSERT(device != NULL);
-        return fat32_create_filesystem(device);
-    }
-    else {
-        kernel_fatal_error("unknown fstype");
-        return NULL;
-    }
+
+    return _vfs_mount_dev(device, target_dentry, fstype);
 }
 
 int32_t vfs_mount(const char *dev, const char *target, const char *fstype)
@@ -232,23 +280,7 @@ int32_t vfs_mount(const char *dev, const char *target, const char *fstype)
         device = get_block_device(device_dentry->inode->device);
     }
 
-    // Load root inode from fs super block
-    super_block_t *sb = _sb_by_dev_fs_type(device, fstype);
-    if (sb == NULL) {
-        mini_uart_kernel_log("vfs: mount: failed to load fs super block");
-        return -1;
-    }
-
-    inode_t *root = sb->ops->alloc_inode(sb);
-    KERNEL_ASSERT(root != NULL);
-    const int load_status = sb->ops->read_inode(sb, sb->root_ino, root);
-    KERNEL_ASSERT(load_status == 0);
-
-    // Mount the root inode on the target dentry
-    target_dentry->inode = root;
-    target_dentry->child_count = 0u;  // flush dentry child cache
-
-    return 0;
+    return _vfs_mount_dev(device, target_dentry, fstype);
 }
 
 int32_t vfs_mknod(const char *path, mode_t mode, dev_t dev)

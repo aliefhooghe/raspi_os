@@ -17,28 +17,15 @@
 
 #include "scheduler/scheduler.h"
 
+#include "vfs/device_ops.h"
 #include "vfs/driver_registry.h"
 #include "vfs/vfs.h"
-
-#include "utils.h"
 
 //
 // Kernel banners
 // 
 extern const char *__satan_welcome_banner;
 extern const char *__satan_fatal_error_banner;
-
-//
-// Programs as Kernel resources
-//
-extern unsigned int hello_elf_len;
-extern unsigned char hello_elf[];
-
-extern unsigned int init_elf_len;
-extern unsigned char init_elf[];
-
-extern unsigned int lucifer_elf_len;
-extern unsigned char lucifer_elf[];
 
 //
 // # Kernel Memory Layout:
@@ -69,7 +56,15 @@ extern unsigned char lucifer_elf[];
 
 static uint32_t *kernel_translation_table;
 
-static void kernel_init_translation_table(uint32_t *table)
+// Device Identifiers
+#define DEV_BLK_RAMDISK             MAKE_DEV(0, 0)
+#define DEV_BLK_SDCARD              MAKE_DEV(1, 0)
+
+#define DEV_CHR_TTY                 MAKE_DEV(0, 0)
+
+// Private functions
+
+static void _kernel_init_translation_table(uint32_t *table)
 {
     // map the kernel code+data / heap / dynamic sections
     translation_table_add_identity_mapping(table,
@@ -85,7 +80,7 @@ static void kernel_init_translation_table(uint32_t *table)
         MMU_L1_SECTION_AP_KERNEL_RW_USER_NONE);
 }
 
-static void kernel_init(void)
+static void _kernel_init(void)
 {
     // initialize the mini UART
     mini_uart_init();
@@ -110,7 +105,7 @@ static void kernel_init(void)
     // Initialize the kernel translation table
     mini_uart_kernel_log("initialize kernel translation table");
     kernel_translation_table = translation_table_allocator_alloc();
-    kernel_init_translation_table(kernel_translation_table);
+    _kernel_init_translation_table(kernel_translation_table);
 
     // Enable and initialize the MMU with the kernel translation table
     mini_uart_kernel_log("enable MMU");
@@ -131,6 +126,36 @@ static void kernel_init(void)
     vfs_init();
 }
 
+static void _kernel_mount_root_fs(void)
+{
+    //// Mount sdcard fat32 fs on /
+    //
+    // Note: sdcard is expected to be formated as a bare fat32 (no partition)
+    //
+    mini_uart_kernel_log("mount sdcard rootfs at /");
+    block_device_t *sdcard_device = get_block_device(DEV_BLK_SDCARD);
+    const int32_t root_mount_status = vfs_mount_dev(sdcard_device, "/", "fat32");
+    KERNEL_ASSERT(root_mount_status == 0);
+}
+
+static void _kernel_mount_dev_tmpfs(void)
+{
+    mini_uart_kernel_log("mount dev tmpfs at /dev");
+
+    // mount a tmpfs on /dev
+    const int32_t dev_mount_status = vfs_mount(NULL, "/dev", "ramfs");
+    KERNEL_ASSERT(0 == dev_mount_status);
+
+    // create device files
+    KERNEL_ASSERT(0 == vfs_mknod("/dev/tty", S_IFCHR, 0u));
+    KERNEL_ASSERT(0 == vfs_mknod("/dev/ramdisk", S_IFBLK, MAKE_DEV(0, 0)));
+    KERNEL_ASSERT(0 == vfs_mknod("/dev/sdcard", S_IFBLK, MAKE_DEV(1, 0)));
+}
+
+//
+// Public Kernel Functions
+//
+
 void kernel_restore_translation_table(void)
 {
     mmu_set_translation_table(kernel_translation_table);
@@ -143,33 +168,11 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     (void)atags;
 
     // initialize the kernel
-    kernel_init();
+    _kernel_init();
 
-    // Prepare filesystem 
-   
-    //// Mount a ramfs on /
-    const int32_t root_mount_status = vfs_mount(NULL, "/", "ramfs");
-    KERNEL_ASSERT(0 == root_mount_status);
-
-    //// create device files
-    KERNEL_ASSERT(0 == vfs_mkdir("/dev", S_IFDIR));
-    KERNEL_ASSERT(0 == vfs_mknod("/dev/tty", S_IFCHR, 0u));
-    KERNEL_ASSERT(0 == vfs_mknod("/dev/ramdisk", S_IFBLK, MAKE_DEV(0, 0)));
-    KERNEL_ASSERT(0 == vfs_mknod("/dev/sdcard", S_IFBLK, MAKE_DEV(1, 0)));
-
-    //// init files from resources
-    KERNEL_ASSERT(0 == vfs_mkdir("/bin", S_IFDIR));
-    load_resource_as_file("/bin/init", init_elf, init_elf_len);
-    load_resource_as_file("/bin/lucifer", lucifer_elf, lucifer_elf_len);
-    load_resource_as_file("/bin/hello", hello_elf, hello_elf_len);
-
-    const char data[] = "hello from data file\n";
-    KERNEL_ASSERT(0 == vfs_mkdir("/data", S_IFDIR));
-    load_resource_as_file("/data/text.txt", data, sizeof(data));
-
-    //// mount a fat32 fs
-    KERNEL_ASSERT(0 == vfs_mkdir("/mnt", S_IFDIR));
-    KERNEL_ASSERT(0 == vfs_mount("/dev/sdcard", "/mnt", "fat32"));
+    // Prepare filesystem
+    _kernel_mount_root_fs();
+    _kernel_mount_dev_tmpfs();
 
     // wait a first input
     mini_uart_kernel_puts("Satan OS is initialized.\r\n");

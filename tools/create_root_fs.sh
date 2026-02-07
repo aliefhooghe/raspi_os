@@ -17,5 +17,5 @@ mmd -i "$TARGET_IMAGE" ::/data
 
 for f in "$@"; do
     echo "copy binary $f"
-    mcopy -i "$TARGET_IMAGE" "$f" ::/bin/$(basename "$f" | sed -e 's/\.elf/\.COM/')
+    mcopy -i "$TARGET_IMAGE" "$f" ::/bin/$(basename "$f" | sed -e 's/\.elf//')
 done

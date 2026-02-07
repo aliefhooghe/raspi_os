@@ -11,7 +11,7 @@ default:
 configure:
     meson setup {{build_dir}} --cross-file {{cross_file}}
 
-# build satan OS
+# build satan OS and userland programs
 build:
     meson compile -C {{build_dir}} -v
 
@@ -34,7 +34,7 @@ run_kernel: build kernel_size
     qemu-system-arm -display none -m 512 -M raspi0 \
         -kernel {{build_dir}}/kernel.elf -d guest_errors \
         -serial null -serial mon:stdio -s \
-         -drive if=sd,file=./resources/sd.img,format=raw
+         -drive if=sd,file=./build/sd.rootfs.img,format=raw
 
 # run kernel emulation with remote debug adapter
 debug_kernel: build kernel_size

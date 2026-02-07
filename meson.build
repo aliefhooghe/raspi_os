@@ -5,8 +5,6 @@ project(
     default_options: ['warning_level=3', 'optimization=2']
 )
 
-xxd = find_program('xxd')
-
 #
 # Serial Loader
 #
@@ -74,7 +72,6 @@ userland_programs_src = [
   'src/userland/bin/hello.c',
   'src/userland/bin/lucifer.c',
 ]
-userland_programs_payloads = []
 userland_programs = []
 
 foreach program_src: userland_programs_src
@@ -88,13 +85,6 @@ foreach program_src: userland_programs_src
     include_directories: userland_include_directories
   )
   userland_programs += elf_target
-  elf_payload_c = custom_target(
-    program_name + '_payload_c',
-    input: elf_target,
-    output: program_name + '_payload.c',
-    command: [xxd, '-i', '@INPUT@', '@OUTPUT@'] 
-  )
-  userland_programs_payloads += elf_payload_c
 endforeach
 
 # Root fs: create a fat32 rootfs populated with programs
@@ -168,7 +158,7 @@ kernel_linker_script = files(
 
 kernel_elf = executable(
   'kernel.elf',
-  sources: kernel_sources + userland_programs_payloads,
+  sources: kernel_sources,
   link_args: ['-T', kernel_linker_script[0].full_path()],
   install: false,
   include_directories: include_directories('src/kernel')

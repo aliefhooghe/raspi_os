@@ -220,6 +220,7 @@ static void _fat_next_sector_location(
     if (location->sector_index == sb_private->sectors_per_cluster)
     {
         // TODO: read FAT
+        mini_uart_kernel_log("fat32: end of cluster (sector index = %u)", location->sector_index);
         kernel_fatal_error("reached end of cluster (sector it)");
     }
 }
@@ -598,6 +599,7 @@ static inode_t *_fat32fs_inode_lookup(inode_t *dir, const char *name)
         }
 
         // do we need to call read inode here ???????
+        mini_uart_kernel_log("fat32: lookup success for file %s", name);
         return _fat32_create_inode(entry, sb, entry_ino);
     }
 
