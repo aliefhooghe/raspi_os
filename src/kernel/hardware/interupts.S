@@ -37,7 +37,7 @@ _reset_handler:
      *
      *     FIQ stack:   0x00001000 -> 0x00000000: 4 KB
      *     IRQ stack:   0x00002000 -> 0x00001000: 4 KB
-     *     SVC stack:   0x00003000 -> 0x00002000: 4 KB  // should become bigger. TODO: CANARY test the stack
+     *     SVC stack:   0x00006000 -> 0x00002000: 16 KB  // TODO: CANARY test the stack
      */
 
     // switch to mode FIQ (Fast Interrupt Mode) / no interupt
@@ -59,7 +59,7 @@ _reset_handler:
     // 0xD3 = (0x80 | 0x40 | 0x13)
     mov r0, 0xD3
     msr cpsr_c, r0
-    mov sp, #0x00003000
+    mov sp, #0x00006000
 
     // jump to kernel entrypoint
     bl kernel_main

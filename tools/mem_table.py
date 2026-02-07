@@ -10,7 +10,7 @@ def colorize(name: str, msg: str):
 table = {
     'FIR stack'    : (0x00000000, 0x00001000),
     'IRQ stack'    : (0x00001000, 0x00002000),
-    'SVC stack'    : (0x00002000, 0x00003000),
+    'SVC stack'    : (0x00002000, 0x00006000),
     'Kernel Code'  : (0x00008000, 0x00800000),
     'Dyn Sections' : (0x00800000, 0x04800000)
 }

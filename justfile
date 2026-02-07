@@ -42,6 +42,7 @@ debug_kernel: build kernel_size
     qemu-system-arm -display none -m 512 -M raspi0 \
         -kernel {{build_dir}}/kernel.elf -d guest_errors \
         -serial null -serial mon:stdio  \
+        -drive if=sd,file=./build/sd.rootfs.img,format=raw \
         -gdb tcp::5000 -S
 
 gdb:
