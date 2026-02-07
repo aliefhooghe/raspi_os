@@ -53,6 +53,10 @@
 #define SDCARD_CONTROL1_STABLE                 0x00000002u  //
 #define SDCARD_CONTROL1_INTLEN                 0x00000001u  // Clock enable for internal EMMC clocks for power saving
 
+// Block size and count
+#define SDCARD_BLKSIZECNT_BLKSIZE              0x00000FFFu  // Block size
+#define SDCARD_BLKSIZECNT_CNT_LSB              16
+
 ////////////
 //
 // SDHOST commands (CMD), applications commands (ACMD), and send parameters:

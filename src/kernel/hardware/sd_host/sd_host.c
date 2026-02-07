@@ -99,17 +99,22 @@ static void _sdhost_enable_clock(uint16_t freq_khz)
     mmio_write(REG__SDCARD_CONTROL1, clk_ctl1 | SDCARD_CONTROL1_CLK_EN);
 }
 
-static void _sdhost_send_command(
+static void _sdhost_configure_blk_size_count(uint32_t block_size, uint32_t block_count)
+{
+    mmio_write(
+        REG__SDCARD_BLKSIZECNT,
+        (SDCARD_BLKSIZECNT_BLKSIZE & block_size) |
+        (block_count << SDCARD_BLKSIZECNT_CNT_LSB));
+}
+
+static uint32_t _sdhost_cmdtm_val(
     uint8_t cmd,
-    uint8_t is_data,
     sdcard_cmd_resp_type_t resp_type,
     sdcard_cmd_dir_t direction)
 {
-    mini_uart_kernel_log("sdcard: send CMD%u to sdcard", cmd);
     uint32_t cmdtm = 0u;
 
     cmdtm |= (cmd & 0x3Fu) << 24;        // CMD_INDEX:       29:24
-    cmdtm |= ((!!is_data) << 21);        // CMD_ISDATA:      21
     cmdtm |= (0x3u & resp_type) << 16;   // CMD_RSPNS_TYPE:  17:16
     cmdtm |= ((!!direction) << 4);       // TM_DAT_DIR:      4
 
@@ -121,9 +126,29 @@ static void _sdhost_send_command(
         cmdtm |= (1u << 20); // CMD_IXCHK_EN: 20, check that the response has same index as command
     }
 
+    return cmdtm;
+}
+
+static void _sdhost_send_data_command(
+    uint8_t cmd,
+    sdcard_cmd_resp_type_t resp_type,
+    sdcard_cmd_dir_t direction)
+{
+    mini_uart_kernel_log("sdcard: send CMD%u to sdcard", cmd);
+    uint32_t cmdtm = _sdhost_cmdtm_val(cmd, resp_type, direction);
+    cmdtm |= (1 << 21);        // CMD_ISDATA:      21
     mmio_write(REG__SDCARD_CMDTM, cmdtm);
 }
 
+static void _sdhost_send_command(
+    uint8_t cmd,
+    sdcard_cmd_resp_type_t resp_type,
+    sdcard_cmd_dir_t direction)
+{
+    mini_uart_kernel_log("sdcard: send CMD%u to sdcard", cmd);
+    uint32_t cmdtm = _sdhost_cmdtm_val(cmd, resp_type, direction);
+    mmio_write(REG__SDCARD_CMDTM, cmdtm);
+}
 //  Public API
 //
 
@@ -175,7 +200,7 @@ void sdhost_init(void)
     // send CMD0: GOTO IDLE state
     mmio_write(REG__SDCARD_ARG1, 0x0u);
     _sdhost_send_command(
-        SDCARD_CMD_GO_IDLE_STATE, 0u,
+        SDCARD_CMD_GO_IDLE_STATE,
         SDCARD_CMDTM_RESP_TYPE_NONE, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
@@ -185,7 +210,7 @@ void sdhost_init(void)
     // TODO: clarify the mapping
     mmio_write(REG__SDCARD_ARG1, 0x000001AAu);  // 0x1: 2.7-3.6V / 0xAA: the pattern
     _sdhost_send_command(
-        SDCARD_CMD_SEND_IF_COND, 0,
+        SDCARD_CMD_SEND_IF_COND,
         SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
@@ -204,14 +229,14 @@ void sdhost_init(void)
     for (;;) {
         mmio_write(REG__SDCARD_ARG1, 0x0u);
         _sdhost_send_command(
-            SDCARD_CMD_APP, 0,
+            SDCARD_CMD_APP,
             SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
         _sdhost_wait_for_cmd_done();
 
         // send ACMD41
         mmio_write(REG__SDCARD_ARG1, 0x40FF8000); // TODO: document this value
         _sdhost_send_command(
-            SDCARD_ACMD_SD_SEND_OP_COND, 0,
+            SDCARD_ACMD_SD_SEND_OP_COND,
             SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY, SDCARD_CMDTM_DIR_HOST_TO_CARD);
         _sdhost_wait_for_cmd_done();
 
@@ -242,7 +267,7 @@ void sdhost_init(void)
     // Read Card Identification CID
     mmio_write(REG__SDCARD_ARG1, 0x0u);
     _sdhost_send_command(
-        SDCARD_CMD_ALL_SEND_CID, 0,
+        SDCARD_CMD_ALL_SEND_CID,
         SDCARD_CMDTM_RESP_TYPE_136_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
@@ -266,17 +291,13 @@ void sdhost_init(void)
         mini_uart_kernel_log("sdcard: CID: RESP%d = 0x%x", i, resps[i]);
     }
 
-    // Read RCA: Relative Card Address
-    // send CMD3
+    // Read RCA: Relative Card Address: CMD3
     mmio_write(REG__SDCARD_ARG1, 0x0u);
     _sdhost_send_command(
-        SDCARD_CMD_SEND_RELATIVE_ADDR, 0,
+        SDCARD_CMD_SEND_RELATIVE_ADDR,
         SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
-    // RCA response fmt
-    // [31:16] : L'adresse RCA (New Published RCA)
-    // [15:0] card status (bit de status R1)
     const uint32_t rca_resp = mmio_read(REG__SDCARD_RESP0);
     const uint32_t relative_card_address = (rca_resp & SDCARD_RCA_MASK) >> SDCARD_RCA_LSB;
     mini_uart_kernel_log("sdcard: Relative Card Address = 0x%x", relative_card_address);
@@ -285,7 +306,7 @@ void sdhost_init(void)
     // NOW: card is in STANDBY mode. We want to switch to TRANSFER MODE
     mmio_write(REG__SDCARD_ARG1, relative_card_address << SDCARD_RCA_LSB);
     _sdhost_send_command(
-        SDCARD_CMD_SELECT_DESELECT, 0,
+        SDCARD_CMD_SELECT_DESELECT,
         SDCARD_CMDTM_RESP_TYPE_48_BITS_BUSY, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
@@ -294,7 +315,7 @@ void sdhost_init(void)
     // Read card status: ensure it is in the correct state.
     mmio_write(REG__SDCARD_ARG1, relative_card_address << SDCARD_RCA_LSB);
     _sdhost_send_command(
-        SDCARD_CMD_SEND_STATUS, 0,
+        SDCARD_CMD_SEND_STATUS,
         SDCARD_CMDTM_RESP_TYPE_48_BITS, SDCARD_CMDTM_DIR_HOST_TO_CARD);
     _sdhost_wait_for_cmd_done();
 
@@ -310,4 +331,55 @@ void sdhost_init(void)
 
     // TODO: try to read the Master Boot Record
     // for now keep the bus clock to 400 Hz
+
+    // configure block count and size: read blocks one by one to start
+    // should be persistent until we change it (to perform multi block read)
+    const uint32_t block_size = 512;
+    const uint32_t block_count = 1u;
+    _sdhost_configure_blk_size_count(block_size, block_count);
+    mini_uart_kernel_log("sdcard: sd host driver is initialized");
+}
+
+int sdhost_read_block(uint32_t block_index, uint8_t block[512])
+{
+    mini_uart_kernel_log("sdcard: read block @ %u", block_index);
+
+    // configure block index
+    mmio_write(REG__SDCARD_ARG1, block_index);
+
+    // send a read request
+    _sdhost_send_data_command(
+       SDCARD_CMD_READ_SINGLE_BLOCK, SDCARD_CMDTM_RESP_TYPE_48_BITS,
+       SDCARD_CMDTM_DIR_CARD_TO_HOST);
+    _sdhost_wait_for_cmd_done();
+
+    // wait for data
+    for (;;) {
+        const int32_t interupt = mmio_read(REG__SDCARD_INTERRUPT);
+
+        if (interupt & SDCARD_INTERUPT_READ_READY)
+        {
+            mini_uart_kernel_log("sdcard: data is ready");
+            break;
+        }
+        else if (interupt & SDCARD_INTERUPT_DTO_ERR)
+        {
+            kernel_fatal_error("sdcard: read timeout");
+        }
+        else
+        {
+            cpu_delay(64);
+        }
+    }
+
+    // read data 
+    uint32_t *buffer = (uint32_t*)block;  // 128x4 = 512 bytes
+    for (int i = 0; i < 128; i++) {
+        buffer[i] = mmio_read(REG__SDCARD_DATA);
+    }
+
+    // reset interupt flags
+    mmio_write(REG__SDCARD_INTERRUPT, SDCARD_INTERUPT_READ_READY);
+
+    return 0;
 }
