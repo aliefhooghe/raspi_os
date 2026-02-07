@@ -42,9 +42,6 @@ void memory_allocator_init(void)
 
 void *memory_alloc(size_t size)
 {
-    mini_uart_kernel_log(
-        "memory: alloc: size='%u'",
-        size);
     uint8_t *new_cursor = (uint8_t*)
         ((
             (uint32_t)_kernel_memory_allocator.memory_cursor +
@@ -64,8 +61,8 @@ void *memory_alloc(size_t size)
     block->size = size;
     _kernel_memory_allocator.memory_cursor = new_cursor;
     mini_uart_kernel_log(
-        "memory: allocated block @ %x",
-        block->data);
+        "memory: allocated block: size=%u @ %x",
+        size, block->data);
     return block->data;
 }
 
@@ -89,19 +86,13 @@ void *memory_calloc(size_t size)
     void *mem = memory_alloc(size);
     if (mem == NULL)
         return NULL;
-    mini_uart_kernel_log(
-        "memory: zero block @ %x (size = %u)",
-        mem, size);
     _memset(mem, 0, size);
-    mini_uart_kernel_log(
-        "memory: block was zero initialized."
-        );
     return mem;
 }
 
 void memory_free(void *ptr)
 {
     mini_uart_kernel_log(
-        "memory: free block @ %x",
+        "memory: free block @ %x (dummy)",
         ptr);
 }

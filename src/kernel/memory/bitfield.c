@@ -1,5 +1,6 @@
 
 #include "bitfield.h"
+#include "hardware/mini_uart.h"
 #include "kernel.h"
 
 int32_t bitfield_acquire_first(uint8_t *bitfields, uint32_t bitfield_count)
@@ -24,6 +25,7 @@ int32_t bitfield_acquire_first(uint8_t *bitfields, uint32_t bitfield_count)
         }
     }
 
+    mini_uart_kernel_log("bitfield: failed allocation (bitfield_cound=%u)", bitfield_count);
     return -1;
 }
 
@@ -83,6 +85,8 @@ void bitfield_allocator_free(
             "bitfield allocator: free: tried to free memory before base");
 
     const size_t u8offset = u8ptr - u8base;
+
+    // TODO: division is not optimized enough, we could avoid it ?
     const size_t index = u8offset / size;
 
     bitfield_clear(bitfields, bitfield_count, index);
