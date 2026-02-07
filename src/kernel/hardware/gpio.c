@@ -27,7 +27,7 @@ static uint32_t _select_gppud_clk_register(uint32_t pin)
 //  Public API
 //
 
-void gpio_select_function(uint32_t pin, uint8_t function)
+void gpio_select_function(uint32_t pin, gpio_pin_func_t function)
 {
     if (pin >= GPIO_PIN_COUNT)
         kernel_fatal_error("gpio: invalid pin number");
@@ -45,7 +45,7 @@ void gpio_select_function(uint32_t pin, uint8_t function)
     mmio_write(gpfsel_register, gpfsel);
 }
 
-void gpio_set_pin_mode(uint32_t pin, uint8_t mode)
+void gpio_set_pin_mode(uint32_t pin, gpio_pin_mode_t mode)
 {
     if (pin >= GPIO_PIN_COUNT)
         kernel_fatal_error("gpio: invalid pin number");
