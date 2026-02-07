@@ -1,4 +1,6 @@
 
+#include <stdint.h>
+
 #include "hardware/mini_uart.h"
 #include "kernel.h"
 #include "kernel_types.h"
@@ -44,4 +46,13 @@ size_t size_t_max(size_t a, size_t b)
 size_t size_t_min(size_t a, size_t b)
 {
     return a <= b ? a : b;
+}
+
+uint8_t xor_hash(const uint8_t *data, size_t size)
+{
+    uint8_t hash = 0u;
+    for (size_t i = 0; i < size; i++) {
+        hash ^= data[i];
+    }
+    return hash;
 }
