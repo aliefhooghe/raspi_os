@@ -134,6 +134,7 @@ kernel_sources = files(
   'src/kernel/vfs/vfs.c',
   'src/kernel/vfs/driver_registry.c',
   'src/kernel/vfs/dev/block_device_file_ops.c',
+  'src/kernel/vfs/dev/sdcard.c',
   'src/kernel/vfs/dev/tty.c',
   'src/kernel/vfs/dev/ramdisk.c',
   'src/kernel/vfs/dev/zero.c',
