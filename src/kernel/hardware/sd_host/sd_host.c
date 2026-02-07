@@ -81,7 +81,7 @@ static void _sdhost_wait_for_cmd_done(void)
 
 static void _sdhost_enable_clock(uint16_t freq_khz)
 {
-    // Congigure clock:
+    // Configure clock:
     // base clock = 100Mhz = 100000Khz
     // divider = base / target (10 bits)
 
@@ -149,6 +149,8 @@ static void _sdhost_send_command(
     uint32_t cmdtm = _sdhost_cmdtm_val(cmd, resp_type, direction);
     mmio_write(REG__SDCARD_CMDTM, cmdtm);
 }
+
+//
 //  Public API
 //
 
