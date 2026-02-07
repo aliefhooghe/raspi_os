@@ -383,6 +383,7 @@ static inode_t *_ramfs_inode_mknod(
     inode_t *inode = dir->super_block->ops->alloc_inode(dir->super_block);
     ramfs_dir_private_t *priv_dir = (ramfs_dir_private_t*)dir->private;
 
+    mini_uart_kernel_log("ramfs: mknod name=%s dev=%u=%u:%u", name, dev, DEV_MAJOR(dev), DEV_MINOR(dev));
     inode->device = dev;
     inode->inode_ops = NULL;
     inode->file_ops = file_ops;

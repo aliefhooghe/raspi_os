@@ -1,6 +1,7 @@
 
 #include <stdint.h>
 
+#include "hardware/mini_uart.h"
 #include "hardware/sd_host/sd_host.h"
 #include "kernel.h"
 
@@ -8,6 +9,7 @@
 
 static int _sdcard_disk_read_block(void *private, uint32_t index, void *block)
 {
+    mini_uart_kernel_log("sdcard-block-device: read block @ %u", index);
     (void)private;
     KERNEL_ASSERT(0 == sdhost_read_block(index, block));
     return 1;
@@ -18,7 +20,7 @@ static int _sdcard_disk_write_block(void *private, uint32_t index, const void *b
     (void)private;
     (void)index;
     (void)block;
-    kernel_fatal_error("sdcard-block-devoce: write is not implemented");
+    kernel_fatal_error("sdcard-block-device: write is not implemented");
     return 1;
 }
 

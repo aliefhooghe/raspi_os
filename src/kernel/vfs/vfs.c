@@ -209,7 +209,7 @@ int32_t vfs_mount(const char *dev, const char *target, const char *fstype)
 {
     mini_uart_kernel_log(
         "vfs: mount: dev='%s', target='%s', fstype=%s",
-        dev, target, fstype);
+        dev ? dev : "NULL", target, fstype);
 
     // Check if target is a directory
     dentry_t *target_dentry = _vfs_dentry_lookup(target);
