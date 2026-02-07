@@ -1,8 +1,11 @@
-.cache
 **.pdf
-build/
-doc/references/
-doc/linux_image
-doc/*.pdf
-compile_commands.json
+*.img
+.cache
 __pycache__
+build/
+compile_commands.json
+doc/*.pdf
+doc/linux_image
+doc/references/
+resources/
+
