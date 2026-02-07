@@ -15,7 +15,7 @@ _Static_assert(
     "bad block count for section ramdisk" 
 );
 
-static int _section_ramdisk_read_block(void *private, uint64_t index, void *block)
+static int _section_ramdisk_read_block(void *private, uint32_t index, void *block)
 {
     const uint8_t *section_base = (uint8_t*)private;
     const uint8_t *ram_block = section_base + index * SECTION_RAMDISK_BLOCK_SIZE;
@@ -28,7 +28,7 @@ static int _section_ramdisk_read_block(void *private, uint64_t index, void *bloc
     return 1;
 }
 
-static int _section_ramdisk_write_block(void *private, uint64_t index, const void *block)
+static int _section_ramdisk_write_block(void *private, uint32_t index, const void *block)
 {
     uint8_t *section_base = (uint8_t*)private;
     uint8_t *ram_block = section_base + index * SECTION_RAMDISK_BLOCK_SIZE;
@@ -48,6 +48,7 @@ static const block_device_ops_t _section_ramdisk_ops = {
 
 int create_ramdisk(block_device_t *device, void *mem, size_t size)
 {
+    (void)size; // TODO: save size and check reads
     device->ops = &_section_ramdisk_ops;
     device->block_size = SECTION_RAMDISK_BLOCK_SIZE ;
     device->private = mem;
