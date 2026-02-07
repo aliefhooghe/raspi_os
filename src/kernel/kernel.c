@@ -169,7 +169,7 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     //// mount a fat32 fs
     KERNEL_ASSERT(0 == vfs_mkdir("/mnt", S_IFDIR));
-    KERNEL_ASSERT(0 == vfs_mount("/dev/ramdisk", "/mnt", "fat32"));
+    KERNEL_ASSERT(0 == vfs_mount("/dev/sdcard", "/mnt", "fat32"));
 
     // wait a first input
     mini_uart_kernel_puts("Satan OS is initialized.\r\n");

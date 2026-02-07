@@ -13,8 +13,9 @@ typedef int64_t loff_t;
 
 typedef uint32_t dev_t;
 
-#define DEV_MAJOR(dev) ((uint16_t)((dev & 0xFF00u) >> 16))
-#define DEV_MINOR(dev) ((uint16_t)(dev & 0xFFu))
+#define MAKE_DEV(major, minor) ((major << 16) | (minor & 0xFFFFu))
+#define DEV_MAJOR(dev) ((uint16_t)((dev & 0xFFFF0000u) >> 16))
+#define DEV_MINOR(dev) ((uint16_t)(dev & 0xFFFFu))
 
 //
 // open flags
