@@ -8,7 +8,7 @@
 #include "hardware/io_registers.h"
 #include "hardware/mini_uart.h"
 #include "hardware/mmu.h"
-#include "hardware/sd_host.h"
+#include "hardware/sd_host/sd_host.h"
 #include "hardware/watchdog.h"
 
 #include "memory/memory_allocator.h"
@@ -89,45 +89,45 @@ static void kernel_init(void)
 {
     // initialize the mini UART
     mini_uart_init();
-    mini_uart_kernel_puts("kernel: Satan OS kernel is starting...\r\n");
+    mini_uart_kernel_puts("Satan OS kernel is starting...\r\n");
 
     // initialize the sdio controller
     sdhost_init();
 
     // Initialize the section allocator
-    mini_uart_kernel_log("kernel: initialize the section allocator");
+    mini_uart_kernel_log("initialize the section allocator");
     section_allocator_init(KERNEL_DYN_SECTIONS_BEGIN);
 
     // Initialize the general purpose memory allocator
-    mini_uart_kernel_log("kernel: initialize the memory allocator");
+    mini_uart_kernel_log("initialize the memory allocator");
     memory_allocator_init();
 
     // Initialize the translation table allocator
-    mini_uart_kernel_log("kernel: initialize translation table allocator");
+    mini_uart_kernel_log("initialize translation table allocator");
     void *process_translation_tables_section = section_allocator_alloc();
     translation_table_allocator_init(process_translation_tables_section);
 
     // Initialize the kernel translation table
-    mini_uart_kernel_log("kernel: initialize kernel translation table");
+    mini_uart_kernel_log("initialize kernel translation table");
     kernel_translation_table = translation_table_allocator_alloc();
     kernel_init_translation_table(kernel_translation_table);
 
     // Enable and initialize the MMU with the kernel translation table
-    mini_uart_kernel_log("kernel: enable MMU");
+    mini_uart_kernel_log("enable MMU");
     kernel_restore_translation_table();
     mmu_set_dacr(0x55555555);
     mmu_enable();
 
     // Initialize the driver registry
-    mini_uart_kernel_log("kernel: initialize drivers");
+    mini_uart_kernel_log("initialize drivers");
     driver_registry_init();
 
     // Initialize the scheduler
-    mini_uart_kernel_log("kernel: initialize the scheduler");
+    mini_uart_kernel_log("initialize the scheduler");
     scheduler_init();
 
     // Initialize the Virtual File System
-    mini_uart_kernel_log("kernel: initialize the vfs");
+    mini_uart_kernel_log("initialize the vfs");
     vfs_init();
 }
 
