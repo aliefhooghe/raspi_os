@@ -279,6 +279,14 @@ int32_t _proc_add_fd(
     if (fd >= 0) {
         file->fd_count++;
         proc->files[fd] = file;
+        mini_uart_kernel_log(
+            "scheduler: add fd=%d to proc pid=%d",
+            fd, proc->id);
+    }
+    else {
+        mini_uart_kernel_log(
+            "scheduler: proc_add_fd: failed to aquired a proc file descriptor (pid=%d)",
+            proc->id);
     }
     return fd;
 }
@@ -300,8 +308,13 @@ static file_t *_proc_get_fd(
 {
     if (!bitfield_bit(
         proc->files_bitfield,
-        FD_BITFIELD_COUNT, fd))
+        FD_BITFIELD_COUNT, fd)) {
+        mini_uart_kernel_log(
+            "scheduler: proc_get_fd: no fd %d for process %d",
+            fd, proc->id
+        );
         return NULL;
+    }
     return proc->files[fd];
 }
 
@@ -502,7 +515,7 @@ void scheduler_save_current_context(const task_context_t *current_context)
         current_context,
         sizeof(task_context_t));
     mini_uart_kernel_log(
-        "save current context: pid=%u",
+        "scheduler: save current context: pid=%u",
         current_proc->id);
     _dump_task_context(&current_proc->context);
 }
@@ -513,7 +526,7 @@ const task_context_t *scheduler_switch_task(void)
     process_t *next_proc = _select_next_scheduled_proc();
 
     mini_uart_kernel_log(
-        "scheduler: switch proc %u => %u (section=%x). Restore context:",
+        "scheduler: switch proc %u => %u (section=%x).",
         old_pid, next_proc->id, next_proc->memory_section);
     _dump_task_context(&next_proc->context);
 
@@ -530,7 +543,11 @@ const task_context_t *scheduler_switch_task(void)
 //
 void scheduler_cur_proc_set_syscall_status(int32_t status)
 {
-    _get_current_proc()->context.r0 = status;
+    process_t *current_proc = _get_current_proc();
+    mini_uart_kernel_log(
+        "scheduler: set syscall status=%d for process %d",
+        status, current_proc->id);
+    current_proc->context.r0 = status;
 }
 
 void* scheduler_cur_proc_get_kernel_address(uintptr_t process_virtual_address)
