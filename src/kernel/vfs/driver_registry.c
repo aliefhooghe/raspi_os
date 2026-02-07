@@ -5,6 +5,7 @@
 #include "kernel.h"
 #include "kernel_types.h"
 #include "vfs/dev/ramdisk.h"
+#include "vfs/dev/sdcard.h"
 #include "vfs/device_ops.h"
 #include <stdint.h>
 
@@ -30,9 +31,11 @@ static char_device_t _char_devices[CHAR_DEV_MAJOR_COUNT][1] = {
 
 //
 // Block device registry
-#define BLOCK_DEV_MAJOR_COUNT (1u)
+#define BLOCK_DEV_MAJOR_COUNT (2u)
 #define DEV_RAMDISK_MAJOR (0u)
 #define DEV_RAMDISK_MINOR (0u)
+#define DEV_SDCARD_MAJOR  (1u)
+#define DEV_SDCARD_MINOR  (0u)
 
 static block_device_t _block_devices[BLOCK_DEV_MAJOR_COUNT][1];
 
@@ -44,6 +47,10 @@ void driver_registry_init(void)
         &_block_devices[DEV_RAMDISK_MAJOR][DEV_RAMDISK_MINOR],
         ___resources_fat32_img,
         ___resources_fat32_img_len);
+
+    mini_uart_kernel_log("driver registry: initialize sdcard disk");
+    create_sdcard_disk(
+        &_block_devices[DEV_SDCARD_MAJOR][DEV_SDCARD_MINOR]);
 }
 
 char_device_t *get_char_device(dev_t dev)
@@ -59,8 +66,8 @@ char_device_t *get_char_device(dev_t dev)
         return NULL;
     }
 
-    // for now: only one minor per driver
-    KERNEL_ASSERT(minor == DEV_TTY_MINI_UART_MINOR);
+    // for now: only one minor per char driver
+    KERNEL_ASSERT(minor == 0);
 
     return &_char_devices[major][minor];
 }
@@ -79,7 +86,7 @@ block_device_t *get_block_device(dev_t dev)
     }
 
     // for now: only one minor per driver
-    KERNEL_ASSERT(minor == DEV_TTY_MINI_UART_MINOR);
+    KERNEL_ASSERT(minor == 0);
 
     return &_block_devices[major][minor];
 }

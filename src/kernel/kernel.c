@@ -154,7 +154,8 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     //// create device files
     KERNEL_ASSERT(0 == vfs_mkdir("/dev", S_IFDIR));
     KERNEL_ASSERT(0 == vfs_mknod("/dev/tty", S_IFCHR, 0u));
-    KERNEL_ASSERT(0 == vfs_mknod("/dev/ramdisk", S_IFBLK, 0u));
+    KERNEL_ASSERT(0 == vfs_mknod("/dev/ramdisk", S_IFBLK, MAKE_DEV(0, 0)));
+    KERNEL_ASSERT(0 == vfs_mknod("/dev/sdcard", S_IFBLK, MAKE_DEV(1, 0)));
 
     //// init files from resources
     KERNEL_ASSERT(0 == vfs_mkdir("/bin", S_IFDIR));
