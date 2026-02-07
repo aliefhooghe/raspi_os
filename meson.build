@@ -75,6 +75,7 @@ userland_programs_src = [
   'src/userland/bin/lucifer.c',
 ]
 userland_programs_payloads = []
+userland_programs = []
 
 foreach program_src: userland_programs_src
   program_name = program_src.split('/')[-1].replace('.c', '')
@@ -86,6 +87,7 @@ foreach program_src: userland_programs_src
     install: false,
     include_directories: userland_include_directories
   )
+  userland_programs += elf_target
   elf_payload_c = custom_target(
     program_name + '_payload_c',
     input: elf_target,
@@ -94,6 +96,23 @@ foreach program_src: userland_programs_src
   )
   userland_programs_payloads += elf_payload_c
 endforeach
+
+# Root fs: create a fat32 rootfs populated with programs
+blank_img = custom_target(
+  'blank_sd',
+  depend_files: [meson.project_source_root() + '/tools/create_blank_fs.sh'],
+  output: 'sd.blank.img',
+  command: ['bash', meson.project_source_root() + '/tools/create_blank_fs.sh', '@OUTPUT@'],
+)
+
+custom_target(
+  'rootfs',
+  input: [blank_img] + userland_programs,
+  depend_files: [meson.project_source_root() + '/tools/create_root_fs.sh'],
+  output: 'sd.rootfs.img',
+  command: ['bash', meson.project_source_root() + '/tools/create_root_fs.sh', '@OUTPUT@', '@INPUT@'],
+  build_by_default: true
+)
 
 # Kernel
 
