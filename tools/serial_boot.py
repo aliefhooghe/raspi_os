@@ -41,6 +41,7 @@ def serial_send(port: serial.Serial, data: bytes):
 
     start_time = time.time()
     bytes_per_sec = 0.0
+    remaining = ""
 
     for idx, byte in enumerate(data):
         # Compute stats
@@ -48,7 +49,7 @@ def serial_send(port: serial.Serial, data: bytes):
 
         print(
             f'\r⏳ \033[31;1m' + progression * '█',
-            end=' ' * (80 - progression) + f'\033[0m {idx+1}/{datasize} - {bytes_per_sec} b/s',
+            end=' ' * (80 - progression) + f'\033[0m {idx+1}/{datasize} - {bytes_per_sec} b/s. {remaining} s',
             flush=True)
 
         port.write(bytes([byte]))
@@ -61,6 +62,8 @@ def serial_send(port: serial.Serial, data: bytes):
         total_sent = idx + 1
         time_spent = time.time() - start_time
         bytes_per_sec = int(total_sent / time_spent)
+        remaining_sec = (datasize - idx) / bytes_per_sec
+        remaining = f"remaining: {remaining_sec // 60}m {int(remaining_sec % 60)}s       "
 
 
     print(f'\n💾 {datasize} where sent. Wait for final ack...')
