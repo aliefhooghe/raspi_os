@@ -27,7 +27,7 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    uint32_t table_size_32;          // size in sector
+    uint32_t table_size_32;          // FAT table size in sector
     uint16_t extended_flags;
     uint16_t fat_version;
     uint32_t root_cluster;
@@ -41,6 +41,14 @@ typedef struct __attribute__((packed))
     uint8_t volume_label[11];
     uint8_t fat_type_label[8];       // ="FAT32"
 } fat_extended_boot_sector32_t;
+
+// Fat Table entries layout
+#define FAT_ENTRY_MASK                 0x0FFFFFFFu    // Fat32 table entries use the 28 LSbs
+#define FAT_ENTRY_FREE_CLUSTER         0x00000000u    // Cluster is free
+#define FAT_ENTRY_BEGIN                0x00000002u    // fat entries in this range are valid cluter numbers
+#define FAT_ENTRY_END                  0x00FFFFF0u    //  .. from F0 to F6: reserved
+#define FAT_ENTRY_BAD_CLUSTER          0x00FFFFF7u    // Cluster is bad
+#define FAT_ENTRY_EOF_BEGIN            0x0FFFFFF8u    // from this value: end of cluster
 
 typedef struct __attribute__((packed))
 {
@@ -64,9 +72,9 @@ typedef struct __attribute__((packed))
 
 typedef struct __attribute__((packed))
 {
-    uint8_t sequence;
+    uint8_t sequence;                // sequence number | LastLogicalEntry flag
     uint16_t name1[5];               // name part1: 5 utf16 chars
-    uint8_t attributes;              // attributes (read only, hidden, ..)
+    uint8_t attributes;              // attributes: Always 0xF for LFN
     uint8_t type;                    // always zero
     uint8_t checksum;                // Short File Name checksum
     uint16_t name2[6];               // name part2: 6 utf16 chars
@@ -89,18 +97,6 @@ _Static_assert(
     sizeof(fat_lfn_directory_entry_t) == 32,
     "Fat32 Long File Name directory entry is required to be a 32 byte struct"
 );
-
-typedef struct __attribute__((packed))
-{
-    uint8_t sequence_number;          // Sequence number and "Last-Logical-Entry" flag
-    uint16_t name_part1[5];           // Chars 1-5 (UTF-16)
-    uint8_t attributes;               // Always 0x0F
-    uint8_t type;                     // Always 0x00 for LFN
-    uint8_t checksum;                 // Checksum of the SFN 8.3 name
-    uint16_t name_part2[6];           // Chars 6-11 (UTF-16)
-    uint16_t first_cluster;           // Always 0x0000
-    uint16_t name_part3[2];           // Chars 12-13 (UTF-16)
-} fat_lfn_entry_t;
 
 
 //
