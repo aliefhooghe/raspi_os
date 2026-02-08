@@ -1,0 +1,4 @@
+
+[all]
+enable_uart=1
+dtoverlay=pi3-disable-bt

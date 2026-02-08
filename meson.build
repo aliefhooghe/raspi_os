@@ -35,76 +35,8 @@ custom_target(
 )
 
 #
-# Userland
-#
-userland_lib_sources = files(
-  'src/userland/bin/_start.c',
-  'src/userland/lib/dirent.c',
-  'src/userland/lib/stdio.c',
-  'src/userland/lib/stdlib.c',
-  'src/userland/lib/string.c',
-  'src/userland/lib/usr_syscalls.c',
-  'src/userland/lib/usr_syscalls.S',
-
-  'src/arm_runtime/eabi_rt.c',
-)
-userland_include_directories = include_directories(
-  'src/userland/include'
-)
-userland_program_link_script = files(
-  'src/userland/bin/linker.ld'
-)
-
-# try to reduce userland elf size as much as possible
-userland_c_args = [
-  # allows section garbage collection to be effective
-  '-ffunction-sections',  # one section per function
-  '-fdata-sections',      # one section per variable
-]
-userland_link_args = [
-  '-T', userland_program_link_script[0].full_path(),
-  '-Wl,--gc-sections,--strip-all', # garbage collect unused sections
-  '-Wl,--nmagic'                   # turn off page alignment of sections 
-]
-
-userland_programs_src = [
-  'src/userland/bin/init.c',
-  'src/userland/bin/hello.c',
-  'src/userland/bin/lucifer.c',
-]
-userland_programs = []
-
-foreach program_src: userland_programs_src
-  program_name = program_src.split('/')[-1].replace('.c', '')
-  elf_target = executable(
-    program_name + '.elf',
-    sources: files(program_src) + userland_lib_sources,
-    link_args: userland_link_args,
-    c_args : userland_c_args,
-    install: false,
-    include_directories: userland_include_directories
-  )
-  userland_programs += elf_target
-endforeach
-
-# Root fs: create a fat32 rootfs populated with programs
-blank_img = custom_target(
-  'blank_sd',
-  depend_files: [meson.project_source_root() + '/tools/create_blank_fs.sh'],
-  output: 'sd.blank.img',
-  command: ['bash', meson.project_source_root() + '/tools/create_blank_fs.sh', '@OUTPUT@'],
-)
-
-custom_target(
-  'rootfs',
-  input: [blank_img] + userland_programs,
-  depend_files: [meson.project_source_root() + '/tools/create_root_fs.sh'],
-  output: 'sd.rootfs.img',
-  command: ['bash', meson.project_source_root() + '/tools/create_root_fs.sh', '@OUTPUT@', '@INPUT@'],
-  build_by_default: true
-)
-
 # Kernel
+#
 
 # sources
 kernel_sources = files(
@@ -164,10 +96,86 @@ kernel_elf = executable(
   include_directories: include_directories('src/kernel')
 )
 
-custom_target(
+kernel_img = custom_target(
   'kernel.img',
   input: kernel_elf,
   output: 'kernel.img',
-  command: ['llvm-objcopy', '@INPUT@', '-O', 'binary', '@OUTPUT@'],
+  command: ['llvm-objcopy', '@INPUT@', '-O', 'binary', '@OUTPUT@']
+)
+
+#
+# Userland Programs
+#
+userland_lib_sources = files(
+  'src/userland/bin/_start.c',
+  'src/userland/lib/dirent.c',
+  'src/userland/lib/stdio.c',
+  'src/userland/lib/stdlib.c',
+  'src/userland/lib/string.c',
+  'src/userland/lib/usr_syscalls.c',
+  'src/userland/lib/usr_syscalls.S',
+
+  'src/arm_runtime/eabi_rt.c',
+)
+userland_include_directories = include_directories(
+  'src/userland/include'
+)
+userland_program_link_script = files(
+  'src/userland/bin/linker.ld'
+)
+
+# try to reduce userland elf size as much as possible
+userland_c_args = [
+  # allows section garbage collection to be effective
+  '-ffunction-sections',  # one section per function
+  '-fdata-sections',      # one section per variable
+]
+userland_link_args = [
+  '-T', userland_program_link_script[0].full_path(),
+  '-Wl,--gc-sections,--strip-all', # garbage collect unused sections
+  '-Wl,--nmagic'                   # turn off page alignment of sections 
+]
+
+userland_programs_src = [
+  'src/userland/bin/init.c',
+  'src/userland/bin/cat.c',
+  'src/userland/bin/hello.c',
+  'src/userland/bin/ls.c',
+  'src/userland/bin/lucifer.c',
+  'src/userland/bin/reboot.c',
+]
+userland_programs = []
+
+foreach program_src: userland_programs_src
+  program_name = program_src.split('/')[-1].replace('.c', '')
+  elf_target = executable(
+    program_name + '.elf',
+    sources: files(program_src) + userland_lib_sources,
+    link_args: userland_link_args,
+    c_args : userland_c_args,
+    install: false,
+    include_directories: userland_include_directories
+  )
+  userland_programs += elf_target
+endforeach
+
+#
+# Root fs: create a fat32 rootfs populated with kernel and programs
+#
+
+blank_img = custom_target(
+  'blank_sd',
+  depend_files: [meson.project_source_root() + '/tools/create_blank_fs.sh'],
+  output: 'sd.blank.img',
+  command: ['bash', meson.project_source_root() + '/tools/create_blank_fs.sh', '@OUTPUT@'],
+)
+
+custom_target(
+  'rootfs',
+  input: [blank_img, kernel_img] + userland_programs,
+  depend_files: [blank_img.full_path(), meson.project_source_root() + '/tools/create_root_fs.sh'],
+  output: 'sd.rootfs.img',
+  command: ['bash', meson.project_source_root() + '/tools/create_root_fs.sh', '@OUTPUT@', '@INPUT@'],
+  env: ['MESON_SOURCE_ROOT=' + meson.project_source_root()],
   build_by_default: true
 )
