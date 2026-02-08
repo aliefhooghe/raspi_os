@@ -153,6 +153,10 @@ static void _remove_process(process_t *proc)
         "scheduler: remove proc index=%u, pid=%u",
         index, proc->id);
 
+    // resources should have been cleaned up
+    KERNEL_ASSERT(proc->memory_section == NULL);
+    KERNEL_ASSERT(proc->translation_table == NULL);
+
     // delete process
     _memmove(
         &_scheduler.processes[index],
