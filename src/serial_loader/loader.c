@@ -11,8 +11,12 @@
 #define SERIAL_LOADER_END_ACK  0xFDu
 
 // Memory layout
+// - kernel   : 0x8000 - 0x800000
+// - loader   : 0x7000 - 0x008000
+// - ldr stack: 0x7000 - 0x000000
+//
 #define LOADER_START_ADDRESS   0x007000u
-#define LOADER_MAX_SIZE        0x001000u
+#define LOADER_MAX_SIZE        0x001000u // 4 Kib
 
 #define KERNEL_START_ADRESS    0x008000u
 #define KERNEL_MAX_SIZE        0x7f8000u // 7.97MiB

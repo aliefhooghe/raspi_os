@@ -18,12 +18,9 @@ class SerialBootProtocol:
     END = 0xFC
     END_ACK = 0xFD
 
-def serial_send(port: serial.Serial, data: bytes):
-    datasize = len(data)
-
+def perform_handshake(port: serial.Serial):
     print('⏳ wait for device ...')
     while True:
-
         init_ack = port.read(1)
 
         if len(init_ack) == 0:
@@ -35,6 +32,11 @@ def serial_send(port: serial.Serial, data: bytes):
         elif init_ack == bytes([SerialBootProtocol.INIT]):
             port.write(bytes([SerialBootProtocol.INIT]))
 
+
+def serial_send(port: serial.Serial, data: bytes):
+    datasize = len(data)
+
+    perform_handshake(port)
 
     print(f'🚀 sending {datasize} bytes...')
     port.write(datasize.to_bytes(4, byteorder='little'))
