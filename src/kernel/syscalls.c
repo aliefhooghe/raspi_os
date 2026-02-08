@@ -2,11 +2,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "elf_loader/elf_loader.h"
 #include "hardware/mini_uart.h"
 #include "hardware/watchdog.h"
 #include "kernel.h"
 #include "kernel_types.h"
+#include "lib/str.h"
 #include "scheduler/scheduler.h"
 #include "syscalls.h"
 #include "vfs/vfs.h"
@@ -55,7 +55,7 @@ static int32_t _syscall__EXIT(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 
 static int32_t _syscall__OPEN(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
-    const char *path = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
+    const char *path = (const char*)scheduler_cur_proc_to_kernel_address(arg0);
     const uint32_t flags = arg1;
     const uint32_t mode = arg2;
 
@@ -90,7 +90,7 @@ static int32_t _syscall__CLOSE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 static int32_t _syscall__READ(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     const int32_t fd = arg0;
-    void* data = scheduler_cur_proc_get_kernel_address(arg1);
+    void* data = scheduler_cur_proc_to_kernel_address(arg1);
     const size_t size = arg2;
   
     file_t *file = scheduler_cur_proc_get_fd(fd);
@@ -103,7 +103,7 @@ static int32_t _syscall__READ(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 static int32_t _syscall__READDIR(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     const int32_t fd = arg0;
-    dirent* entries = (dirent*)scheduler_cur_proc_get_kernel_address(arg1);
+    dirent* entries = (dirent*)scheduler_cur_proc_to_kernel_address(arg1);
     const size_t count = arg2;
   
     file_t *file = scheduler_cur_proc_get_fd(fd);
@@ -116,7 +116,7 @@ static int32_t _syscall__READDIR(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 static int32_t _syscall__WRITE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     const int32_t fd = arg0;
-    const void* data = scheduler_cur_proc_get_kernel_address(arg1);
+    const void* data = scheduler_cur_proc_to_kernel_address(arg1);
     const size_t size = arg2;
     mini_uart_kernel_log("write from paddr %x", data);
     file_t *file = scheduler_cur_proc_get_fd(fd);
@@ -128,9 +128,9 @@ static int32_t _syscall__WRITE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 
 static int32_t _syscall__MOUNT(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
-    const char *dev = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
-    const char *target = (const char*)scheduler_cur_proc_get_kernel_address(arg1);
-    const char *fstype = (const char*)scheduler_cur_proc_get_kernel_address(arg2);
+    const char *dev = (const char*)scheduler_cur_proc_to_kernel_address(arg0);
+    const char *target = (const char*)scheduler_cur_proc_to_kernel_address(arg1);
+    const char *fstype = (const char*)scheduler_cur_proc_to_kernel_address(arg2);
     (void)dev;
     (void)target;
     (void)fstype;
@@ -141,14 +141,14 @@ static int32_t _syscall__MOUNT(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 static int32_t _syscall__MKDIR(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     (void)arg2;
-    const char *path = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
+    const char *path = (const char*)scheduler_cur_proc_to_kernel_address(arg0);
     const mode_t mode = arg1;
     return vfs_mkdir(path, mode);
 }
 
 static int32_t _syscall__MKNOD(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
-    const char *path = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
+    const char *path = (const char*)scheduler_cur_proc_to_kernel_address(arg0);
     const mode_t mode = arg1;
     const dev_t device = arg2;
     return vfs_mknod(path, mode, device);
@@ -181,16 +181,27 @@ static int32_t _syscall__WAITPID(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
     (void)arg2;
     const int32_t pid = arg0;
-    uint32_t *const wstatus = (uint32_t*)scheduler_cur_proc_get_kernel_address(arg1);
+    uint32_t *const wstatus = (uint32_t*)scheduler_cur_proc_to_kernel_address(arg1);
     return scheduler_cur_proc_wait_id(pid, wstatus);
 }
 
 static int32_t _syscall__EXEC(uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
-    (void)arg1;
     (void)arg2;
-    const char *path = (const char*)scheduler_cur_proc_get_kernel_address(arg0);
-    const int status = scheduler_cur_proc_exec(path);
+    const char *path = (const char*)scheduler_cur_proc_to_kernel_address(arg0);
+    const char **argv = (const char**)scheduler_cur_proc_to_kernel_address(arg1);
+
+    process_args_t args;
+    args.argc = 0;
+
+    while (argv != NULL && *argv != NULL)
+    {
+        const char *arg = (const char*)scheduler_cur_proc_to_kernel_address((uint32_t)*argv);
+        _strcpy(args.argv[args.argc++], arg);
+        argv++;
+    }
+
+    const int status = scheduler_cur_proc_exec(path, &args);
     return status;
 }
 
@@ -223,36 +234,37 @@ void kernel_syscall_handler(
     syscall_num_t syscall_num,
     uint32_t arg0, uint32_t arg1, uint32_t arg2)
 {
+    // check for out of range syscall number
     if (syscall_num >= SYSCALL_COUNT)
     {
         mini_uart_kernel_log("syscall: invalid number: %u", syscall_num);
         scheduler_cur_proc_set_syscall_status(-1);
+        return;
     }
-    else
+    
+    // find calling process
+    const int32_t calling_pid = scheduler_cur_proc_get_id();
+    mini_uart_kernel_log(
+        "syscall: %s pid=%u args=0x%x 0x%x 0x%x",
+        _syscall_names[syscall_num], calling_pid,
+        arg0, arg1, arg2);
+
+    // call the relevant syscall handler
+    syscall_handler_t handler = _syscall_table[syscall_num];
+    const int32_t status = handler(arg0, arg1, arg2);
+
+    // There is two case we don't want to write the status to process state
+    // 1 - The current process was deleted (exit when parent was waiting)
+    // 2 - Successfull exec: Writing status would corrupt args
+    const int32_t new_proc_id = scheduler_cur_proc_get_id();
+
+    if (new_proc_id != calling_pid)
     {
-        // find calling process
-        const int32_t calling_pid = scheduler_cur_proc_get_id();
-        mini_uart_kernel_log(
-            "syscall: %s pid=%u args=0x%x 0x%x 0x%x",
-            _syscall_names[syscall_num], calling_pid,
-            arg0, arg1, arg2);
-
-        // call the relevant syscall handler
-        syscall_handler_t handler = _syscall_table[syscall_num];
-        const int32_t status = handler(arg0, arg1, arg2);
-        mini_uart_kernel_log("syscall: status=0x%x", status);
-
-        // if the calling process was removed: do not write status
-        const int32_t current_proc_id = scheduler_cur_proc_get_id();
-        if (calling_pid == current_proc_id)
-        {
-            // if the process was not descheduled
-            scheduler_cur_proc_set_syscall_status(status);
-        }
-        else {
-            mini_uart_kernel_log(
-                "syscall: process %d was descheduled (cur proc = %d). Do not write syscall status (%d)",
-                calling_pid, current_proc_id, status);
-        }
+        // 
+        KERNEL_ASSERT(syscall_num == SYSCALL__EXIT);
+    }
+    else if (!(syscall_num == SYSCALL__EXEC && status == 0))
+    {
+        scheduler_cur_proc_set_syscall_status(status);
     }
 }

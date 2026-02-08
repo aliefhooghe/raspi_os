@@ -9,7 +9,7 @@ static int32_t _fork_exec_wait(const char *exec)
         return status;
     }
     if (status == 0) {
-        const int32_t exec_status = usr_syscall_exec(exec);
+        const int32_t exec_status = usr_syscall_exec(exec, NULL);
         if (exec_status < 0)
             fprintf(stdout, "init: exec failed\n");
         // we should only reach this code when exec failed

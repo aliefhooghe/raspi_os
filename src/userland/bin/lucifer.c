@@ -143,7 +143,7 @@ __attribute__((noinline)) void test_r_file(FILE *stdout, const char *path)
     fprintf(stdout, "fclose: status=%x\n", s2);
 }
 
-__attribute__((noinline)) void fork_exec(FILE *stdout, const char *exec)
+__attribute__((noinline)) void fork_exec(FILE *stdout, const char *exec, const char *argv[])
 {
     fprintf(stdout, "fork-exec: path=%s\n", exec);
     const uint32_t status = usr_syscall_fork();
@@ -155,7 +155,7 @@ __attribute__((noinline)) void fork_exec(FILE *stdout, const char *exec)
 
     if (status == 0) {
         fprintf(stdout, "fork-exec: in child: exec %s\n", exec);
-        usr_syscall_exec(exec);
+        usr_syscall_exec(exec, argv);
         usr_syscall_exit(0);
     }
     else {
@@ -274,12 +274,10 @@ int main(void)
         else if (strcmp(line, "elf") == 0)
         {
             fprintf(stdout, "[%u] test elf loader:\n", pid);
-            fork_exec(stdout, "/bin/hello");
-        }
-        else if (strcmp(line, "felf") == 0)
-        {
-            fprintf(stdout, "[%u] test elf loader on FAT32:\n", pid);
-            fork_exec(stdout, "/mnt/BIN.EXE");
+            const char *argv[] = {
+                "first", "second", "third", "fourth", NULL
+            };
+            fork_exec(stdout, "/bin/hello", argv);
         }
         else if ('l' == line[0] && 's' == line[1])
         {

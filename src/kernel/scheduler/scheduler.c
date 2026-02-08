@@ -196,11 +196,9 @@ static void _proc_context_init(
     task_context_t *context,
     uintptr_t stack_address,
     uint32_t entry,
-    uint32_t argc,
     uint32_t argv)
 {
-    context->r0 = argc;
-    context->r1 = argv;
+    context->r0 = argv;
     context->sp = stack_address;
     context->lr_svc = entry;
     context->spsr =
@@ -311,10 +309,11 @@ static void _cleanup_proc_resources(process_t* proc)
 static int32_t __load_proc_from_elf(
     process_t *proc,
     const char *path,
-    int argc, const char **argv)
+    const process_args_t *args)
 {
     // TODO: split this function: too long
     // important: check that elf exists before writing to the existing section
+    // else we won't be able to return the status to the calling process
     elf32_file_t elf_file;
     const int32_t status = elf32_open(path, &elf_file);
     if (status < 0)
@@ -372,28 +371,29 @@ static int32_t __load_proc_from_elf(
     //  Load Program Arguments
     //
     uint32_t proc_stack_pointer = PROCESS_STACK_VIRTUAL_ADDRRESS;
-    uint32_t v_argv[16];
-    KERNEL_ASSERT(argc < 16);
+    uint32_t v_argv[16];  // args virtual addresses
+
+    KERNEL_ASSERT(args != NULL);
+    mini_uart_kernel_log("argc = %u", args->argc);
+    KERNEL_ASSERT(args->argc < 16);
 
     // copy argv strings
-    for (int i = 0; i < argc; i++)
+    for (int i = 0; i < args->argc; i++)
     {
-        const char *arg = argv[i];
+        const char *arg = args->argv[i];
         const char arg_size = _strlen(arg) + 1;
 
-        // 
         proc_stack_pointer -= arg_size;
-
         uint8_t *const dst_kaddr = mmu_translate_virtual_address(
             proc->translation_table,
             proc_stack_pointer);
         _memcpy(dst_kaddr, arg, arg_size);
-
         v_argv[i] = proc_stack_pointer;
     }
+    v_argv[args->argc] = 0;
 
     // copy argv values
-    const size_t argv_size = sizeof(uint32_t) * argc;
+    const size_t argv_size = sizeof(uint32_t) * (1 + args->argc);
     proc_stack_pointer -= argv_size;
     uint8_t *const dst_kaddr = mmu_translate_virtual_address(
         proc->translation_table,
@@ -420,7 +420,7 @@ static int32_t __load_proc_from_elf(
     _proc_context_init(
         &proc->context,
         proc_stack_pointer,
-        entry, argc, v_argv_ptr);
+        entry, v_argv_ptr);
 
     const int32_t close_status = elf32_close(&elf_file);
     KERNEL_ASSERT(close_status == 0);
@@ -473,9 +473,11 @@ void scheduler_start(const char *init_path)
         PROCESS_SECTION_VIRTUAL_ADDRRESS,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 
-    // initialize proc from elf
+    // initialize proc from elf program
+    process_args_t init_args;
+    init_args.argc = 0;
     const int elf_load_status =
-        __load_proc_from_elf(init_proc, init_path, 0, NULL);
+        __load_proc_from_elf(init_proc, init_path, &init_args);
     KERNEL_ASSERT(elf_load_status == 0);
 
     // Setup Standard Input/Output
@@ -546,7 +548,7 @@ void scheduler_cur_proc_set_syscall_status(int32_t status)
     current_proc->context.r0 = status;
 }
 
-void* scheduler_cur_proc_get_kernel_address(uintptr_t process_virtual_address)
+void* scheduler_cur_proc_to_kernel_address(uintptr_t process_virtual_address)
 {
     return mmu_translate_virtual_address(
         _get_current_proc()->translation_table,
@@ -624,7 +626,7 @@ int32_t scheduler_cur_proc_fork(void)
     return new_proc_id; // will be returned to the parent process
 }
 
-int32_t scheduler_cur_proc_exec(const char *path)
+int32_t scheduler_cur_proc_exec(const char *path, const process_args_t *argv)
 {
     process_t *current_proc = _get_current_proc();
     mini_uart_kernel_log(
@@ -632,7 +634,7 @@ int32_t scheduler_cur_proc_exec(const char *path)
         path, _scheduler.current_proc, current_proc->id, current_proc->memory_section);
 
     // replace process memory image with elf content
-    return __load_proc_from_elf(current_proc, path, 0, NULL);
+    return __load_proc_from_elf(current_proc, path, argv);
 }
 
 int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
