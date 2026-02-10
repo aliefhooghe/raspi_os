@@ -140,7 +140,8 @@ _svc_handler:
     bl scheduler_switch_task
 
     // restore the next task context
-    b __scheduler_set_task_context
+    ldr r1, [r0, #88]               // load translation table (offset asserted in C code)
+    b __scheduler_set_task_context  // r0=context, r1=translation_table
 
 _irq_handler:
     // timers, etc.

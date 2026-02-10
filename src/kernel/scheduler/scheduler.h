@@ -17,13 +17,15 @@ typedef struct {
     char argv[PROCESS_MAX_ARG_COUNT][PROCESS_MAX_ARG_SIZE];
 } process_args_t;
 
+typedef struct process process_t;
+
 // called from kernel.c entrypoint
 void scheduler_init(void);
 void scheduler_start(const char *init_path);
 
 // called from asm code in interupt.S
 void scheduler_save_current_context(const task_context_t *current_context);
-const task_context_t *scheduler_switch_task(void);
+const process_t *scheduler_switch_task(void);
 
 // syscall handler api: Current process management
 void scheduler_cur_proc_set_syscall_status(int32_t status);

@@ -9,15 +9,17 @@ msg:
     .globl __scheduler_set_task_context
 __scheduler_set_task_context:
     // r0: task_context_t* task_context
+    // r1: uint32_t *translation_table
 
     // restore the task context
 
-    // 1 - push the syscall status
-    ldr r1, [r0]            // load saved r0 (syscall return status) from context
-    push {r1}               // push status on the stack
+    // 1 - push the syscall status and translation table
+    ldr r2, [r0]            // load saved r0 (syscall return status) from context
+    push {r2}               // push status on the stack
     add r0, r0, #4
+    push {r1}               // push translation table address
 
-    // IV.2 - restore the **user mode** stack pointer
+    // 2 - restore the **user mode** stack pointer and lr
     ldr r1, [r0]            // load saved lr_usr from context
     add r0, r0, #4
     
@@ -33,15 +35,21 @@ __scheduler_set_task_context:
     mov r2, #0x13           // switch to the SVC cpu mode (0x13)
     msr cpsr_c, r2
 
-    // IV.3 - restore the saved program status register
+    // 3 - restore the saved program status register
     ldr r1, [r0]            // load saved spsr
     add r0, r0, #4
     msr spsr, r1            // restore spsr
 
-    // IV.4 - restore user register and lr_svc
+    // 4 - restore user register and lr_svc
     ldmfd r0, {r1-r12, lr}
 
-    // IV.5 - restore syscall return status into r0
+    // 5 - switch to process memory space
+    pop {r0}                // r0 = translation_table
+    push {lr}
+    bl mmu_set_translation_table
+    pop {lr}
+
+    // 6 - restore syscall return status into r0
     pop {r0}
 
     // V - return to the next scheduled task

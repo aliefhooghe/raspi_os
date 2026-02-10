@@ -13,6 +13,7 @@
 #include "lib/str.h"
 
 #include "memory/bitfield.h"
+#include "memory/memory_allocator.h"
 #include "memory/section_allocator.h"
 #include "memory/translation_table_allocator.h"
 
@@ -77,7 +78,7 @@ typedef struct {
     };
 } schedule_state_t;
 
-typedef struct {
+struct process {
 
     //
     // Process management
@@ -102,8 +103,17 @@ typedef struct {
     //
     file_t *files[MAX_FILE_DESCRIPTOR_COUNT];
     uint8_t files_bitfield[FD_BITFIELD_COUNT];
+};
 
-} process_t;
+_Static_assert(
+    offsetof(process_t, context) == 0,
+    "Unexpected offset for context. svc handler will break !");
+_Static_assert(
+    offsetof(process_t, translation_table) == 88,
+    "Unexpected offset for translation_table. svc handler will break !");
+
+
+// static const int o = offsetof(process_t, translation_table);
 
 //
 //  scheduler structure
@@ -121,10 +131,6 @@ typedef struct {
     uint32_t id_gen;
 } scheduler_t;
 
-//
-//  set the current proc context into the cpu (scheduler.S)
-//
-extern void __scheduler_set_task_context(task_context_t *current_context);
 
 //
 //  call the EXEC syscall to execute the init processs (scheduler.S)
@@ -134,7 +140,7 @@ extern void __scheduler_exec_init(const uint32_t exec_path_vaddr);
 //
 //  global scheduler state
 //
-static scheduler_t _scheduler;
+static scheduler_t *_scheduler;
 
 ///////////////////////////////////////////////////////////
 //                                                       //
@@ -149,8 +155,8 @@ static scheduler_t _scheduler;
 
 static void _remove_process(process_t *proc)
 {
-    const size_t index = proc - _scheduler.processes;
-    if (index >= _scheduler.proc_count)
+    const size_t index = proc - _scheduler->processes;
+    if (index >= _scheduler->proc_count)
         kernel_fatal_error(
             "trying to remove a process outside of process table");
 
@@ -164,33 +170,33 @@ static void _remove_process(process_t *proc)
 
     // delete process
     _memmove(
-        &_scheduler.processes[index],
-        &_scheduler.processes[index + 1],
-        sizeof(process_t) * (_scheduler.proc_count - (index + 1)));
+        &_scheduler->processes[index],
+        &_scheduler->processes[index + 1],
+        sizeof(process_t) * (_scheduler->proc_count - (index + 1)));
 
-    _scheduler.proc_count--;
+    _scheduler->proc_count--;
 
     // if we remove current process, update the current index
-    if (index == _scheduler.current_proc) {
+    if (index == _scheduler->current_proc) {
         if (index == 0u)
-            _scheduler.current_proc = _scheduler.proc_count - 1u;
+            _scheduler->current_proc = _scheduler->proc_count - 1u;
         else
-            _scheduler.current_proc--;   
+            _scheduler->current_proc--;   
     }
 }
 
 static process_t *_get_current_proc(void)
 {
-    if (_scheduler.current_proc >= _scheduler.proc_count)
+    if (_scheduler->current_proc >= _scheduler->proc_count)
         kernel_fatal_error(
             "scheduluer: get current proc: index is beyond proc count");
-    return &_scheduler.processes[_scheduler.current_proc];
+    return &_scheduler->processes[_scheduler->current_proc];
 }
 
 static process_t *_find_proc_by_pid(int32_t pid)
 {
-    for (size_t i = 0u; i < _scheduler.proc_count; i++) {
-        process_t *proc = &_scheduler.processes[i];
+    for (size_t i = 0u; i < _scheduler->proc_count; i++) {
+        process_t *proc = &_scheduler->processes[i];
         if (proc->id == pid)
             return proc;
     }
@@ -203,6 +209,7 @@ static void _proc_context_init(
     uint32_t entry,
     uint32_t argv)
 {
+    _memset(context, 0, sizeof(task_context_t));
     context->r0 = argv;
     context->sp = stack_address;
     context->lr_svc = entry;
@@ -290,10 +297,10 @@ static file_t *_proc_get_fd(
 
 static process_t *_select_next_scheduled_proc(void)
 {
-    for (size_t i = 0; i < _scheduler.proc_count; i++) {
-        _scheduler.current_proc++;
-        if (_scheduler.current_proc == _scheduler.proc_count)
-            _scheduler.current_proc = 0u;
+    for (size_t i = 0; i < _scheduler->proc_count; i++) {
+        _scheduler->current_proc++;
+        if (_scheduler->current_proc == _scheduler->proc_count)
+            _scheduler->current_proc = 0u;
         process_t *current_proc = _get_current_proc();
         if (current_proc->schedule_state.status == PROC_SCHEDULED)
             return current_proc;
@@ -444,24 +451,27 @@ static int32_t __load_proc_from_elf(
 //
 void scheduler_init(void)
 {
-    _memset(&_scheduler, 0, sizeof(scheduler_t));
+    _scheduler = memory_calloc(sizeof(scheduler_t));
+    KERNEL_ASSERT(_scheduler != NULL);
+    // _memset(&_scheduler, 0, sizeof(scheduler_t));
 }
 
 void scheduler_start(const char *init_path)
 {
+    KERNEL_ASSERT(_scheduler != NULL);
     //
     // setup the init process
     // 
-    _scheduler.current_proc = 0u;
-    _scheduler.proc_count = 1u;
+    _scheduler->current_proc = 0u;
+    _scheduler->proc_count = 1u;
 
     // init process: pid, memory section alloc
     mini_uart_kernel_log("scheduler: initialize init process");
-    const int32_t init_process_pid = ++_scheduler.id_gen;
+    const int32_t init_process_pid = ++_scheduler->id_gen;
     if (init_process_pid != INIT_PROC_ID)
         kernel_fatal_error("scheduler: unexpected init process pid");
 
-    process_t *init_proc = &_scheduler.processes[0u];
+    process_t *init_proc = &_scheduler->processes[0u];
     _proc_init_resources(
         init_proc, init_process_pid, 0u /* no parent id */);
 
@@ -521,9 +531,9 @@ void scheduler_save_current_context(const task_context_t *current_context)
         current_proc->id);
 }
 
-const task_context_t *scheduler_switch_task(void)
+const process_t *scheduler_switch_task(void)
 {
-    const int32_t old_pid = _scheduler.processes[_scheduler.current_proc].id;
+    const int32_t old_pid = _scheduler->processes[_scheduler->current_proc].id;
     process_t *next_proc = _select_next_scheduled_proc();
 
     mini_uart_kernel_log(
@@ -531,10 +541,10 @@ const task_context_t *scheduler_switch_task(void)
         old_pid, next_proc->id, next_proc->memory_section);
 
     // 1 - select the process translation table
-    mmu_set_translation_table(next_proc->translation_table);
+    // mmu_setranslation_table(next_proc->translation_table);
 
     // 2 - return the proc context to be restored
-    return &next_proc->context;
+    return next_proc;
 }
 
 //
@@ -559,7 +569,7 @@ void* scheduler_cur_proc_to_kernel_address(uintptr_t process_virtual_address)
 
 int32_t scheduler_cur_proc_fork(void)
 {
-    if (_scheduler.proc_count >= SCHEDULER_MAX_TASK_COUNT)
+    if (_scheduler->proc_count >= SCHEDULER_MAX_TASK_COUNT)
     {
        mini_uart_kernel_log("fork: too many processes");
         return -1;
@@ -568,17 +578,17 @@ int32_t scheduler_cur_proc_fork(void)
     const process_t *current_proc = _get_current_proc();
     mini_uart_kernel_log(
         "forking from proc: index=%u pid=%u",
-        _scheduler.current_proc, current_proc->id);
+        _scheduler->current_proc, current_proc->id);
 
     // compute the new process id
-    const int32_t new_proc_id = ++_scheduler.id_gen;
-    const uint32_t new_index = _scheduler.proc_count++;
+    const int32_t new_proc_id = ++_scheduler->id_gen;
+    const uint32_t new_index = _scheduler->proc_count++;
     mini_uart_kernel_log(
         "fork: create new proc: index=%u pid=%u",
         new_index, new_proc_id);
 
     // init process: allocate its own section and translation table
-    process_t *new_proc = &_scheduler.processes[new_index];
+    process_t *new_proc = &_scheduler->processes[new_index];
     _proc_init_resources(new_proc, new_proc_id, current_proc->id);
 
     // fork the current proc
@@ -633,7 +643,7 @@ int32_t scheduler_cur_proc_exec(const char *path, const process_args_t *argv)
     process_t *current_proc = _get_current_proc();
     mini_uart_kernel_log(
         "scheduler: exec: path=%s, index=%u pid=%u, section=%x",
-        path, _scheduler.current_proc, current_proc->id, current_proc->memory_section);
+        path, _scheduler->current_proc, current_proc->id, current_proc->memory_section);
 
     // replace process memory image with elf content
     return __load_proc_from_elf(current_proc, path, argv);
@@ -674,7 +684,8 @@ int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
         current_state->status = PROC_SUSPENDED;
         current_state->suspended.wait_pid = pid;
         current_state->suspended.wstatus_ref = wstatus;
-        return -1;
+
+        return 0;  // value is unused
     }
 
     // TODO: determine what to do
@@ -695,7 +706,7 @@ void scheduler_cur_proc_exit(int32_t status)
 
     mini_uart_kernel_log(
         "scheduler: exiting scheduled proc index=%u pid=%u",
-        _scheduler.current_proc, current_proc->id);
+        _scheduler->current_proc, current_proc->id);
 
     // deschedule proc
     current_proc->schedule_state.status = PROC_EXITED;
@@ -705,8 +716,8 @@ void scheduler_cur_proc_exit(int32_t status)
     _cleanup_proc_resources(current_proc);
 
     // each child process now belong to init
-    for (size_t i = 0u; i < _scheduler.proc_count; i++) {
-        process_t *proc = &_scheduler.processes[i];
+    for (size_t i = 0u; i < _scheduler->proc_count; i++) {
+        process_t *proc = &_scheduler->processes[i];
         if (proc->parent_id == current_proc->id) {
             mini_uart_kernel_log(
                 "scheduler: exit: child proc index=%u pid=%u become a zombie",
