@@ -1,8 +1,13 @@
 
+    .section ".data"
+msg:
+    .asciz "Unexpected return to scheduler start avec initial SVC"
+
+
     .section ".text"
 
-    .globl __set_task_context
-__set_task_context:
+    .globl __scheduler_set_task_context
+__scheduler_set_task_context:
     // r0: task_context_t* task_context
 
     // restore the task context
@@ -42,3 +47,21 @@ __set_task_context:
     // V - return to the next scheduled task
     // cpu status will be restored from spsr
     movs pc, lr
+
+    .globl __scheduler_exec_init
+__scheduler_exec_init:
+    //  args: r0 = path virtual address
+
+    //  syscall: exec
+    //  syscall number     : r0 = EXEC = 14
+    //  syscall arguments  : r1 = path, r2 = argv = NULL, r3 = NULL
+    mov r1, r0
+    mov r0, #14
+    mov r2, #0
+    mov r3, #0
+    svc #0
+
+    // we should never reach here.
+    ldr r0, =msg
+    b kernel_fatal_error
+

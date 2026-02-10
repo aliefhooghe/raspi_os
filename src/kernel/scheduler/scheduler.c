@@ -122,9 +122,14 @@ typedef struct {
 } scheduler_t;
 
 //
-//  set the current proc context into the cpu
+//  set the current proc context into the cpu (scheduler.S)
 //
-extern void __set_task_context(task_context_t *current_context);
+extern void __scheduler_set_task_context(task_context_t *current_context);
+
+//
+//  call the EXEC syscall to execute the init processs (scheduler.S)
+//
+extern void __scheduler_exec_init(const uint32_t exec_path_vaddr);
 
 //
 //  global scheduler state
@@ -207,7 +212,7 @@ static void _proc_context_init(
         CPU_CPSR_DISABLE_FIQ;
 }
 
-static void _proc_init(
+static void _proc_init_resources(
     process_t *new_proc,
     uint32_t proc_id,
     uint32_t parent_proc_id)
@@ -457,7 +462,7 @@ void scheduler_start(const char *init_path)
         kernel_fatal_error("scheduler: unexpected init process pid");
 
     process_t *init_proc = &_scheduler.processes[0u];
-    _proc_init(
+    _proc_init_resources(
         init_proc, init_process_pid, 0u /* no parent id */);
 
     // setup the process translation table: 
@@ -472,13 +477,6 @@ void scheduler_start(const char *init_path)
         init_proc->memory_section,
         PROCESS_SECTION_VIRTUAL_ADDRRESS,
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
-
-    // initialize proc from elf program
-    process_args_t init_args;
-    init_args.argc = 0;
-    const int elf_load_status =
-        __load_proc_from_elf(init_proc, init_path, &init_args);
-    KERNEL_ASSERT(elf_load_status == 0);
 
     // Setup Standard Input/Output
     mini_uart_kernel_log("scheduler: init: setup IOs");
@@ -496,11 +494,15 @@ void scheduler_start(const char *init_path)
             "scheduler: init: unexpected fd num for standard IOs");
 
     //
-    // jump to the init process
-    //
-    mini_uart_kernel_log("scheduler: call init !");
-    mmu_set_translation_table(init_proc->translation_table);
-    __set_task_context(&init_proc->context);
+    //  Call EXEC syscall. Since it is a syscall, addresses must
+    // be virtual addresses in the init process memory space
+    mini_uart_kernel_log("scheduler: exec init !");
+
+    // store the exec path in the processs memory section
+    char *const phys_exec_path = (char*)init_proc->memory_section;
+    const uint32_t virt_exec_path = PROCESS_SECTION_VIRTUAL_ADDRRESS;
+    _strcpy(phys_exec_path, init_path);
+    __scheduler_exec_init(virt_exec_path );
 }
 
 //
@@ -577,7 +579,7 @@ int32_t scheduler_cur_proc_fork(void)
 
     // init process: allocate its own section and translation table
     process_t *new_proc = &_scheduler.processes[new_index];
-    _proc_init(new_proc, new_proc_id, current_proc->id);
+    _proc_init_resources(new_proc, new_proc_id, current_proc->id);
 
     // fork the current proc
 

@@ -69,6 +69,7 @@ hang: b hang
 
 _svc_handler:
     // comming from usermode. No need to save svc mode register for caller.
+
     // svc number         : from lr (not used for now)
     // syscall number     : r0
     // syscall arguments  : r1 = arg0, r2 = arg1, r3 = arg2 -> already good for kernel handler
@@ -77,6 +78,11 @@ _svc_handler:
 
     // I.1 - save r1-r12 and lr_svc registers on the stack 
     stmfd sp!, {r1-r12, lr}
+
+    // may be usefull later: retrieve the svcnum
+    // record SVC number in r7
+    // ldr r7, [lr, #-4]
+    // and r7, r7, #0x00FFFFFF
 
     // I.2 - save program status on the stack
     // When an exception (like SVC) occurs, the processor:
@@ -109,6 +115,7 @@ _svc_handler:
     // store the current task context
     mov r0, sp
     add r0, #12  //  skip r1-r3
+
     bl scheduler_save_current_context
 
     // restore syscall number and parameters
@@ -129,10 +136,11 @@ _svc_handler:
     add sp, sp, #64
 
     // III.2 call scheduler: get the task context to be restored
+    // also restore the translation table
     bl scheduler_switch_task
 
     // restore the next task context
-    b __set_task_context
+    b __scheduler_set_task_context
 
 _irq_handler:
     // timers, etc.
