@@ -1,4 +1,3 @@
-
     .section ".text"
 
     .globl _reset_handler

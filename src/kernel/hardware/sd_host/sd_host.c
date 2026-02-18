@@ -21,35 +21,6 @@
 //   INTERRUPT will be set. Please note that the INTERRUPT register is not self clearing, so the
 //   software has first to reset it by writing 1 before using it to detect if a command has finished.
 
-static void __dump_sdhost_registers(const char *description)
-{
-    mini_uart_kernel_log("register state: %s:", description);
-    mini_uart_kernel_log("REG__SDCARD_ARG2           : 0x%x // ACMD23 Argument", mmio_read(0x20300000u));  // ACMD23 Argument
-    mini_uart_kernel_log("REG__SDCARD_BLKSIZECNT     : 0x%x // Block size and count", mmio_read(0x20300004u));  // Block size and count
-    mini_uart_kernel_log("REG__SDCARD_ARG1           : 0x%x // Argument", mmio_read(0x20300008u));  // Argument
-    mini_uart_kernel_log("REG__SDCARD_CMDTM          : 0x%x // Command and Transfer Mode", mmio_read(0x2030000Cu));  // Command and Transfer Mode
-    mini_uart_kernel_log("REG__SDCARD_RESP0          : 0x%x // Response buts 031:000", mmio_read(0x20300010u));  // Response buts 031:000
-    mini_uart_kernel_log("REG__SDCARD_RESP1          : 0x%x // Response buts 063:032", mmio_read(0x20300014u));  // Response buts 063:032
-    mini_uart_kernel_log("REG__SDCARD_RESP2          : 0x%x // Response buts 095:064", mmio_read(0x20300018u));  // Response buts 095:064
-    mini_uart_kernel_log("REG__SDCARD_RESP3          : 0x%x // Response buts 127:096", mmio_read(0x2030001Cu));  // Response buts 127:096
-    mini_uart_kernel_log("REG__SDCARD_DATA           : 0x%x // Data", mmio_read(0x20300020u));  // Data
-    mini_uart_kernel_log("REG__SDCARD_STATUS         : 0x%x // Status", mmio_read(0x20300024u));  // Status
-    mini_uart_kernel_log("REG__SDCARD_CONTROL0       : 0x%x // Host Configuration bits", mmio_read(0x20300028u));  // Host Configuration bits
-    mini_uart_kernel_log("REG__SDCARD_CONTROL1       : 0x%x // Host Configuration bits", mmio_read(0x2030002Cu));  // Host Configuration bits
-    mini_uart_kernel_log("REG__SDCARD_INTERRUPT      : 0x%x // Interrupt Flags", mmio_read(0x20300030u));  // Interrupt Flags
-    mini_uart_kernel_log("REG__SDCARD_IRPT_MASK      : 0x%x // Interrupt Flag Enable", mmio_read(0x20300034u));  // Interrupt Flag Enable
-    mini_uart_kernel_log("REG__SDCARD_IRPT_EN        : 0x%x // Interrupt Generation Enable", mmio_read(0x20300038u));  // Interrupt Generation Enable
-    mini_uart_kernel_log("REG__SDCARD_CONTROL2       : 0x%x // Host Configuration bits", mmio_read(0x2030003Cu));  // Host Configuration bits
-    mini_uart_kernel_log("REG__SDCARD_FORCE_IRPT     : 0x%x // Force Interrupt Event", mmio_read(0x20300050u));  // Force Interrupt Event
-    mini_uart_kernel_log("REG__SDCARD_BOOT_TIMEOUT   : 0x%x // Timeout in boot mode", mmio_read(0x20300070u));  // Timeout in boot mode
-    mini_uart_kernel_log("REG__SDCARD_DBG_SEL        : 0x%x // Debug Bus Configuration", mmio_read(0x20300074u));  // Debug Bus Configuration
-    mini_uart_kernel_log("REG__SDCARD_EXRDFIFO_EN    : 0x%x // Extension FIFO Enable", mmio_read(0x20300084u));  // Extension FIFO Enable
-    mini_uart_kernel_log("REG__SDCARD_TUNE_STEP      : 0x%x // Delay per card clock tuning step", mmio_read(0x20300088u));  // Delay per card clock tuning step
-    mini_uart_kernel_log("REG__SDCARD_TUNE_STEP_STD  : 0x%x // Card clock tuning steps for SDR", mmio_read(0x2030008Cu));  // Card clock tuning steps for SDR
-    mini_uart_kernel_log("REG__SDCARD_TUNE_STEPS_DDR : 0x%x // Card clock tuning steps for DDR", mmio_read(0x20300090u));  // Card clock tuning steps for DDR
-    mini_uart_kernel_log("REG__SDCARD_SPI_INT_SPT    : 0x%x // SPI Interrupt Support", mmio_read(0x203000F0u));  // SPI Interrupt Support
-    mini_uart_kernel_log("REG__SDCARD_SLOT_ISR_VER   : 0x%x // Slot Interrupt Status and Version", mmio_read(0x203000FCu));  // Slot Interrupt Status and Version
-}
 
 static void _sdhost_wait_for_cmd_done(void)
 {
@@ -72,7 +43,6 @@ static void _sdhost_wait_for_cmd_done(void)
         counter++;
         cpu_delay(150);
         if (!(counter & 0xFF)) {
-           __dump_sdhost_registers("during polling");
            if (counter > 2048)
                kernel_fatal_error("failed to wait for a commmand");
        }
