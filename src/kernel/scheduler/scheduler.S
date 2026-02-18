@@ -17,6 +17,7 @@ __scheduler_set_task_context:
     ldr r2, [r0]            // load saved r0 (syscall return status) from context
     push {r2}               // push status on the stack
     add r0, r0, #4
+
     push {r1}               // push translation table address
 
     // 2 - restore the **user mode** stack pointer and lr
