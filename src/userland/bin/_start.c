@@ -2,6 +2,7 @@
 // Userland Programs EntryPoint:
 //
 #include <stddef.h>
+#include <stdint.h>
 
 #include "usr_syscalls.h"
 #include "stdio.h"

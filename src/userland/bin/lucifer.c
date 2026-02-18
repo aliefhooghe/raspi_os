@@ -5,315 +5,88 @@
 
 #include "usr_syscalls.h"
 
-#define LINE_SIZE 128u
+#define LINE_SIZE      128u
+#define MAX_ARG_COUNT  8u
 
-__attribute__((noinline)) void ls(FILE *stdout, const char *path)
+static int _fork_exec(const char *exec, const char *const argv[])
 {
-    fprintf(stdout, "list file in path: %s\n", path);
-    DIR *dir = opendir(path);
-    if (dir == NULL)
-    {
-        fprintf(stdout, "directory %s does not exists\n", path);
-        return;
-    }
-
-    struct dirent *entity = NULL;
-    while ((entity = readdir(dir))) {
-        fprintf(stdout,
-            " %s (%s)\n",
-            entity->d_name,
-                entity->d_type == DT_DIR ? "dir" :
-                entity->d_type == DT_REG ? "reg" :
-                entity->d_type == DT_CHR ? "character device" :
-                entity->d_type == DT_BLK ? "block device" :
-                "unknown");
-    }
-
-    closedir(dir);
-}
-
-__attribute__((noinline)) void test_fork(int32_t pid, FILE *stdout)
-{
-    fprintf(stdout, "[%u] process is about to fork !\n", pid);
-    const uint32_t status = usr_syscall_fork();
-
-    if (status == 0u)
-    {
-        const uint32_t cpid = usr_syscall_getpid();
-        fprintf(stdout, "[%u] we are in the child pid=%u, ppid=%u\n", cpid, cpid, pid);
-
-        for (uint32_t i = 0u; i < 16u; i++)
-        {
-            fprintf(stdout, "[%u] child process is working iteration=%u\n", cpid, i);
-        }
-
-        // VFS tests
-        FILE *file = fopen("/dev/tty", "w");
-        fprintf(file, "[%u] WRITE TO TTY\n", cpid);
-        fflush(file);
-        fclose(file);
-
-        //
-        int fd2 = usr_syscall_open("/toto/tata.txt", 0u, 0u);
-        if (fd2 == -1)
-        {
-            fprintf(stdout, "[%u] could not open toto/tata.txt\n", cpid);
-        }
-        else
-        {
-            fprintf(stdout, "[%u] HOOORIBLE", cpid);
-        }
-
-        fprintf(stdout, "[%u] exit child process.\n", cpid);
-        usr_syscall_exit(42u);
-    }
-    else
-    {
-        pid = usr_syscall_getpid();
-
-        fprintf(stdout, "[%u] we are in the parent pid=%u, child pid=%u\n", pid, pid, status);
-        fprintf(stdout, "[%u] wait child: pid=%u\n", pid, status);
-
-        int32_t wstatus = 0u;
-        const int32_t ret = usr_syscall_waitpid(status, &wstatus);
-
-        fprintf(stdout, "[%u] waitpid returned %u. child exited with status=%u\n", pid, ret, wstatus);
-    }
-
-    fprintf(stdout, "[%u] exit fork test function\n", usr_syscall_getpid());
-}
-
-__attribute__((noinline)) void test_w_file(FILE *stdout)
-{
-    const int s1 = usr_syscall_mkdir("/test", S_IFDIR);
-    fprintf(stdout, "mkdir: status=%x\n", s1);
-
-    int fd = usr_syscall_open("/test/toto.txt", O_CREAT, S_IFREG);
-    if (fd < 0)
-    {
-        fprintf(stdout, "open failed.\n");
-        return;
-    }
-    fprintf(stdout, "mkdir: open return %d\n", fd);
-
-    FILE *test = fdopen(fd, "w");
-    if (test == NULL)
-    {
-        fprintf(stdout, "fdopen failed.\n");
-        return;
-    }
-
-    fprintf(stdout, "will write\n");
-    fprintf(test, "hello THE world\n");
-
-    const int s2 = fclose(test);
-    fprintf(stdout, "fclose: status=%x\n", s2);
-}
-
-__attribute__((noinline)) void test_r_file(FILE *stdout, const char *path)
-{
-    int fd = usr_syscall_open(path, 0u, S_IFREG);
-    if (fd < 0)
-    {
-        fprintf(stdout, "open failed.\n");
-        return;
-    }
-    
-    FILE *test = fdopen(fd, "r");
-    if (test == NULL)
-    {
-        fprintf(stdout, "fdopen failed.\n");
-        return;
-    }
-
-    fprintf(stdout, "will read\n");
-    char buffer[128];
-    const ssize_t sz = fread(buffer, 1, 127, test);
-    fprintf(stdout, "check read result: %d\n", sz);
-    if (sz < 0)
-    {
-        fprintf(stdout, "fread failed\n");
-        return; 
-    }
-    buffer[sz] = '\0';
-    
-    fprintf(stdout, "file content is:\n%s\n----\n", buffer);
-
-    const int s2 = fclose(test);
-    fprintf(stdout, "fclose: status=%x\n", s2);
-}
-
-__attribute__((noinline)) void fork_exec(FILE *stdout, const char *exec, const char *argv[])
-{
-    fprintf(stdout, "fork-exec: path=%s\n", exec);
-    const uint32_t status = usr_syscall_fork();
-
+    int32_t status = usr_syscall_fork();
     if (status < 0) {
-        fprintf(stdout, "fork-exec: fork failed\n");
-        return;
+        printf("fork failed with status %d\n", status);
+        return status;
     }
 
     if (status == 0) {
-        fprintf(stdout, "fork-exec: in child: exec %s\n", exec);
-        usr_syscall_exec(exec, argv);
-        usr_syscall_exit(0);
+        status = usr_syscall_exec(exec, argv);
+        printf("exec failed with status %d\n", status);  // exec never return on success
+        return status;
     }
     else {
-        for (int i = 0; i < 2;i++) {
-            fprintf(stdout, "fork-exec: in parent: yield %u\n", i);
-            usr_syscall_yield(i);
-        }
-        fprintf(stdout, "fork-exec: in parent: wait child %u\n", status);
+        const int32_t pid = status;
         int32_t wstatus = 0;
-        usr_syscall_waitpid(status, &wstatus);
-        fprintf(stdout, "fork-exec: from parent: child exited with status %u\n", wstatus);
+        status = usr_syscall_waitpid(pid, &wstatus);
+        if (status < 0)
+        {
+            printf("waitpid failed with status %d\n", status);
+        }
+        return wstatus;
     }
 }
-
-__attribute__((noinline)) void test_read_data(FILE *stdout, const char *path)
-{
-    char buffer[256] = "";
-    fprintf(stdout, "open file %s in read mode\n", path);
-    FILE *f = fopen(path, "r");
-
-    if (f == NULL) {
-        fprintf(stdout, "failed to open data file at %s\n", path);
-        return;
-    }
-
-    const int status = fread(buffer, 256, 1, f);
-    if (status < 0) {
-        fprintf(stdout, "error reading file\n");
-    }
-    else {
-        buffer[status] = '\0';
-        fprintf(stdout, "data: %s\n", buffer);
-    }
-
-    fclose(f);
-}
-__attribute__((noinline)) void test_read_dataa(FILE *stdout)
-{
-    char buffer[256] = "";
-    int fd = usr_syscall_open("/data/text.txt", 0, 0);
-
-    if (fd < 0 ) {
-        fprintf(stdout, "failed to open data file\n");
-        return;
-    }
-
-    const int status = usr_syscall_read(fd, buffer, 256);
-    if (status < 0) {
-        fprintf(stdout, "error reading fiile\n");
-    }
-    else {
-        buffer[status] = '\0';
-        fprintf(stdout, "data: %s\n", buffer);
-    }
-
-    usr_syscall_close(fd);
-}
-
 int main(void)
 {
-    char line[LINE_SIZE] = "";
+    char line[LINE_SIZE] = "";  // raw input
+    const char *tokens[1 + MAX_ARG_COUNT];
+
     const int32_t pid = usr_syscall_getpid();
-    fprintf(stdout, "[%u] welcome in lucifer shell\n", pid);
+    printf("[%u] welcome in lucifer shell\n", pid);
 
     for (;;)
     {
-        fprintf(stdout, "[%u] lucifer ~ ", pid);
+        printf("[%u] lucifer ~ ", pid);
         gets_s(line, LINE_SIZE);
-
+        
         const size_t len = strlen(line);
         if (len == 0)
+        {
             continue;
+        }
+        else if (0 == strcmp("exit", line))
+        {
+            printf("[%u] exiting lucifer shell !\n", pid);
+            break;
+        }
 
-        if (strcmp(line, "reboot") == 0)
-        {
-            fprintf(stdout, "[%u] reboot now !\n", pid);
-            usr_syscall_reboot();
-        }
-        else if (strcmp(line, "loop") == 0) {
-            for (int i = 0; i < 256;i++) {
-                fprintf(stdout, "yield %u\n", i);
-                const int status = usr_syscall_yield(i);
-                if (status != i) {
-                    fprintf(stdout, "=> invalid return status %d instead of %d", status, i);
-                }
-            }
-            fprintf(stdout, "done\n");
-        }
-        else if (strcmp(line, "switch") == 0)
-        {
-            fprintf(stdout, "[%u] switch to next process\n", pid);
-            const int status = usr_syscall_yield(42);
-            fprintf(stdout, "[%u] switch returned %d\n", pid, status);
-            
-        }
-        else if (strcmp(line, "exit") == 0)
-        {
-            fprintf(stdout, "[%u] exit current process\n", pid);
-            usr_syscall_exit(0u);
-        }
-        else if (strcmp(line, "fork") == 0)
-        {
-            fprintf(stdout, "[%u] call fork test procedure:\n", pid);
-            test_fork(pid, stdout);
-        }
-        else if (strcmp(line, "write") == 0)
-        {
-            fprintf(stdout, "[%u] call write test proc:\n", pid);
-            test_w_file(stdout);
-        }
-        else if (strcmp(line, "read") == 0)
-        {
-            fprintf(stdout, "[%u] call read test proc:\n", pid);
-            test_r_file(stdout, "/test/toto.txt");
-        }
-        else if (strcmp(line, "elf") == 0)
-        {
-            fprintf(stdout, "[%u] test elf loader:\n", pid);
-            const char *argv[] = {
-                "first", "second", "third", "fourth", NULL
-            };
-            fork_exec(stdout, "/bin/hello", argv);
-        }
-        else if ('l' == line[0] && 's' == line[1])
-        {
-            const char *arg = line + 3;
+        unsigned int token_count = 0;
+        const char *token = line;
 
-            if (line[2] == '\0')
+        for (
+            unsigned int i = 0u;
+            i < LINE_SIZE && line[i] != '\0' && token_count < MAX_ARG_COUNT;
+            i++
+        ) {
+            if (line[i] == ' ')
             {
-                arg = "/";
-            }
-            else if (strlen(line) <= 3 || line[2] != ' ') {
-                fprintf(stdout, "ls: bad syntax\n");
-                continue;
+                line[i] = '\0';
+                if (strlen(token) > 0)
+                {
+                    tokens[token_count++] = token;
+                }
+                token = line + i + 1;
             }
 
-            ls(stdout, arg);
         }
-        else if (strcmp(line, "mkdir") == 0)
+        if (strlen(token) > 0)
         {
-            fprintf(stdout, "[%u] test mkdir on /data\n", pid);
-            const int status = usr_syscall_mkdir("/data", S_IFDIR);
-            fprintf(stdout, "[%u] mkdir /data => return 0x%x\n", pid, status);
-            ls(stdout, "/");
+            tokens[token_count++] = token;
         }
-        else if (strcmp(line, "zz") == 0) {
-            test_read_data(stdout, "/mnt/TOTO/TI.TXT");
-        }
-        else if (strcmp(line, "ze") == 0) {
-            test_read_data(stdout, "/mnt/FILE_0.TXT");
-        }
-        else if (strcmp(line, "zr") == 0) {
-            test_read_data(stdout, "/mnt/FILE_42.TXT");
-        }
-        else
-        {
-            fprintf(stdout, "[%u] lucifer: %s: command not found\n", pid, line);
-        }
+        tokens[token_count++] = NULL;
+
+        //
+        char exec_path[256];
+        strcpy(exec_path, "/bin/");
+        strcat(exec_path, tokens[0]);
+        const char *const *argv = tokens + 1;
+        _fork_exec(exec_path, argv);
     }
     return 0;
 }
