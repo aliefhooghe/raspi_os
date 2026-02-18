@@ -173,7 +173,8 @@ blank_img = custom_target(
 custom_target(
   'rootfs',
   input: [blank_img, kernel_img] + userland_programs,
-  depend_files: [blank_img.full_path(), meson.project_source_root() + '/tools/create_root_fs.sh'],
+  depend_files: [meson.project_source_root() + '/tools/create_root_fs.sh'],
+  depends: [blank_img],
   output: 'sd.rootfs.img',
   command: ['bash', meson.project_source_root() + '/tools/create_root_fs.sh', '@OUTPUT@', '@INPUT@'],
   env: ['MESON_SOURCE_ROOT=' + meson.project_source_root()],
