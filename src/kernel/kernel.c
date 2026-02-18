@@ -160,9 +160,9 @@ static void _kernel_mount_dev_tmpfs(void)
     KERNEL_ASSERT(0 == dev_mount_status);
 
     // create device files
-    KERNEL_ASSERT(0 == vfs_mknod("/dev/tty", S_IFCHR, 0u));
-    KERNEL_ASSERT(0 == vfs_mknod("/dev/ramdisk", S_IFBLK, MAKE_DEV(0, 0)));
-    KERNEL_ASSERT(0 == vfs_mknod("/dev/sdcard", S_IFBLK, MAKE_DEV(1, 0)));
+    KERNEL_ASSERT(0 == vfs_mknod("/dev/tty", S_IFCHR, DEV_CHR_TTY));
+    KERNEL_ASSERT(0 == vfs_mknod("/dev/ramdisk", S_IFBLK, DEV_BLK_RAMDISK));
+    KERNEL_ASSERT(0 == vfs_mknod("/dev/sdcard", S_IFBLK, DEV_BLK_SDCARD));
 }
 
 //
