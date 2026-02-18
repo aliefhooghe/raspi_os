@@ -29,7 +29,7 @@ kernel_bloaty: build
     bloaty build/kernel.elf -d compileunits,symbols --domain vm  -s vm -n 0
     
 # run kernel emulation
-run_kernel: build kernel_size
+run_kernel: build
     @echo "Press ctrl+A X to quit emulation"
     qemu-system-arm -display none -m 512 -M raspi0 \
         -kernel {{build_dir}}/kernel.elf -d guest_errors \
@@ -47,22 +47,20 @@ debug_kernel: build kernel_size
 
 gdb:
     arm-none-eabi-gdb build/kernel.elf -ex "target remote :5000"
+    
+gdb-probe:
+    arm-none-eabi-gdb build/kernel.elf -ex "target remote :5000"
 
 run_kernel_pty: build
     qemu-system-arm -display none -m 512 -M raspi0 -kernel \
     {{build_dir}}/kernel.elf -d guest_errors \
     -serial null -serial pty
 
-run_serial_loader: build
-    @echo "Press ctrl+A X to quit emulation"
-    qemu-system-arm -display none -m 512 -M raspi0 -kernel \
-    {{build_dir}}/serial_loader.elf -d guest_errors \
-    -serial null -serial mon:stdio
-
 run_serial_loader_pty: build
     qemu-system-arm -display none -m 512 -M raspi0 -kernel \
     {{build_dir}}/serial_loader.elf -d guest_errors \
-    -serial null -serial pty
+    -serial null -serial pty \
+    -drive if=sd,file=./build/sd.rootfs.img,format=raw
 
 # flash the kernel to serial loader
 flash: build
