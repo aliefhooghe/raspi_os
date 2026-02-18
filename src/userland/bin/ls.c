@@ -30,6 +30,7 @@ int main(int argc, const char *argv[])
     if (argc > 1)
     {
         printf("usage: ls [path]\n");
+        printf("usage: got argc = %d\n", argc);
         return 1;
     }
 

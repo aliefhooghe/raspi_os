@@ -30,6 +30,7 @@ int fputs(const char *restrict s, FILE *restrict stream);
 // int snprintf(char *restrict str, size_t size, const char *restrict format, ...);
 // int vsnprintf(char *restrict str, size_t size, const char *restrict format, va_list ap);
 
+int printf(const char *restrict format, ...);
 int fprintf(FILE *restrict stream, const char *restrict format, ...);
 int vfprintf(FILE *restrict stream, const char *restrict format, va_list ap);
 

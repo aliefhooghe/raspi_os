@@ -228,6 +228,17 @@ static void _fput_uint_hex(FILE *stream, uint32_t x)
 // {
 // }
 
+
+int printf(const char *restrict format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    const int status = vfprintf(stdout, format, ap);
+    va_end(ap);
+    return status;
+}
+
+
 int fprintf(FILE *restrict stream, const char *restrict format, ...)
 {
     va_list ap;
