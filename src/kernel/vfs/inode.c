@@ -11,8 +11,6 @@ file_t *default_file_open(inode_t *inode)
     file_t *file = memory_calloc(sizeof(file_t));
     KERNEL_ASSERT(file != NULL);
     file->inode = inode;
-    file->pos = 0u;
-    file->private = NULL;
     return file;
 }
 

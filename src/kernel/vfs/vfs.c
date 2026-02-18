@@ -276,7 +276,7 @@ int32_t vfs_mount(const char *dev, const char *target, const char *fstype)
                 "vfs: mount: no block device file at '%s'", dev);
             return -1;
         }
-        // Retrieve device from inode ???
+        // Retrieve device from inode.device id
         device = get_block_device(device_dentry->inode->device);
     }
 

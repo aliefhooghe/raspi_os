@@ -5,6 +5,7 @@
 #include "lib/str.h"
 #include "utils.h"
 #include "vfs/device_ops.h"
+#include "vfs/driver_registry.h"
 #include "vfs/inode.h"
 
 // assertion on block size
@@ -17,7 +18,7 @@ static ssize_t _block_device_read(
 
     // TODO: we could avoid transfering data with this buffer when size > 512
     uint8_t block[BLOCK_SIZE];
-    block_device_t *device = (block_device_t*)file->inode->private;
+    block_device_t *device = (block_device_t*)file->private;
 
     KERNEL_ASSERT(BLOCK_SIZE == device->block_size);
     size_t total_read_size = 0u;
@@ -54,6 +55,7 @@ static ssize_t _block_device_read(
         block_index++;
     }
 
+    file->pos += total_read_size;
     return total_read_size;
 }
 
@@ -81,7 +83,22 @@ static ssize_t _block_device_seek(
     return -1;
 }
 
+static file_t *_block_device_open(inode_t *inode)
+{
+    file_t *file = default_file_open(inode);
+    file->private = get_block_device(inode->device);
+    return file;
+}
+
+static int _block_device_release(inode_t *inode, file_t *file)
+{
+    // TODO: notion of device liberation ?
+    return default_file_release(inode, file);
+}
+
 const file_ops_t block_device_file_ops = {
+    .open = _block_device_open,
+    .release = _block_device_release,
     .read = _block_device_read,
     .write = _block_device_write,
     .seek = _block_device_seek,

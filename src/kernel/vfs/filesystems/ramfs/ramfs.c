@@ -357,7 +357,6 @@ static inode_t *_ramfs_inode_mknod(
                     return NULL;
                 }
                 file_ops = device->ops;
-                inode_private = device;
             }
             break;
         case S_IFBLK:
@@ -369,7 +368,6 @@ static inode_t *_ramfs_inode_mknod(
                     return NULL;
                 }
                 file_ops = &block_device_file_ops;
-                inode_private = device;
             }
             break;
         default:

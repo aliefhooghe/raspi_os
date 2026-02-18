@@ -271,7 +271,6 @@ static uint32_t _fat32_entry_loc_offset(
         entry_loc->entry_index * sizeof(fat_sfn_directory_entry_t);
 }
 
-
 // generalised sector iterator
 
 static uint32_t _fat_read_table(

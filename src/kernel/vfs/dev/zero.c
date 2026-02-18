@@ -1,6 +1,5 @@
 
 
-int dummy;
 
 // #include "zero.h"
 // #include "lib/str.h"
