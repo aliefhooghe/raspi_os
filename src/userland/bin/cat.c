@@ -20,6 +20,11 @@ int main(int argc, const char *argv[])
     char buffer[512];
     int sz = 0;
     while ((sz = fread(buffer, 512, 1, fd))) {
+        if (sz < 0)
+        {
+            printf("read error (status=%d). Exiting\n", sz);
+            break;
+        }
         fwrite(buffer, sz, 1, stdout);
     }
     fflush(stdout);
