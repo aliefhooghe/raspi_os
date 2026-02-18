@@ -386,7 +386,7 @@ static int32_t __load_proc_from_elf(
     uint32_t v_argv[16];  // args virtual addresses
 
     KERNEL_ASSERT(args != NULL);
-    mini_uart_kernel_log("argc = %u", args->argc);
+    mini_uart_kernel_log("scheduler: argc = %u", args->argc);
     KERNEL_ASSERT(args->argc < 16);
 
     // copy argv strings
@@ -404,9 +404,13 @@ static int32_t __load_proc_from_elf(
     }
     v_argv[args->argc] = 0;
 
-    // copy argv values
     const size_t argv_size = sizeof(uint32_t) * (1 + args->argc);
     proc_stack_pointer -= argv_size;
+
+    // align stack to 4 bytes
+    proc_stack_pointer &= ~0x3u;
+
+    // copy argv values
     uint8_t *const dst_kaddr = mmu_translate_virtual_address(
         proc->translation_table,
         proc_stack_pointer);
@@ -414,10 +418,6 @@ static int32_t __load_proc_from_elf(
 
     // copy argv pointer
     const uint32_t v_argv_ptr = proc_stack_pointer;
-
-    // ensure stack pointer is 4 bytes aligned
-    proc_stack_pointer -= sizeof(uint32_t);  // may not be usefull, for safety purpose
-    proc_stack_pointer &= 0xFFFFFFFCu;
 
     // 2 - reset cpu context
     const uint32_t entry = elf_file.header.entry;

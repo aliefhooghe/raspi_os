@@ -27,7 +27,7 @@ typedef struct {
     uint32_t r11;
     uint32_t r12;
 
-    uint32_t lr_svc;    // svc return address register: pc_usr + 4
+    uint32_t lr_svc;    // svc return address register: pc + 4
 } task_context_t;
 
 // if this change fix is needed in svc_handler (interupt.S)
