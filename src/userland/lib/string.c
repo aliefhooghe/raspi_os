@@ -59,3 +59,10 @@ char *strcpy(char *dst, const char *src)
     while ((*dst++ = *src++));
     return ret;  
 }
+
+char *strcat(char *dst, const char *src)
+{
+    const size_t dst_len = strlen(dst);
+    strcpy(dst + dst_len, src);
+    return dst;
+}
