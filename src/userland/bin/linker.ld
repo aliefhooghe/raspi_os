@@ -10,8 +10,8 @@ MEMORY
 SECTIONS
 {
     .text : { *(.text*) } > ram
-    .rodata : { *(.rodata) } > ram
-    .data : { *(.rodata) } > ram
+    .rodata : { *(.rodata*) } > ram
+    .data : { *(.data*) } > ram
     .bss : { *(.bss*) } > ram
     _end = .;
     
