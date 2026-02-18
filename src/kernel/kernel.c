@@ -28,6 +28,10 @@ extern const char *__satan_welcome_banner;
 extern const char *__satan_fatal_error_banner;
 
 //
+extern uint8_t __bss_start__;
+extern uint8_t __bss_end__;
+
+//
 // # Kernel Memory Layout:
 // 
 // 
@@ -63,6 +67,11 @@ static uint32_t *kernel_translation_table;
 #define DEV_CHR_TTY                 MAKE_DEV(0, 0)
 
 // Private functions
+static void _kernel_clear_bss(void)
+{
+    const size_t bss_size = &__bss_end__ - &__bss_start__;
+    _memset(&__bss_start__, 0u, bss_size);
+}
 
 static void _kernel_init_translation_table(uint32_t *table)
 {
@@ -82,9 +91,13 @@ static void _kernel_init_translation_table(uint32_t *table)
 
 static void _kernel_init(void)
 {
+    _kernel_clear_bss();
+    cpu_irq_disable();
+
     // initialize the mini UART
     mini_uart_init();
     mini_uart_kernel_puts("Satan OS kernel is starting...\r\n");
+    mini_uart_kernel_log("bss: %x -> %x", &__bss_start__, &__bss_end__);
 
     // initialize the sdio controller
     sdhost_init();
@@ -184,9 +197,6 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
 
     const uint16_t cpu_mode = cpu_get_execution_mode();
     mini_uart_kernel_log("cpu mode: 0x%x", cpu_mode);
-
-    // enable irq globaly. TODO ??????? Why here ?
-    cpu_irq_enable();
 
     // start user mode
     mini_uart_kernel_log("call user mode init");
