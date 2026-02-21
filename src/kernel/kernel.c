@@ -93,6 +93,7 @@ static void _kernel_init(void)
 {
     _kernel_clear_bss();
     cpu_irq_disable();
+    cpu_fiq_disable();
 
     // initialize the mini UART
     mini_uart_init();

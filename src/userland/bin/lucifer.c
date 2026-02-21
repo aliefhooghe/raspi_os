@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -86,7 +87,12 @@ int main(void)
         strcpy(exec_path, "/bin/");
         strcat(exec_path, tokens[0]);
         const char *const *argv = tokens + 1;
-        _fork_exec(exec_path, argv);
+
+        const int status = _fork_exec(exec_path, argv);
+        if (status != 0)
+        {
+            printf("[%u] child failed with status %d\n", pid, status);
+        }
     }
     return 0;
 }

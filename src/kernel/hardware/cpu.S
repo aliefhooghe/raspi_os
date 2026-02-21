@@ -27,6 +27,20 @@ cpu_irq_disable:
     orr r0, r0, #0x80  // set bit 7: disable irq
     msr cpsr_c, r0     // write Program Status Register Control
     bx lr
+
+.globl cpu_fiq_enable
+cpu_fiq_enable:
+    mrs r0, cpsr       // read Current Program Status Register
+    bic r0, r0, #0x40  // clear bit 6: enable fiq
+    msr cpsr_c, r0     // write Program Status Register Control
+    bx lr
+
+.globl cpu_fiq_disable
+cpu_fiq_disable:
+    mrs r0, cpsr       // read Current Program Status Register
+    orr r0, r0, #0x40  // set bit 6: disable fiq
+    msr cpsr_c, r0     // write Program Status Register Control
+    bx lr
     
 .globl cpu_wait_for_interupt
 cpu_wait_for_interupt:

@@ -31,6 +31,8 @@ const process_t *scheduler_switch_task(void);
 void scheduler_cur_proc_set_syscall_status(int32_t status);
 
 void scheduler_cur_proc_exit(int32_t status);
+void scheduler_cur_proc_exception(void);
+
 int32_t scheduler_cur_proc_fork(void);
 int32_t scheduler_cur_proc_exec(const char *path, const process_args_t *argv);
 int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus);

@@ -34,9 +34,12 @@ _reset_handler:
     /**
      *  Setup the stacks for the different cpu modes
      *
+     *  DANGER: TODO: the stacks are too low
+     *
      *     FIQ stack:   0x00001000 -> 0x00000000: 4 KB
      *     IRQ stack:   0x00002000 -> 0x00001000: 4 KB
      *     SVC stack:   0x00006000 -> 0x00002000: 16 KB  // TODO: CANARY test the stack
+     *     SVC stack:   0x00007000 -> 0x00006000: 4 KB
      */
 
     // switch to mode FIQ (Fast Interrupt Mode) / no interupt
@@ -59,6 +62,17 @@ _reset_handler:
     mov r0, 0xD3
     msr cpsr_c, r0
     mov sp, #0x00006000
+
+    // switch to abort mode / no interupt
+    // PSR_ABORT_MODE = (0x17), PSR_FIQ_DIS = 0x40, PSR_IRQ_DIS = 0x80
+    // 0xD3 = (0x80 | 0x40 | 0x17)
+    mov r0, 0xD7
+    msr cpsr_c, r0
+    mov sp, #0x00007000
+
+    // Run kernel in supervisor mode
+    mov r0, 0xD3
+    msr cpsr_c, r0
 
     // jump to kernel entrypoint
     bl kernel_main
@@ -150,12 +164,32 @@ _irq_handler:
     ldmfd sp!, {r0-r12, lr}
     subs pc, lr, #4
 
+_fiq_handler:
+    subs pc, lr, #4
+
+_data_abort:
+    // switch to svc mode, throw away current process state
+    mrs r0, cpsr
+    bic r0, r0, #0x1F  // clear mode
+    orr r0, r0, #0x13  // write mode=svc
+    msr cpsr_c, r0
+
+    // restore kernel translation table
+    bl kernel_restore_translation_table
+
+    // error handling
+    bl scheduler_cur_proc_exception
+
+    // switch to next stack
+    bl scheduler_switch_task
+    ldr r1, [r0, #88]               // load translation table (offset asserted in C code)
+    b __scheduler_set_task_context  // r0=context, r1=translation_table
+
+
 // Unhandled interuptions
 _undefined_handler:
 _prefetch_abort:
-_data_abort:
 _reserved_handler:
-_fiq_handler:
     // Default handler: fatal error
     bl kernel_unhandled_interupt_fatal_error
     b .

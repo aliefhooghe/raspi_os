@@ -750,6 +750,12 @@ void scheduler_cur_proc_exit(int32_t status)
     }
 }
 
+void scheduler_cur_proc_exception(void)
+{
+    mini_uart_kernel_puts("[kernel] scheduler: Illegal Memory Access from current process\r\n");
+    scheduler_cur_proc_exit(1);
+}
+
 int32_t scheduler_cur_proc_get_id(void)
 {
     return _get_current_proc()->id;
