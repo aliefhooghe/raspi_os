@@ -1,5 +1,7 @@
     .section ".text"
 
+    .include "src/kernel/hardware/cpu_modes.inc"
+
     .globl _reset_handler
     .globl _undefined_handler
     .globl _svc_handler
@@ -39,41 +41,28 @@ _reset_handler:
      *     FIQ stack:   0x00001000 -> 0x00000000: 4 KB
      *     IRQ stack:   0x00002000 -> 0x00001000: 4 KB
      *     SVC stack:   0x00006000 -> 0x00002000: 16 KB  // TODO: CANARY test the stack
-     *     SVC stack:   0x00007000 -> 0x00006000: 4 KB
+     *     ABORT st.:   0x00007000 -> 0x00006000: 4 KB
      */
 
-    // switch to mode FIQ (Fast Interrupt Mode) / no interupt
-    // PSR_FIQ_MODE = 0b10001 (0x11), PSR_FIQ_DIS = 0x40, PSR_IRQ_DIS = 0x80
-    // 0xD1 = (0x80 | 0x40 | 0x11)
-    mov r0, #0xD1
-    msr cpsr_c, r0
+    // Disable IRQ/FIQ interupts
+    bl cpu_irq_disable
+    bl cpu_fiq_disable
+
+    // setup stack for each cpu modes
+    SET_CPU_MODE CPU_MODE_FIQ
     mov sp, #0x00001000
 
-    // switch to mode IRQ / no interupt
-    // PSR_IRQ_MODE = 0b10010 (0x12), PSR_FIQ_DIS = 0x40, PSR_IRQ_DIS = 0x80
-    // 0xD2 = (0x80 | 0x40 | 0x12)
-    mov r0, #0xD2
-    msr cpsr_c,r0
+    SET_CPU_MODE CPU_MODE_IRQ
     mov sp, #0x00002000
 
-    // switch to supervisor mode / no interupt
-    // PSR_SVC_MODE = 0b10011 (0x13), PSR_FIQ_DIS = 0x40, PSR_IRQ_DIS = 0x80
-    // 0xD3 = (0x80 | 0x40 | 0x13)
-    mov r0, 0xD3
-    msr cpsr_c, r0
+    SET_CPU_MODE CPU_MODE_SVC
     mov sp, #0x00006000
 
-    // switch to abort mode / no interupt
-    // PSR_ABORT_MODE = (0x17), PSR_FIQ_DIS = 0x40, PSR_IRQ_DIS = 0x80
-    // 0xD3 = (0x80 | 0x40 | 0x17)
-    mov r0, 0xD7
-    msr cpsr_c, r0
+    SET_CPU_MODE CPU_MODE_ABORT
     mov sp, #0x00007000
 
-    // Run kernel in supervisor mode
-    mov r0, 0xD3
-    msr cpsr_c, r0
-
+    SET_CPU_MODE CPU_MODE_SVC
+ 
     // jump to kernel entrypoint
     bl kernel_main
 
@@ -108,13 +97,16 @@ _svc_handler:
 
     // I.3 - save the **user mode** stack pointer/lr
     // in system mode we read user lr/sp
-    mov r4, #0x1F            // switch to the system cpu mode (0x1F)
+    mrs r4, cpsr
+    orr r4, #0x1F            // switch to the system cpu mode (0x1F)
     msr cpsr_c, r4
 
     mov r5, lr              // save lr_svc
     mov r6, sp              // save sp
 
-    mov r4, #0x13           // switch back to the SVC cpu mode (0x13)
+    mrs r4, cpsr
+    bic r4, #0x1F
+    orr r4, #0x13           // switch back to the SVC cpu mode (0x13)
     msr cpsr_c, r4
 
     push { r5-r6 }         // push user mode lr then stack pointer
@@ -168,11 +160,9 @@ _fiq_handler:
     subs pc, lr, #4
 
 _data_abort:
+    // TODO: what if the kernel is faulty ?????????
     // switch to svc mode, throw away current process state
-    mrs r0, cpsr
-    bic r0, r0, #0x1F  // clear mode
-    orr r0, r0, #0x13  // write mode=svc
-    msr cpsr_c, r0
+    SET_CPU_MODE CPU_MODE_SVC
 
     // restore kernel translation table
     bl kernel_restore_translation_table
@@ -190,6 +180,9 @@ _data_abort:
 _undefined_handler:
 _prefetch_abort:
 _reserved_handler:
+
+    SET_CPU_MODE CPU_MODE_SVC
+
     // Default handler: fatal error
     bl kernel_unhandled_interupt_fatal_error
     b .
