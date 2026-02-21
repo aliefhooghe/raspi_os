@@ -515,6 +515,21 @@ void scheduler_start(const char *init_path)
     __scheduler_exec_init(virt_exec_path );
 }
 
+void scheduler_data_exception(uint32_t spsr)
+{
+    const uint8_t cpu_mode = spsr & CPU_CPSR_MODE_MASK;
+    mini_uart_kernel_puts("[kernel] scheduler: Illegal Memory Access\r\n");
+    if (cpu_mode == CPU_CPSR_MODE_USER)
+    {
+        scheduler_cur_proc_exit(1);
+    }
+    else
+    {
+        kernel_fatal_error(
+            "data exception was thrown from kernel code\n");
+    }
+}
+
 //
 //  Scheduler context switching: Called from asm code in interupt.S
 //
@@ -540,10 +555,7 @@ const process_t *scheduler_switch_task(void)
         "scheduler: switch proc %u => %u (section=%x).",
         old_pid, next_proc->id, next_proc->memory_section);
 
-    // 1 - select the process translation table
-    // mmu_setranslation_table(next_proc->translation_table);
-
-    // 2 - return the proc context to be restored
+    // return the proc context to be restored
     return next_proc;
 }
 
@@ -748,12 +760,6 @@ void scheduler_cur_proc_exit(int32_t status)
         // remove process
         _remove_process(current_proc);
     }
-}
-
-void scheduler_cur_proc_exception(void)
-{
-    mini_uart_kernel_puts("[kernel] scheduler: Illegal Memory Access from current process\r\n");
-    scheduler_cur_proc_exit(1);
 }
 
 int32_t scheduler_cur_proc_get_id(void)

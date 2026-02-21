@@ -7,10 +7,10 @@
 .set CPU_MODE_SYS,  0x1F
 
 // Set the current cpu mode without affecting fiq/irq flags
-.macro SET_CPU_MODE mode
-    mrs r0, cpsr
-    bic r0, r0, #0x1F    // clear current cpu mode
-    orr r0, r0, #\mode   // set cpu mode
-    msr cpsr_c, r0
+.macro SET_CPU_MODE mode, reg=r12
+    mrs \reg, cpsr
+    bic \reg, \reg, #0x1F    // clear current cpu mode
+    orr \reg, \reg, #\mode   // set cpu mode
+    msr cpsr_c, r12
 .endm
 

@@ -44,23 +44,25 @@ _reset_handler:
      *     ABORT st.:   0x00007000 -> 0x00006000: 4 KB
      */
 
+    // setup stack svc stack
+    SET_CPU_MODE CPU_MODE_SVC
+    mov sp, #0x00006000
+
     // Disable IRQ/FIQ interupts
     bl cpu_irq_disable
     bl cpu_fiq_disable
 
-    // setup stack for each cpu modes
+    // setup stack for FIQ/IRQ/ABORT modes
     SET_CPU_MODE CPU_MODE_FIQ
     mov sp, #0x00001000
 
     SET_CPU_MODE CPU_MODE_IRQ
     mov sp, #0x00002000
 
-    SET_CPU_MODE CPU_MODE_SVC
-    mov sp, #0x00006000
-
     SET_CPU_MODE CPU_MODE_ABORT
     mov sp, #0x00007000
 
+    // run kernel in svc mode
     SET_CPU_MODE CPU_MODE_SVC
  
     // jump to kernel entrypoint
@@ -160,15 +162,21 @@ _fiq_handler:
     subs pc, lr, #4
 
 _data_abort:
+
+    // read saved status register
+    mrs r0, spsr
+
     // TODO: what if the kernel is faulty ?????????
     // switch to svc mode, throw away current process state
     SET_CPU_MODE CPU_MODE_SVC
+    push { r0 }
 
     // restore kernel translation table
     bl kernel_restore_translation_table
 
     // error handling
-    bl scheduler_cur_proc_exception
+    pop { r0 }
+    bl scheduler_data_exception
 
     // switch to next stack
     bl scheduler_switch_task

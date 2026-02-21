@@ -27,13 +27,17 @@ __scheduler_set_task_context:
     ldr r2, [r0]            // load saved sp from context
     add r0, r0, #4
 
-    mov r3, #0x1F           // switch to the system cpu mode (0x1F)
+    // TODO: are we not re enabling exception here by accident ?????
+    mrs r3, cpsr
+    orr r3, #0x1F           // switch to the system cpu mode (0x1F)
     msr cpsr_c, r3
 
     mov lr, r1              // restore lr
     mov sp, r2              // restore sp
 
-    mov r2, #0x13           // switch to the SVC cpu mode (0x13)
+    mrs r2, cpsr
+    bic r2, r2, #0x1F
+    orr r2, #0x13           // switch to the SVC cpu mode (0x13)
     msr cpsr_c, r2
 
     // 3 - restore the saved program status register

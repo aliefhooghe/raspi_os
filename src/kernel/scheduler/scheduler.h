@@ -22,6 +22,7 @@ typedef struct process process_t;
 // called from kernel.c entrypoint
 void scheduler_init(void);
 void scheduler_start(const char *init_path);
+void scheduler_data_exception(uint32_t spsr);
 
 // called from asm code in interupt.S
 void scheduler_save_current_context(const task_context_t *current_context);
@@ -31,7 +32,6 @@ const process_t *scheduler_switch_task(void);
 void scheduler_cur_proc_set_syscall_status(int32_t status);
 
 void scheduler_cur_proc_exit(int32_t status);
-void scheduler_cur_proc_exception(void);
 
 int32_t scheduler_cur_proc_fork(void);
 int32_t scheduler_cur_proc_exec(const char *path, const process_args_t *argv);
