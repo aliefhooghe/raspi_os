@@ -99,19 +99,16 @@ _svc_handler:
 
     // I.3 - save the **user mode** stack pointer/lr
     // in system mode we read user lr/sp
-    mrs r4, cpsr
-    orr r4, #0x1F            // switch to the system cpu mode (0x1F)
-    msr cpsr_c, r4
+    // switch to the system cpu mode (0x1F)
+    SET_CPU_MODE CPU_MODE_SYS
 
-    mov r5, lr              // save lr_svc
-    mov r6, sp              // save sp
+    mov r4, lr              // save lr_svc
+    mov r5, sp              // save sp
 
-    mrs r4, cpsr
-    bic r4, #0x1F
-    orr r4, #0x13           // switch back to the SVC cpu mode (0x13)
-    msr cpsr_c, r4
+    // switch back to the SVC cpu mode (0x13)
+    SET_CPU_MODE CPU_MODE_SVC
 
-    push { r5-r6 }         // push user mode lr then stack pointer
+    push { r4-r5 }          // push user mode lr then stack pointer
 
     // save syscall number and parameters
     push {r0-r3}
@@ -147,8 +144,7 @@ _svc_handler:
     bl scheduler_switch_task
 
     // restore the next task context
-    ldr r1, [r0, #88]               // load translation table (offset asserted in C code)
-    b __scheduler_set_task_context  // r0=context, r1=translation_table
+    b __scheduler_set_task_context  // r0=process
 
 _irq_handler:
     // timers, etc.
@@ -180,8 +176,7 @@ _data_abort:
 
     // switch to next stack
     bl scheduler_switch_task
-    ldr r1, [r0, #88]               // load translation table (offset asserted in C code)
-    b __scheduler_set_task_context  // r0=context, r1=translation_table
+    b __scheduler_set_task_context  // r0=process
 
 
 // Unhandled interuptions

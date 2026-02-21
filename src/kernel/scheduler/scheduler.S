@@ -1,5 +1,6 @@
 
     .section ".data"
+    .include "src/kernel/hardware/cpu_modes.inc"
 msg:
     .asciz "Unexpected return to scheduler start avec initial SVC"
 
@@ -8,8 +9,10 @@ msg:
 
     .globl __scheduler_set_task_context
 __scheduler_set_task_context:
-    // r0: task_context_t* task_context
-    // r1: uint32_t *translation_table
+    // r0: const process_t *proc
+
+    // load translation table (offset asserted in C code)
+    ldr r1, [r0, #88]  // r1 = proc->translation_table
 
     // restore the task context
 
@@ -27,18 +30,14 @@ __scheduler_set_task_context:
     ldr r2, [r0]            // load saved sp from context
     add r0, r0, #4
 
-    // TODO: are we not re enabling exception here by accident ?????
-    mrs r3, cpsr
-    orr r3, #0x1F           // switch to the system cpu mode (0x1F)
-    msr cpsr_c, r3
+    // switch to the system cpu mode
+    SET_CPU_MODE CPU_MODE_SYS
 
     mov lr, r1              // restore lr
     mov sp, r2              // restore sp
 
-    mrs r2, cpsr
-    bic r2, r2, #0x1F
-    orr r2, #0x13           // switch to the SVC cpu mode (0x13)
-    msr cpsr_c, r2
+    // switch to the SVC cpu mode
+    SET_CPU_MODE CPU_MODE_SVC
 
     // 3 - restore the saved program status register
     ldr r1, [r0]            // load saved spsr
