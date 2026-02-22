@@ -24,7 +24,7 @@
 // IRQ: hardware interupts
 // 
 #define REG__IRQ_BASE               0x2000B000u  // The base address for the ARM interrupt register
-#define REG__IRQ_PEND_BASE          0x2000B200u  // IRQ basic pending
+#define REG__IRQ_PEND_BASIC         0x2000B200u  // IRQ basic pending
 #define REG__IRQ_PEND_1             0x2000B204u  // IRQ pending 1
 #define REG__IRQ_PEND_2             0x2000B208u  // IRQ pending 2
 #define REG__IRQ_FIQ_CTL            0x2000B20Cu  // FIQ control
@@ -84,17 +84,30 @@
 
 // --------------------------------------------------------------------------------
 // 
-//  ARM_TIMER: TODO
+//  SYS_TIMER: System Timer
+//
+#define REG__SYS_TIMER_CS           0x20003000u  // System Timer Control/Status. Write 1 to clear
+#define REG__SYS_TIMER_CLO          0x20003004u  // System Timer Counter Lower 32 bits
+#define REG__SYS_TIMER_CHI          0x20003008u  // System Timer Counter Higher 32 bits
+#define REG__SYS_TIMER_C0           0x2000300Cu  // System Timer Compare 0
+#define REG__SYS_TIMER_C1           0x20003010u  // System Timer Compare 1
+#define REG__SYS_TIMER_C2           0x20003014u  // System Timer Compare 2
+#define REG__SYS_TIMER_C3           0x20003018u  // System Timer Compare 3
+
+// --------------------------------------------------------------------------------
 // 
-#define REG__ARM_TIMER_LOD          0x2000B400u
-#define REG__ARM_TIMER_VAL          0x2000B404u
-#define REG__ARM_TIMER_CTL          0x2000B408u
-#define REG__ARM_TIMER_CLI          0x2000B40Cu
-#define REG__ARM_TIMER_RIS          0x2000B410u
-#define REG__ARM_TIMER_MIS          0x2000B414u
-#define REG__ARM_TIMER_RLD          0x2000B418u
-#define REG__ARM_TIMER_DIV          0x2000B41Cu
-#define REG__ARM_TIMER_CNT          0x2000B420u
+//  ARM_TIMER: Internal ARM timer. Depends on cpu frequency
+//  note: I am not sure this emulated by qemu
+// 
+#define REG__ARM_TIMER_LOD          0x2000B400u  // Load
+#define REG__ARM_TIMER_VAL          0x2000B404u  // Value (read only)
+#define REG__ARM_TIMER_CTL          0x2000B408u  // Control
+#define REG__ARM_TIMER_CLI          0x2000B40Cu  // IRQ Clear/Ack (write only)
+#define REG__ARM_TIMER_RIS          0x2000B410u  // RAW IRQ (Read Only)
+#define REG__ARM_TIMER_MIS          0x2000B414u  // Masked IRQ (Read Only)
+#define REG__ARM_TIMER_RLD          0x2000B418u  // Reload
+#define REG__ARM_TIMER_DIV          0x2000B41Cu  // Pre divider
+#define REG__ARM_TIMER_CNT          0x2000B420u  // Free running counter
 
 
 // --------------------------------------------------------------------------------

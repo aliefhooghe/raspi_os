@@ -4,6 +4,7 @@
 #include "kernel.h"
 #include "kernel_types.h"
 
+#include "hardware/system_timer.h"
 #include "hardware/cpu.h"
 #include "hardware/io_registers.h"
 #include "hardware/mini_uart.h"
@@ -92,8 +93,6 @@ static void _kernel_init_translation_table(uint32_t *table)
 static void _kernel_init(void)
 {
     _kernel_clear_bss();
-    cpu_irq_disable();
-    cpu_fiq_disable();
 
     // initialize the mini UART
     mini_uart_init();
@@ -103,12 +102,13 @@ static void _kernel_init(void)
     // initialize the sdio controller
     sdhost_init();
 
+    // initialize the system timer
+    system_timer_init();
+
     // Initialize the section allocator
-    mini_uart_kernel_log("initialize the section allocator");
     section_allocator_init(KERNEL_DYN_SECTIONS_BEGIN);
 
     // Initialize the general purpose memory allocator
-    mini_uart_kernel_log("initialize the memory allocator");
     memory_allocator_init();
 
     // Initialize the translation table allocator

@@ -1,29 +1,20 @@
 
+#include <stdint.h>
 
-#include "hardware/cpu.h"
 #include "hardware/io_registers.h"
-#include "hardware/mini_uart.h"
+#include "hardware/irq.h"
 #include "hardware/mmio.h"
+#include "hardware/system_timer.h"
 
 void irq_handler(void)
 {
-    unsigned int rb,rc;
+    const uint32_t grp1_pending = mmio_read(REG__IRQ_PEND_1);
 
-    const uint16_t cpu_mode = cpu_get_execution_mode();
-    mini_uart_kernel_log("cpu mode: 0x%x\r\n", cpu_mode);
-
-    // goal: empty the rx buffer
-    // an interrupt has occurred, find out why
-    while(1) //resolve all interrupts to uart
+    if (grp1_pending & IRQ1_SYSTEM_TIMER_3)
     {
-        rb=mmio_read(REG__AUX_MU_IIR_REG);
-        if((rb&1)==1) break; //no more interrupts
-        if((rb&6)==4)
-        {
-            //receiver holds a valid byte
-            rc=mmio_read(REG__AUX_MU_IO_REG); //read byte from rx fifo
-            // rxbuffer[rxhead]=rc&0xFF;
-            // rxhead=(rxhead+1)&RXBUFMASK;
-        }
+        mmio_write(REG__SYS_TIMER_CS, SYS_TIMER_CS_M3);
+        const uint32_t delay = 10000;  // 10 ms at 1Mhz
+        const uint32_t next_tick = mmio_read(REG__SYS_TIMER_CLO) + delay;
+        mmio_write(REG__SYS_TIMER_C3, next_tick);
     }
 }

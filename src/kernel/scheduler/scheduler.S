@@ -26,18 +26,21 @@ __scheduler_set_task_context:
     // 2 - restore the **user mode** stack pointer and lr
     ldr r1, [r0]            // load saved lr_usr from context
     add r0, r0, #4
-    
+
     ldr r2, [r0]            // load saved sp from context
     add r0, r0, #4
 
+    // save current cpu mode
+    GET_CPU_MODE r3
+
     // switch to the system cpu mode
-    SET_CPU_MODE CPU_MODE_SYS
+    SET_CPU_MODE #CPU_MODE_SYS
 
     mov lr, r1              // restore lr
     mov sp, r2              // restore sp
 
-    // switch to the SVC cpu mode
-    SET_CPU_MODE CPU_MODE_SVC
+    // switch back to previous cpu mode
+    SET_CPU_MODE r3
 
     // 3 - restore the saved program status register
     ldr r1, [r0]            // load saved spsr

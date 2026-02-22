@@ -1,5 +1,5 @@
-#ifndef SATAN_GPIO_H_
-#define SATAN_GPIO_H_
+#ifndef SATAN_HARDWARE_GPIO_H_
+#define SATAN_HARDWARE_GPIO_H_
 
 #include <stdint.h>
 

@@ -47,6 +47,7 @@ kernel_sources = files(
   'src/kernel/utils.c',
   'src/kernel/elf_loader/elf_loader.c',
 
+  'src/kernel/hardware/system_timer.c',
   'src/kernel/hardware/cpu.S',
   'src/kernel/hardware/gpio.c',
   'src/kernel/hardware/interupts.c',

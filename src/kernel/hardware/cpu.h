@@ -1,5 +1,5 @@
-#ifndef SATAN_CPU_H_
-#define SATAN_CPU_H_
+#ifndef SATAN_HARDWARE_CPU_H_
+#define SATAN_HARDWARE_CPU_H_
 
 #include <stdint.h>
 

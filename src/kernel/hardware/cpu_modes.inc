@@ -10,7 +10,12 @@
 .macro SET_CPU_MODE mode, reg=r12
     mrs \reg, cpsr
     bic \reg, \reg, #0x1F    // clear current cpu mode
-    orr \reg, \reg, #\mode   // set cpu mode
+    orr \reg, \reg, \mode   // set cpu mode
     msr cpsr_c, r12
+.endm
+
+.macro GET_CPU_MODE reg
+    mrs \reg, cpsr
+    and \reg, 0x1F
 .endm
 

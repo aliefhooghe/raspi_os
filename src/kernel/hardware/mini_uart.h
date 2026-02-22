@@ -23,7 +23,7 @@ void mini_uart_kernel_puts(const char* str);
 #ifdef KERNEL_ENABLE_LOG
 void mini_uart_kernel_log(const char *restrict format, ...);
 #else
-#define mini_uart_kernel_log(...)
+#define mini_uart_kernel_log(...) (void)(0, __VA_ARGS__)
 #endif
 
 

@@ -212,11 +212,12 @@ static void _proc_context_init(
     _memset(context, 0, sizeof(task_context_t));
     context->r0 = argv;
     context->sp = stack_address;
-    context->lr_svc = entry;
+    context->lr = entry;
+
+    // user mode fiq disabled / irq enabled
     context->spsr =
         CPU_CPSR_MODE_USER |
-        CPU_CPSR_DISABLE_IRQ |
-        CPU_CPSR_DISABLE_FIQ;
+        CPU_CPSR_DISABLE_FIQ ;
 }
 
 static void _proc_init_resources(

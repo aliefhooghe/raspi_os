@@ -44,26 +44,24 @@ _reset_handler:
      *     ABORT st.:   0x00007000 -> 0x00006000: 4 KB
      */
 
+    // irq/fiq are disabled at startup
+
     // setup stack svc stack
-    SET_CPU_MODE CPU_MODE_SVC
+    SET_CPU_MODE #CPU_MODE_SVC
     mov sp, #0x00006000
 
-    // Disable IRQ/FIQ interupts
-    bl cpu_irq_disable
-    bl cpu_fiq_disable
-
     // setup stack for FIQ/IRQ/ABORT modes
-    SET_CPU_MODE CPU_MODE_FIQ
+    SET_CPU_MODE #CPU_MODE_FIQ
     mov sp, #0x00001000
 
-    SET_CPU_MODE CPU_MODE_IRQ
+    SET_CPU_MODE #CPU_MODE_IRQ
     mov sp, #0x00002000
 
-    SET_CPU_MODE CPU_MODE_ABORT
+    SET_CPU_MODE #CPU_MODE_ABORT
     mov sp, #0x00007000
 
     // run kernel in svc mode
-    SET_CPU_MODE CPU_MODE_SVC
+    SET_CPU_MODE #CPU_MODE_SVC
  
     // jump to kernel entrypoint
     bl kernel_main
@@ -71,8 +69,9 @@ _reset_handler:
     // TODO: display a fatal error
 hang: b hang
 
+// Software interupts
 _svc_handler:
-    // comming from usermode. No need to save svc mode register for caller.
+    // irqs are disabled for us, but not FIQ !
 
     // svc number         : from lr (not used for now)
     // syscall number     : r0
@@ -80,7 +79,7 @@ _svc_handler:
 
     // I - save the task context on the stack:
 
-    // I.1 - save r1-r12 and lr_svc registers on the stack 
+    // I.1 - save r1-r12 and lr_svc registers on the stack
     stmfd sp!, {r1-r12, lr}
 
     // may be usefull later: retrieve the svcnum
@@ -100,13 +99,13 @@ _svc_handler:
     // I.3 - save the **user mode** stack pointer/lr
     // in system mode we read user lr/sp
     // switch to the system cpu mode (0x1F)
-    SET_CPU_MODE CPU_MODE_SYS
+    SET_CPU_MODE #CPU_MODE_SYS
 
     mov r4, lr              // save lr_svc
     mov r5, sp              // save sp
 
     // switch back to the SVC cpu mode (0x13)
-    SET_CPU_MODE CPU_MODE_SVC
+    SET_CPU_MODE #CPU_MODE_SVC
 
     push { r4-r5 }          // push user mode lr then stack pointer
 
@@ -147,12 +146,43 @@ _svc_handler:
     b __scheduler_set_task_context  // r0=process
 
 _irq_handler:
+    // irqs are disabled for us, but not FIQ !
+
     // timers, etc.
     // pc = lr - #4 (lr = return adress): return from interupt
-    stmfd sp!, {r0-r12, lr}
+
+    // Push current stack context
+    // save r1_r12 and lr_irq registers on the stack
+    sub lr, lr, #4
+    stmfd sp!, {r1-r12, lr}
+
+    // save spsr on the stack
+    mrs r1, spsr
+    push { r1 }
+
+    // save lr user, sp
+    SET_CPU_MODE #CPU_MODE_SYS
+    mov r4, lr              // save lr
+    mov r5, sp              // save sp
+    SET_CPU_MODE #CPU_MODE_IRQ
+    push { r4-r5 }          // push user mode lr then stack pointer
+
+    push { r0 }             // push user r0 on the stack
+    // ----
+
+    bl kernel_restore_translation_table
+
+    // save current process context
+    mov r0, sp
+    bl scheduler_save_current_context
+    add sp, sp, #68   // sizeof(context)
+
+    // handle interupt
     bl irq_handler
-    ldmfd sp!, {r0-r12, lr}
-    subs pc, lr, #4
+
+    // switch to next process
+    bl scheduler_switch_task
+    b __scheduler_set_task_context  // r0=process
 
 _fiq_handler:
     subs pc, lr, #4
@@ -164,7 +194,7 @@ _data_abort:
 
     // TODO: what if the kernel is faulty ?????????
     // switch to svc mode, throw away current process state
-    SET_CPU_MODE CPU_MODE_SVC
+    SET_CPU_MODE #CPU_MODE_SVC
     push { r0 }
 
     // restore kernel translation table
@@ -184,7 +214,8 @@ _undefined_handler:
 _prefetch_abort:
 _reserved_handler:
 
-    SET_CPU_MODE CPU_MODE_SVC
+    SET_CPU_MODE #CPU_MODE_SVC
+    bl kernel_restore_translation_table
 
     // Default handler: fatal error
     bl kernel_unhandled_interupt_fatal_error
