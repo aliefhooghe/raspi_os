@@ -2,11 +2,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "hardware/mini_uart.h"
 #include "hardware/watchdog.h"
 #include "kernel.h"
 #include "kernel_types.h"
 #include "lib/str.h"
+#include "log/log.h"
 #include "scheduler/scheduler.h"
 #include "syscalls.h"
 #include "vfs/vfs.h"
@@ -118,7 +118,7 @@ static int32_t _syscall__WRITE(uint32_t arg0, uint32_t arg1, uint32_t arg2)
     const int32_t fd = arg0;
     const void* data = scheduler_cur_proc_to_kernel_address(arg1);
     const size_t size = arg2;
-    mini_uart_kernel_log("write from paddr %x", data);
+    kernel_log("write from paddr %x", data);
     file_t *file = scheduler_cur_proc_get_fd(fd);
     if (file == NULL)
         return SYSCALL_STATUS_ERR;
@@ -237,14 +237,14 @@ void kernel_syscall_handler(
     // check for out of range syscall number
     if (syscall_num >= SYSCALL_COUNT)
     {
-        mini_uart_kernel_log("syscall: invalid number: %u", syscall_num);
+        kernel_log("syscall: invalid number: %u", syscall_num);
         scheduler_cur_proc_set_syscall_status(-1);
         return;
     }
     
     // find calling process
     const int32_t calling_pid = scheduler_cur_proc_get_id();
-    mini_uart_kernel_log(
+    kernel_log(
         "syscall: %s pid=%u args=0x%x 0x%x 0x%x",
         _syscall_names[syscall_num], calling_pid,
         arg0, arg1, arg2);

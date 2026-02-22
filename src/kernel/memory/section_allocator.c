@@ -4,7 +4,7 @@
 
 #include "bitfield.h"
 #include "section_allocator.h"
-#include "hardware/mini_uart.h"
+#include "log/log.h"
 #include "hardware/mmu.h"
 
 #include "lib/str.h"
@@ -21,7 +21,7 @@ static section_allocator_t _section_allocator;
 
 void section_allocator_init(uint32_t sections_base)
 {
-    mini_uart_kernel_log("section allocator: init: base=%x", sections_base);
+    kernel_log("section allocator: init: base=%x", sections_base);
     _memset(&_section_allocator, 0, sizeof(section_allocator_t));
     _section_allocator.sections_base = sections_base;
 }
@@ -36,7 +36,7 @@ void *section_allocator_alloc(void)
     }
     else {
         void *const section = (void *)(_section_allocator.sections_base + section_index * MMU_SECTION_SIZE);
-        mini_uart_kernel_log(
+        kernel_log(
             "section allocator: alloc section @ %x",
             section);
         return section;
@@ -45,7 +45,7 @@ void *section_allocator_alloc(void)
 
 void section_allocator_free(void *section)
 {
-    mini_uart_kernel_log(
+    kernel_log(
         "section allocator: free section @ %x",
         section);
     const uint32_t address = (uint32_t)section;

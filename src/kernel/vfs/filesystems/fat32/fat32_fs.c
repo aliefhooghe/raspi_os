@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "hardware/mini_uart.h"
+#include "log/log.h"
 #include "kernel.h"
 #include "kernel_types.h"
 #include "lib/str.h"
@@ -97,7 +97,7 @@ static fat32_sb_private_t *_fat32_init_fs_private(block_device_t *device)
     // validate boot sector
     const fat_boot_sector_t *boot_sector = (fat_boot_sector_t*)sector;
     if (!_is_fat32_boot_sector(boot_sector)) {
-        mini_uart_kernel_log("fat32fs: not a fat32 filesystem");
+        kernel_log("fat32fs: not a fat32 filesystem");
         return NULL;
     }
 
@@ -106,8 +106,8 @@ static fat32_sb_private_t *_fat32_init_fs_private(block_device_t *device)
             boot_sector->total_sectors_16 :
             boot_sector->total_sectors_32);
 
-    mini_uart_kernel_log("[FAT32] sector count = %u", sector_count);
-    mini_uart_kernel_log("[FAT32] reserverd sector count = %u", boot_sector->reserved_sector_count);
+    kernel_log("[FAT32] sector count = %u", sector_count);
+    kernel_log("[FAT32] reserverd sector count = %u", boot_sector->reserved_sector_count);
 
     //
     // read fat32 extended boot sector
@@ -277,7 +277,7 @@ static uint32_t _fat_read_table(
     fat32_sb_private_t *sb_private,
     uint32_t cluster_query)
 {
-    mini_uart_kernel_log("fat32: read_fat_table(0x%x). fat sector start is 0x%x", cluster_query, sb_private->fat_sector_start);
+    kernel_log("fat32: read_fat_table(0x%x). fat sector start is 0x%x", cluster_query, sb_private->fat_sector_start);
     block_device_t *device = sb_private->device;
     uint8_t sector[FAT32_SECTOR_SIZE];
 
@@ -295,7 +295,7 @@ static uint32_t _fat_read_table(
     // read the FAT entry
     const uint32_t entry_value = FAT_ENTRY_MASK & *(uint32_t*)(sector + entry_sector_offset);
 
-    mini_uart_kernel_log("fat32: read_fat_table(%u) => %u", cluster_query, entry_value);
+    kernel_log("fat32: read_fat_table(%u) => %u", cluster_query, entry_value);
 
     // TODO: handle special values
     KERNEL_ASSERT(
@@ -336,7 +336,7 @@ static void _fat_next_sector_location(
     {
         const uint32_t fat_entry = _fat_read_table(sb_private, location->cluster);
 
-        mini_uart_kernel_log(
+        kernel_log(
             "fat32: end of cluster %u (sector index = %u): goto cluster %u",
             location->cluster, location->sector_index, fat_entry);
 
@@ -371,7 +371,7 @@ static void _fat_prev_sector_location(
             prev_cluster = fat_entry;
         }
 
-        mini_uart_kernel_log(
+        kernel_log(
             "fat32: begin of cluster 0x%x (sector index = %u): goto cluster %u",
             location->cluster, location->sector_index, prev_cluster);
 
@@ -418,7 +418,7 @@ static const fat_sfn_directory_entry_t *fat_32_directory_entry_iterator_next(
         }
 
         // retrieve entry from sector (cache)
-        mini_uart_kernel_log("fat32: retrieve entry @ cluster=%u sector=%u index=%u",
+        kernel_log("fat32: retrieve entry @ cluster=%u sector=%u index=%u",
             it->entry_loc.sector_loc.cluster,
             it->entry_loc.sector_loc.sector_index,
             it->entry_loc.entry_index);
@@ -428,7 +428,7 @@ static const fat_sfn_directory_entry_t *fat_32_directory_entry_iterator_next(
         // reached end
         if (entry->filename[0] == 0x0u)
         {
-            mini_uart_kernel_log("fat32: entry is END");
+            kernel_log("fat32: entry is END");
             return NULL;
         }
 
@@ -460,7 +460,7 @@ static const fat_sfn_directory_entry_t *fat_32_directory_entry_iterator_next(
             const uint16_t lfn_seq_num = (lfn_entry->sequence & FAT_LFN_SEQ_NUM_MASK);
             const uint16_t lfn_seq_pos = FAT_LFN_CHAR_COUNT * (lfn_seq_num - 1u);
 
-            mini_uart_kernel_log("fat32: Retrieve LFN entry (seq=%u)", lfn_seq_num);
+            kernel_log("fat32: Retrieve LFN entry (seq=%u)", lfn_seq_num);
 
             // start a LFN sequence
             if (lfn_entry->sequence & FAT_LFN_SEQ_LAST_LONG_ENTRY)
@@ -514,7 +514,7 @@ static const fat_sfn_directory_entry_t *fat_32_directory_entry_iterator_next(
 
 static file_t *_fat32_fs_reg_file_open(inode_t *inode)
 {
-    mini_uart_kernel_log("fat32_fs: reg_file_ops: open");
+    kernel_log("fat32_fs: reg_file_ops: open");
     fat32_file_reg_private_t *reg_private =
         memory_calloc(sizeof(fat32_file_reg_private_t ));
 
@@ -542,7 +542,7 @@ static int _fat32_fs_reg_file_release(inode_t *inode, file_t *file)
 static ssize_t _fat32_fs_reg_file_read(
     file_t *file, void *data, size_t size)
 {
-    mini_uart_kernel_log("fat32fs: reg_file_ops: read");
+    kernel_log("fat32fs: reg_file_ops: read");
 
     inode_t *inode = file->inode;
     KERNEL_ASSERT(inode != NULL);
@@ -614,7 +614,7 @@ static ssize_t _fat32_fs_reg_file_write(
 static ssize_t _fat32_fs_reg_file_seek(
     file_t *file, int32_t offset, int32_t whence)
 {
-    mini_uart_kernel_log("fat32fs: reg_file_ops: seek");
+    kernel_log("fat32fs: reg_file_ops: seek");
 
     inode_t *inode = file->inode;
     KERNEL_ASSERT(inode != NULL);
@@ -677,7 +677,7 @@ static const file_ops_t _fat32_fs_reg_file_ops = {
 
 static file_t *_fat32_fs_dir_open(inode_t *inode)
 {
-    mini_uart_kernel_log("fat32_fs: dir_file_ops: open");
+    kernel_log("fat32_fs: dir_file_ops: open");
     fat32_file_dir_private_t *dir_private =
         memory_calloc(sizeof(fat32_file_dir_private_t));
 
@@ -705,7 +705,7 @@ static int _fat32_fs_dir_release(inode_t *inode, file_t *file)
 static int _fat32_fs_dir_readdir(
     file_t *file, struct dirent *entries, size_t count)
 {
-    mini_uart_kernel_log("fat32fs: dir_file_ops: readdir");
+    kernel_log("fat32fs: dir_file_ops: readdir");
 
     inode_t *dir = file->inode;
     KERNEL_ASSERT(dir != NULL);
@@ -793,7 +793,7 @@ static inode_t *_fat32fs_inode_lookup(inode_t *dir, const char *name)
         }
 
         // do we need to call read inode here ???????
-        mini_uart_kernel_log("fat32: lookup success for file %s", name);
+        kernel_log("fat32: lookup success for file %s", name);
         return _fat32_create_inode(entry, sb, entry_ino);
     }
 
@@ -816,7 +816,7 @@ static const inode_ops_t _fat32_fs_inode_ops = {
 static inode_t *_fat32_sb_alloc_inode(super_block_t *fat32_sb)
 {
     // TODO: default impl like for fileops.open ? Decide why private is not allocated here
-    mini_uart_kernel_log("fat32fs: super-block: alloc inode ");
+    kernel_log("fat32fs: super-block: alloc inode ");
     inode_t *inode = memory_calloc(sizeof(inode_t));
 
     KERNEL_ASSERT(inode != NULL);
@@ -838,7 +838,7 @@ static int _fat32_sb_read_inode(super_block_t *fat32_sb, ino_t ino, inode_t *ino
     // TODO: 
     // - in theory this should only be called on sb mount, but what if it
     //   is called another time ? 
-    mini_uart_kernel_log("fat32: super-block: read inode %u", ino);
+    kernel_log("fat32: super-block: read inode %u", ino);
 
     // this is the only one which should be read one time on the fat32fs
     //
@@ -891,7 +891,7 @@ static inode_t *_fat32_create_inode(
         entry->starting_cluster_low | (entry->starting_cluster_high << 16)
     );
 
-    mini_uart_kernel_log(
+    kernel_log(
         "fat32: create inode: ino=%u cluster num=%u mode=%s",
         ino, cluster_num, is_dir ? "DIR" : "REG");
 
@@ -915,12 +915,12 @@ static inode_t *_fat32_create_inode(
 // 
 super_block_t *fat32_create_filesystem(block_device_t *blk_dev)
 {
-    mini_uart_kernel_log("fat32fs: create superblock");
+    kernel_log("fat32fs: create superblock");
 
     // allocate private data
     fat32_sb_private_t* private = _fat32_init_fs_private(blk_dev);
     if (private == NULL) {
-        mini_uart_kernel_log("fat32fs: failed to load a fat32 fs from device");
+        kernel_log("fat32fs: failed to load a fat32 fs from device");
         return NULL;
     }
 

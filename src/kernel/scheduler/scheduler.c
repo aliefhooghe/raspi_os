@@ -4,7 +4,8 @@
 #include "elf_loader/elf_loader.h"
 
 #include "hardware/cpu.h"
-#include "hardware/mini_uart.h"
+#include "hardware/io_registers.h"
+#include "log/log.h"
 #include "hardware/mmu.h"
 
 #include "kernel.h"
@@ -160,7 +161,7 @@ static void _remove_process(process_t *proc)
         kernel_fatal_error(
             "trying to remove a process outside of process table");
 
-    mini_uart_kernel_log(
+    kernel_log(
         "scheduler: remove proc index=%u, pid=%u",
         index, proc->id);
 
@@ -255,12 +256,12 @@ int32_t _proc_add_fd(
     if (fd >= 0) {
         file->fd_count++;
         proc->files[fd] = file;
-        mini_uart_kernel_log(
+        kernel_log(
             "scheduler: add fd=%d to proc pid=%d",
             fd, proc->id);
     }
     else {
-        mini_uart_kernel_log(
+        kernel_log(
             "scheduler: proc_add_fd: failed to aquired a proc file descriptor (pid=%d)",
             proc->id);
     }
@@ -287,7 +288,7 @@ static file_t *_proc_get_fd(
     if (!bitfield_bit(
         proc->files_bitfield,
         FD_BITFIELD_COUNT, fd)) {
-        mini_uart_kernel_log(
+        kernel_log(
             "scheduler: proc_get_fd: no fd %d for process %d",
             fd, proc->id
         );
@@ -345,7 +346,7 @@ static int32_t __load_proc_from_elf(
     elf32_program_header_t phdr;
     while (1 == (st = elf32_program_header_iterator_read_next(&it, &phdr))) {
         // only handle PT_LOAD sections
-        mini_uart_kernel_log(
+        kernel_log(
             "scheduler: elf: read section: type=%x",
             phdr.type);
         if (phdr.type != PT_LOAD || phdr.vaddress == 0u) {
@@ -357,7 +358,7 @@ static int32_t __load_proc_from_elf(
         // load section to process image memory
         uint8_t *const dst_kaddr = mmu_translate_virtual_address(
             proc->translation_table, phdr.vaddress);
-        mini_uart_kernel_log(
+        kernel_log(
             "scheduler: elf: load PT_LOAD section to %x=>%x (paddr=%x) (file_sz=%u/mem_sz=%u)",
             phdr.vaddress, phdr.vaddress + phdr.mem_size, dst_kaddr,
             phdr.file_size, phdr.mem_size);
@@ -387,7 +388,7 @@ static int32_t __load_proc_from_elf(
     uint32_t v_argv[16];  // args virtual addresses
 
     KERNEL_ASSERT(args != NULL);
-    mini_uart_kernel_log("scheduler: argc = %u", args->argc);
+    kernel_log("scheduler: argc = %u", args->argc);
     KERNEL_ASSERT(args->argc < 16);
 
     // copy argv strings
@@ -423,7 +424,7 @@ static int32_t __load_proc_from_elf(
     // 2 - reset cpu context
     const uint32_t entry = elf_file.header.entry;
     KERNEL_ASSERT(entry != 0u);
-    mini_uart_kernel_log(
+    kernel_log(
         "scheduler: exec: set entry=%x",
         entry);
     KERNEL_ASSERT(
@@ -467,7 +468,7 @@ void scheduler_start(const char *init_path)
     _scheduler->proc_count = 1u;
 
     // init process: pid, memory section alloc
-    mini_uart_kernel_log("scheduler: initialize init process");
+    kernel_log("scheduler: initialize init process");
     const int32_t init_process_pid = ++_scheduler->id_gen;
     if (init_process_pid != INIT_PROC_ID)
         kernel_fatal_error("scheduler: unexpected init process pid");
@@ -490,7 +491,7 @@ void scheduler_start(const char *init_path)
         MMU_L1_SECTION_AP_KERNEL_RW_USER_RW);
 
     // Setup Standard Input/Output
-    mini_uart_kernel_log("scheduler: init: setup IOs");
+    kernel_log("scheduler: init: setup IOs");
     file_t *tty = vfs_file_open("/dev/tty", 0u, 0u);
     if (tty == NULL)
         kernel_fatal_error(
@@ -507,7 +508,7 @@ void scheduler_start(const char *init_path)
     //
     //  Call EXEC syscall. Since it is a syscall, addresses must
     // be virtual addresses in the init process memory space
-    mini_uart_kernel_log("scheduler: exec init !");
+    kernel_log("scheduler: exec init !");
 
     // store the exec path in the processs memory section
     char *const phys_exec_path = (char*)init_proc->memory_section;
@@ -519,7 +520,7 @@ void scheduler_start(const char *init_path)
 void scheduler_data_exception(uint32_t spsr)
 {
     const uint8_t cpu_mode = spsr & CPU_CPSR_MODE_MASK;
-    mini_uart_kernel_puts("[kernel] scheduler: Illegal Memory Access\r\n");
+    kernel_puts("[kernel] scheduler: Illegal Memory Access\r\n");
     if (cpu_mode == CPU_CPSR_MODE_USER)
     {
         scheduler_cur_proc_exit(1);
@@ -542,7 +543,7 @@ void scheduler_save_current_context(const task_context_t *current_context)
         &current_proc->context,
         current_context,
         sizeof(task_context_t));
-    mini_uart_kernel_log(
+    kernel_log(
         "scheduler: save current context: pid=%u",
         current_proc->id);
 }
@@ -551,11 +552,9 @@ const process_t *scheduler_switch_task(void)
 {
     const int32_t old_pid = _scheduler->processes[_scheduler->current_proc].id;
     process_t *next_proc = _select_next_scheduled_proc();
-
-    mini_uart_kernel_log(
+    kernel_log(
         "scheduler: switch proc %u => %u (section=%x).",
         old_pid, next_proc->id, next_proc->memory_section);
-
     // return the proc context to be restored
     return next_proc;
 }
@@ -567,7 +566,7 @@ const process_t *scheduler_switch_task(void)
 void scheduler_cur_proc_set_syscall_status(int32_t status)
 {
     process_t *current_proc = _get_current_proc();
-    mini_uart_kernel_log(
+    kernel_log(
         "scheduler: set syscall status=%d for process %d",
         status, current_proc->id);
     current_proc->context.r0 = status;
@@ -584,19 +583,19 @@ int32_t scheduler_cur_proc_fork(void)
 {
     if (_scheduler->proc_count >= SCHEDULER_MAX_TASK_COUNT)
     {
-       mini_uart_kernel_log("fork: too many processes");
+       kernel_log("fork: too many processes");
         return -1;
     }
 
     const process_t *current_proc = _get_current_proc();
-    mini_uart_kernel_log(
+    kernel_log(
         "forking from proc: index=%u pid=%u",
         _scheduler->current_proc, current_proc->id);
 
     // compute the new process id
     const int32_t new_proc_id = ++_scheduler->id_gen;
     const uint32_t new_index = _scheduler->proc_count++;
-    mini_uart_kernel_log(
+    kernel_log(
         "fork: create new proc: index=%u pid=%u",
         new_index, new_proc_id);
 
@@ -654,7 +653,7 @@ int32_t scheduler_cur_proc_fork(void)
 int32_t scheduler_cur_proc_exec(const char *path, const process_args_t *argv)
 {
     process_t *current_proc = _get_current_proc();
-    mini_uart_kernel_log(
+    kernel_log(
         "scheduler: exec: path=%s, index=%u pid=%u, section=%x",
         path, _scheduler->current_proc, current_proc->id, current_proc->memory_section);
 
@@ -669,7 +668,7 @@ int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
 
     // TODO: handle case were pid=-1: meaning any child
     if (pid == -1) {
-        mini_uart_kernel_log("scheduler: wait: pid=-1 is not handled yet");
+        kernel_log("scheduler: wait: pid=-1 is not handled yet");
         return -1;
     }
 
@@ -680,7 +679,7 @@ int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
         return -1;
 
     if (child_proc->schedule_state.status == PROC_EXITED) {
-        mini_uart_kernel_log(
+        kernel_log(
             "scheduler: waiting %u: child is already exited",
             pid);
         // 1st case: the child is exited
@@ -689,7 +688,7 @@ int32_t scheduler_cur_proc_wait_id(int32_t pid, uint32_t *wstatus)
         return pid;
     }
     else {
-        mini_uart_kernel_log(
+        kernel_log(
             "scheduler: waiting %u: child is not exited yet",
             pid);
         // 2nd case: the child is not exited yet
@@ -717,7 +716,7 @@ void scheduler_cur_proc_exit(int32_t status)
     if (current_proc->id == 1)
         kernel_fatal_error("scheduler: init proc was exited");
 
-    mini_uart_kernel_log(
+    kernel_log(
         "scheduler: exiting scheduled proc index=%u pid=%u",
         _scheduler->current_proc, current_proc->id);
 
@@ -732,7 +731,7 @@ void scheduler_cur_proc_exit(int32_t status)
     for (size_t i = 0u; i < _scheduler->proc_count; i++) {
         process_t *proc = &_scheduler->processes[i];
         if (proc->parent_id == current_proc->id) {
-            mini_uart_kernel_log(
+            kernel_log(
                 "scheduler: exit: child proc index=%u pid=%u become a zombie",
                 i, proc->id);
             proc->parent_id = INIT_PROC_ID;
@@ -747,7 +746,7 @@ void scheduler_cur_proc_exit(int32_t status)
 
     if (parent->schedule_state.status == PROC_SUSPENDED &&
         parent->schedule_state.suspended.wait_pid == current_proc->id) {
-        mini_uart_kernel_log(
+        kernel_log(
             "scheduler: exit: parent pid=%u was waiting proc. reschedule parent",
             parent->id);
 

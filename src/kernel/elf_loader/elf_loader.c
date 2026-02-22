@@ -1,5 +1,5 @@
 
-#include "hardware/mini_uart.h"
+#include "log/log.h"
 #include "kernel_types.h"
 #include "lib/str.h"
 #include "vfs/vfs.h"
@@ -27,7 +27,7 @@ int32_t elf32_open(const char *path, elf32_file_t *file)
     // open elf file
     file->file = vfs_file_open(path, 0u, 0u);
     if (file->file == NULL) {
-        mini_uart_kernel_log(
+        kernel_log(
             "elf32_open: failed to open path %s", path);
         return -1;
     }
@@ -41,7 +41,7 @@ int32_t elf32_open(const char *path, elf32_file_t *file)
     if (status != sizeof(elf32_header_t) ||
         !_elf32_check_compat(&file->header))
     {
-        mini_uart_kernel_log(
+        kernel_log(
             "elf32_open: invalid elf file at %s",
             path);
         elf32_close(file);

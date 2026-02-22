@@ -60,6 +60,7 @@ kernel_sources = files(
   'src/kernel/hardware/watchdog.c',
 
   'src/kernel/kernel.c',
+  'src/kernel/log/log.c',
   'src/kernel/lib/str.c',
   'src/kernel/lib/str.h',
   'src/kernel/lib/fnv_hash.c',

@@ -1,4 +1,4 @@
-#include "hardware/mini_uart.h"
+#include "log/log.h"
 #include "kernel.h"
 #include "kernel_types.h"
 #include "lib/str.h"
@@ -78,7 +78,7 @@ static void _add_inode_child(
 static ssize_t _ramfs_reg_file_read(
     file_t *file, void *data, size_t size)
 {
-    mini_uart_kernel_log("ramfs: reg_file_ops: read");
+    kernel_log("ramfs: reg_file_ops: read");
     KERNEL_ASSERT(file->inode != NULL);
 
     const off_t start = file->pos;
@@ -106,7 +106,7 @@ static ssize_t _ramfs_reg_file_read(
 static ssize_t _ramfs_reg_file_write(
     file_t *file, const void *data, size_t size)
 {
-    mini_uart_kernel_log("ramfs: reg_file_ops: write");
+    kernel_log("ramfs: reg_file_ops: write");
     const off_t start = file->pos;
     if (start < 0)
         return -1;
@@ -144,7 +144,7 @@ static ssize_t _ramfs_reg_file_write(
 static ssize_t _ramfs_reg_file_seek(
     file_t *file, int32_t offset, int32_t whence)
 {
-    mini_uart_kernel_log("ramfs: reg_file_ops: seek");
+    kernel_log("ramfs: reg_file_ops: seek");
     // compute reference
     const off_t reference = get_seek_ref_offset(file, whence);
     const off_t new_pos = reference + offset;
@@ -169,7 +169,7 @@ static const file_ops_t _ramfs_reg_file_ops = {
 static int _ramfs_dir_readdir(
     file_t *file, struct dirent *entries, size_t count)
 {
-    mini_uart_kernel_log("ramfs: dir_file_ops: readdir");
+    kernel_log("ramfs: dir_file_ops: readdir");
     inode_t *dir = file->inode;
     KERNEL_ASSERT(dir != NULL);
 
@@ -203,7 +203,7 @@ static int _ramfs_dir_readdir(
 static ssize_t _ramfs_dir_file_seek(
     file_t *file, int32_t offset, int32_t whence)
 {
-    mini_uart_kernel_log("ramfs: dir_file_ops: seek");
+    kernel_log("ramfs: dir_file_ops: seek");
     inode_t *dir = file->inode;
     KERNEL_ASSERT(dir != NULL);
 
@@ -217,7 +217,7 @@ static ssize_t _ramfs_dir_file_seek(
         case SEEK_END: reference = priv_dir->child_count; break;
         case SEEK_CUR: reference = file->pos; break;
         default:
-            mini_uart_kernel_log(
+            kernel_log(
                 "ramfs: dir_seek: invalid whence: %u",
                 whence);
             return -1;
@@ -247,7 +247,7 @@ static const file_ops_t _ramfs_dir_file_ops = {
 // INode Operations
 static inode_t *_ramfs_inode_lookup(inode_t *dir, const char *name)
 {
-    mini_uart_kernel_log(
+    kernel_log(
         "ramfs: inode_ops: lookup: name='%s'",
         name);
 
@@ -267,12 +267,12 @@ static inode_t *_ramfs_inode_lookup(inode_t *dir, const char *name)
 
 static inode_t *_ramfs_inode_create(inode_t *dir, const char *name, mode_t mode)
 {
-    mini_uart_kernel_log(
+    kernel_log(
         "ramfs: inode_ops: create: name='%s' mode=0x%x",
         name, mode);
 
     if ((mode & S_IFMT) != S_IFREG) {
-        mini_uart_kernel_log("ramfs: inode_ops: create: only regular file are supported");
+        kernel_log("ramfs: inode_ops: create: only regular file are supported");
         return NULL;
     }
     ramfs_t *ramfs = (ramfs_t*)dir->super_block->private;
@@ -305,17 +305,17 @@ static inode_t *_ramfs_inode_mkdir(inode_t *dir, const char *name, mode_t mode)
     // - what if the dir already exists ?
     // - on which layer are done the check ?
     // 
-    mini_uart_kernel_log(
+    kernel_log(
         "ramfs: inode_ops: mkdir: name='%s' mode=0x%x",
         name, mode);
 
     if ((mode & S_IFMT) != S_IFDIR) {
-        mini_uart_kernel_log("ramfs: mkdir: only directory are supported");
+        kernel_log("ramfs: mkdir: only directory are supported");
         return NULL;
     }
 
     if (NULL != _ramfs_inode_lookup(dir, name)) {
-        mini_uart_kernel_log("ramfs: mkdir: name conflict %s", name);
+        kernel_log("ramfs: mkdir: name conflict %s", name);
         return NULL;
     }
 
@@ -339,7 +339,7 @@ static inode_t *_ramfs_inode_mkdir(inode_t *dir, const char *name, mode_t mode)
 static inode_t *_ramfs_inode_mknod(
     inode_t *dir, const char *name, mode_t mode, dev_t dev)
 {
-    mini_uart_kernel_log(
+    kernel_log(
         "ramfs: inode_ops: mknod: name='%s' mode=0x%x dev=0x%x",
         name, mode, dev);
 
@@ -352,7 +352,7 @@ static inode_t *_ramfs_inode_mknod(
             {
                 char_device_t *device = get_char_device(dev);
                 if (device == NULL) {
-                    mini_uart_kernel_log(
+                    kernel_log(
                         "ramfs: inode_ops: mknod: failed to open char device");
                     return NULL;
                 }
@@ -363,7 +363,7 @@ static inode_t *_ramfs_inode_mknod(
             {
                 block_device_t *device = get_block_device(dev);
                 if (device == NULL) {
-                    mini_uart_kernel_log(
+                    kernel_log(
                         "ramfs: inode_ops: mknod: failed to open block device");
                     return NULL;
                 }
@@ -371,7 +371,7 @@ static inode_t *_ramfs_inode_mknod(
             }
             break;
         default:
-            mini_uart_kernel_log(
+            kernel_log(
                 "ramfs: mknode: error: unsuported device format: 0x%x",
                 dev_fmt);
             return NULL;
@@ -381,7 +381,7 @@ static inode_t *_ramfs_inode_mknod(
     inode_t *inode = dir->super_block->ops->alloc_inode(dir->super_block);
     ramfs_dir_private_t *priv_dir = (ramfs_dir_private_t*)dir->private;
 
-    mini_uart_kernel_log("ramfs: mknod name=%s dev=%u=%u:%u", name, dev, DEV_MAJOR(dev), DEV_MINOR(dev));
+    kernel_log("ramfs: mknod name=%s dev=%u=%u:%u", name, dev, DEV_MAJOR(dev), DEV_MINOR(dev));
     inode->device = dev;
     inode->inode_ops = NULL;
     inode->file_ops = file_ops;
@@ -440,7 +440,7 @@ static const inode_ops_t _ramfs_inode_ops = {
 // Super Block Operations
 static inode_t *_ramfs_sb_alloc_inode(super_block_t *ram_sb)
 {
-    mini_uart_kernel_log("ramfs: super-block: alloc inode ");
+    kernel_log("ramfs: super-block: alloc inode ");
     inode_t *inode = memory_calloc(sizeof(inode_t));
 
     KERNEL_ASSERT(inode != NULL);
@@ -469,7 +469,7 @@ static int _ramfs_sb_read_inode(super_block_t *ram_sb, ino_t ino, inode_t *inode
     // TODO: 
     // - in theory this should only be called on sb mount, but what if it
     //   is called another time ? 
-    mini_uart_kernel_log("ramfs: super-block: read inode %u", ino);
+    kernel_log("ramfs: super-block: read inode %u", ino);
 
     // this is the only one which should be read one time on the ramfs
     KERNEL_ASSERT(ino == RAMFS_ROOT_NODE_ID);
@@ -511,7 +511,7 @@ static const super_block_ops_t _ramfs_sb_ops = {
 
 super_block_t *create_ramfs_super_block(void)
 {
-    mini_uart_kernel_log("ramfs: create superblock");
+    kernel_log("ramfs: create superblock");
     
     // allocate superblock
     super_block_t *sb = (super_block_t*)memory_calloc(sizeof(super_block_t));

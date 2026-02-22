@@ -1,7 +1,7 @@
 
 #include <stdint.h>
 
-#include "hardware/mini_uart.h"
+#include "log/log.h"
 #include "kernel.h"
 #include "kernel_types.h"
 #include "vfs/vfs.h"
@@ -12,7 +12,7 @@ void load_resource_as_file(
     const void *resource_data,
     const size_t resource_size)
 {
-    mini_uart_kernel_log(
+    kernel_log(
         "load resource as file to %s (%u bytes)",
         path, resource_size);
     // TODO mkdir -p basedir

@@ -1,7 +1,7 @@
 
 #include <stdint.h>
 
-#include "hardware/mini_uart.h"
+#include "log/log.h"
 #include "hardware/mmu.h"
 
 #include "kernel.h"
@@ -32,6 +32,7 @@ static memory_block_t *_block_by_ptr(void *ptr)
 
 void memory_allocator_init(void)
 {
+    kernel_log("memory allocator: initialize memory allocator section");
     _memset(&_kernel_memory_allocator, 0u, sizeof(kernel_memory_allocator));
     uint8_t *const section = (uint8_t*)section_allocator_alloc();
     if (section == NULL)
@@ -52,7 +53,7 @@ void *memory_alloc(size_t size)
 
     if (new_cursor > _kernel_memory_allocator.section_end)
     {
-        mini_uart_kernel_log("memory_alloc: failed allocation of %u bytes", size);
+        kernel_log("memory_alloc: failed allocation of %u bytes", size);
         return NULL;
     }
 
@@ -60,7 +61,7 @@ void *memory_alloc(size_t size)
 
     block->size = size;
     _kernel_memory_allocator.memory_cursor = new_cursor;
-    mini_uart_kernel_log(
+    kernel_log(
         "memory: allocated block: size=%u @ %x",
         size, block->data);
     return block->data;
@@ -92,7 +93,7 @@ void *memory_calloc(size_t size)
 
 void memory_free(void *ptr)
 {
-    mini_uart_kernel_log(
+    kernel_log(
         "memory: free block @ %x (dummy)",
         ptr);
 }

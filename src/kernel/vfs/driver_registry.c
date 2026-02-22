@@ -3,7 +3,7 @@
 
 #include "driver_registry.h"
 #include "dev/tty.h"
-#include "hardware/mini_uart.h"
+#include "log/log.h"
 #include "kernel.h"
 #include "kernel_types.h"
 #include "vfs/dev/ramdisk.h"
@@ -42,12 +42,12 @@ static block_device_t _block_devices[BLOCK_DEV_MAJOR_COUNT][1];
 
 void driver_registry_init(void)
 {
-    mini_uart_kernel_log("driver registry: initialize section ramdisk");
-    // mini_uart_kernel_log("driver registry: fat32: size = %u", ___resources_fat32_img_len);
+    kernel_log("driver registry: initialize section ramdisk");
+    // kernel_log("driver registry: fat32: size = %u", ___resources_fat32_img_len);
     create_section_ramdisk(
         &_block_devices[DEV_RAMDISK_MAJOR][DEV_RAMDISK_MINOR]);
 
-    mini_uart_kernel_log("driver registry: initialize sdcard disk");
+    kernel_log("driver registry: initialize sdcard disk");
     create_sdcard_disk(
         &_block_devices[DEV_SDCARD_MAJOR][DEV_SDCARD_MINOR]);
 }
@@ -57,13 +57,13 @@ char_device_t *get_char_device(dev_t dev)
     const uint16_t major = DEV_MAJOR(dev);
     const uint16_t minor = DEV_MINOR(dev);
 
-    mini_uart_kernel_log(
+    kernel_log(
         "driver registry: get char device major=%u minor=%u",
         major, minor);
 
     // check major is in valid range
     if (major >= CHAR_DEV_MAJOR_COUNT) {
-        mini_uart_kernel_log(
+        kernel_log(
             "driver registry: out of range char major number",
             major);
         return NULL;
@@ -80,13 +80,13 @@ block_device_t *get_block_device(dev_t dev)
     const uint16_t major = DEV_MAJOR(dev);
     const uint16_t minor = DEV_MINOR(dev);
 
-    mini_uart_kernel_log(
+    kernel_log(
         "driver registry: get block device major=%u minor=%u",
         major, minor);
 
     // check major is in valid range
     if (major >= BLOCK_DEV_MAJOR_COUNT) {
-        mini_uart_kernel_log(
+        kernel_log(
             "driver registry: out of range block major number",
             major);
         return NULL;

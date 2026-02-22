@@ -12,6 +12,9 @@
 #include "hardware/sd_host/sd_host.h"
 #include "hardware/watchdog.h"
 
+#include "lib/str.h"
+#include "log/log.h"
+
 #include "memory/memory_allocator.h"
 #include "memory/section_allocator.h"
 #include "memory/translation_table_allocator.h"
@@ -96,8 +99,8 @@ static void _kernel_init(void)
 
     // initialize the mini UART
     mini_uart_init();
-    mini_uart_kernel_puts("Satan OS kernel is starting...\r\n");
-    mini_uart_kernel_log("bss: %x -> %x", &__bss_start__, &__bss_end__);
+    kernel_puts("Satan OS kernel is starting...\r\n");
+    kernel_log("bss: %x -> %x", &__bss_start__, &__bss_end__);
 
     // initialize the sdio controller
     sdhost_init();
@@ -112,31 +115,31 @@ static void _kernel_init(void)
     memory_allocator_init();
 
     // Initialize the translation table allocator
-    mini_uart_kernel_log("initialize translation table allocator");
+    kernel_log("initialize translation table allocator");
     void *process_translation_tables_section = section_allocator_alloc();
     translation_table_allocator_init(process_translation_tables_section);
 
     // Initialize the kernel translation table
-    mini_uart_kernel_log("initialize kernel translation table");
+    kernel_log("initialize kernel translation table");
     kernel_translation_table = translation_table_allocator_alloc();
     _kernel_init_translation_table(kernel_translation_table);
 
     // Enable and initialize the MMU with the kernel translation table
-    mini_uart_kernel_log("enable MMU");
+    kernel_log("enable MMU");
     kernel_restore_translation_table();
     mmu_set_dacr(0x55555555);
     mmu_enable();
 
     // Initialize the driver registry
-    mini_uart_kernel_log("initialize drivers");
+    kernel_log("initialize drivers");
     driver_registry_init();
 
     // Initialize the scheduler
-    mini_uart_kernel_log("initialize the scheduler");
+    kernel_log("initialize the scheduler");
     scheduler_init();
 
     // Initialize the Virtual File System
-    mini_uart_kernel_log("initialize the vfs");
+    kernel_log("initialize the vfs");
     vfs_init();
 }
 
@@ -146,7 +149,7 @@ static void _kernel_mount_root_fs(void)
     //
     // Note: sdcard is expected to be formated as a bare fat32 (no partition)
     //
-    mini_uart_kernel_log("mount sdcard rootfs at /");
+    kernel_log("mount sdcard rootfs at /");
     block_device_t *sdcard_device = get_block_device(DEV_BLK_SDCARD);
     const int32_t root_mount_status = vfs_mount_dev(sdcard_device, "/", "fat32");
     KERNEL_ASSERT(root_mount_status == 0);
@@ -154,7 +157,7 @@ static void _kernel_mount_root_fs(void)
 
 static void _kernel_mount_dev_tmpfs(void)
 {
-    mini_uart_kernel_log("mount dev tmpfs at /dev");
+    kernel_log("mount dev tmpfs at /dev");
 
     // mount a tmpfs on /dev
     const int32_t dev_mount_status = vfs_mount(NULL, "/dev", "ramfs");
@@ -189,27 +192,27 @@ void kernel_main(uint32_t r0, uint32_t r1, uint32_t atags)
     _kernel_mount_dev_tmpfs();
 
     // wait a first input
-    mini_uart_kernel_puts("Satan OS is initialized.\r\n");
-    mini_uart_kernel_puts("press a key to continue ...\r\n");
+    kernel_puts("Satan OS is initialized.\r\n");
+    kernel_puts("press a key to continue ...\r\n");
     mini_uart_getc();
 
     // print a welcome message ;)
-    mini_uart_kernel_puts(__satan_welcome_banner);
+    kernel_puts(__satan_welcome_banner);
 
     const uint16_t cpu_mode = cpu_get_execution_mode();
-    mini_uart_kernel_log("cpu mode: 0x%x", cpu_mode);
+    kernel_log("cpu mode: 0x%x", cpu_mode);
 
     // start user mode
-    mini_uart_kernel_log("call user mode init");
+    kernel_log("call user mode init");
     scheduler_start("/bin/init");
 }
 
 void kernel_fatal_error(const char *reason)
 {
-    mini_uart_kernel_puts(__satan_fatal_error_banner);
-    mini_uart_kernel_puts("Fatal Satan failure:  ");
-    mini_uart_kernel_puts(reason);
-    mini_uart_kernel_puts("\r\npress a key...");
+    kernel_puts(__satan_fatal_error_banner);
+    kernel_puts("Fatal Satan failure:  ");
+    kernel_puts(reason);
+    kernel_puts("\r\npress a key...");
     mini_uart_getc();
 
     // trigger a reboot

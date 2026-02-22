@@ -1,7 +1,7 @@
 
 #include <stdint.h>
 
-#include "hardware/mini_uart.h"
+#include "log/log.h"
 #include "hardware/mmu.h"
 #include "lib/str.h"
 #include "memory/section_allocator.h"
@@ -18,7 +18,7 @@ _Static_assert(
 
 static int _section_ramdisk_read_block(void *private, uint32_t index, void *block)
 {
-     mini_uart_kernel_log("ramdisk-block-device: read block @ %u", index);
+     kernel_log("ramdisk-block-device: read block @ %u", index);
  
     const uint8_t *section_base = (uint8_t*)private;
     const uint8_t *ram_block = section_base + index * SECTION_RAMDISK_BLOCK_SIZE;

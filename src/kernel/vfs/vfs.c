@@ -1,5 +1,5 @@
 
-#include "hardware/mini_uart.h"
+#include "log/log.h"
 
 #include "kernel.h"
 #include "kernel_types.h"
@@ -91,7 +91,7 @@ static dentry_t *_vfs_node_lookup_rec(
     dentry_t *dentry,  // non negative dentry
     const char *path)
 {
-    mini_uart_kernel_log(
+    kernel_log(
         "vfs: inode lookup: look for relative path '%s' in dentry %s",
          path, dentry->name);
     const char *next_separator = _strchr(path, '/');
@@ -132,7 +132,7 @@ static dentry_t *_vfs_node_lookup_rec(
 // - a positive dentry if path exists
 static dentry_t *_vfs_dentry_lookup(const char *path)
 {
-    mini_uart_kernel_log("vfs: dentry lookup: search path '%s'", path);
+    kernel_log("vfs: dentry lookup: search path '%s'", path);
     // only absolute path for now
     if (path[0] != '/')
         return NULL;
@@ -148,11 +148,11 @@ static dentry_t *_vfs_dentry_lookup(const char *path)
             (result->parent->inode->mode & S_IFMT) == S_IFDIR));
 
     if (result == NULL)
-        mini_uart_kernel_log("vfs: dentry lookup: path='%s': failed (no dentry)", path);
+        kernel_log("vfs: dentry lookup: path='%s': failed (no dentry)", path);
     else if (result->inode == NULL)
-        mini_uart_kernel_log("vfs: dentry lookup: path='%s': failed (negative dentry)", path);
+        kernel_log("vfs: dentry lookup: path='%s': failed (negative dentry)", path);
     else
-        mini_uart_kernel_log("vfs: dentry lookup: path='%s': succeed", path);
+        kernel_log("vfs: dentry lookup: path='%s': succeed", path);
 
     return result;
 }
@@ -186,7 +186,7 @@ static int32_t _vfs_mount_dev(
     // Load root inode from fs super block
     super_block_t *sb = _sb_by_dev_fs_type(device, fstype);
     if (sb == NULL) {
-        mini_uart_kernel_log("vfs: mount: failed to load fs super block");
+        kernel_log("vfs: mount: failed to load fs super block");
         return -1;
     }
 
@@ -245,7 +245,7 @@ int32_t vfs_mount_dev(block_device_t *device, const char *target, const char *fs
     // Check if target is a directory
     dentry_t *target_dentry = _vfs_dentry_lookup(target);
     if (!_dentry_is_fmt(target_dentry, S_IFDIR)) {
-        mini_uart_kernel_log(
+        kernel_log(
             "vfs: mount: no directory at '%s'", target);
         return -1;
     }
@@ -255,14 +255,14 @@ int32_t vfs_mount_dev(block_device_t *device, const char *target, const char *fs
 
 int32_t vfs_mount(const char *dev, const char *target, const char *fstype)
 {
-    mini_uart_kernel_log(
+    kernel_log(
         "vfs: mount: dev='%s', target='%s', fstype=%s",
         dev ? dev : "NULL", target, fstype);
 
     // Check if target is a directory
     dentry_t *target_dentry = _vfs_dentry_lookup(target);
     if (!_dentry_is_fmt(target_dentry, S_IFDIR)) {
-        mini_uart_kernel_log(
+        kernel_log(
             "vfs: mount: no directory at '%s'", target);
         return -1;
     }
@@ -272,7 +272,7 @@ int32_t vfs_mount(const char *dev, const char *target, const char *fstype)
     if (dev != NULL) {
         dentry_t *device_dentry = _vfs_dentry_lookup(dev);
         if (!_dentry_is_fmt(device_dentry, S_IFBLK)) {
-            mini_uart_kernel_log(
+            kernel_log(
                 "vfs: mount: no block device file at '%s'", dev);
             return -1;
         }
@@ -285,7 +285,7 @@ int32_t vfs_mount(const char *dev, const char *target, const char *fstype)
 
 int32_t vfs_mknod(const char *path, mode_t mode, dev_t dev)
 {
-    mini_uart_kernel_log(
+    kernel_log(
         "vfs: mknod: path='%s', mode=0x%x, dev=0x%x",
         path, mode, dev);
 
@@ -309,17 +309,17 @@ int32_t vfs_mknod(const char *path, mode_t mode, dev_t dev)
 
 int32_t vfs_mkdir(const char *path, mode_t mode)
 {
-    mini_uart_kernel_log(
+    kernel_log(
         "vfs: mkdir: path='%s', mode=0x%x",
         path, mode);
 
     dentry_t *dentry = _vfs_dentry_lookup(path);
     if (dentry == NULL) {
-        mini_uart_kernel_log("vfs: mkdir: parent dir does not exist");
+        kernel_log("vfs: mkdir: parent dir does not exist");
         return -1;
     }
     else if (dentry->inode != NULL) {
-        mini_uart_kernel_log("vfs: mkdir: a file already exists at this path");
+        kernel_log("vfs: mkdir: a file already exists at this path");
         return -1; // a file already exists at this path
     }
 
@@ -328,7 +328,7 @@ int32_t vfs_mkdir(const char *path, mode_t mode)
         parent, dentry->name, mode);
 
     if (new_node == NULL) {
-        mini_uart_kernel_log("vfs: mkdir: inode ops mkdir failure");
+        kernel_log("vfs: mkdir: inode ops mkdir failure");
         return -1;
     }
 
@@ -345,7 +345,7 @@ file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
 {
     (void)mode;
 
-    mini_uart_kernel_log("vfs: open %s", path);
+    kernel_log("vfs: open %s", path);
     dentry_t *dentry = _vfs_dentry_lookup(path);
 
     if (dentry == NULL)
@@ -360,7 +360,7 @@ file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
         { 
             // TODO: inode ops may be null
             // EXCL does not mater here.
-            mini_uart_kernel_log("vfs: call inode.create");
+            kernel_log("vfs: call inode.create");
 
             if (parent->inode_ops == NULL ||
                 parent->inode_ops->create == NULL)
@@ -378,13 +378,13 @@ file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
         }
         else
         {
-            mini_uart_kernel_log("vfs: file not found, no creation requested");
+            kernel_log("vfs: file not found, no creation requested");
             return NULL;  // file not found, no creation requested
         }
     }
     else if (flags & O_EXCL)
     {
-        mini_uart_kernel_log("vfs: file already exists, requested exclusive creation");
+        kernel_log("vfs: file already exists, requested exclusive creation");
         return NULL;  // file already exists
     }
     
@@ -394,7 +394,7 @@ file_t *vfs_file_open(const char *path, uint32_t flags, mode_t mode)
     
     // there is an existing inode
     if ((flags & O_DIRECTORY) && ((inode->mode & S_IFMT) != S_IFDIR)) {
-        mini_uart_kernel_log("vfs: file is not a directory, requested a directory");
+        kernel_log("vfs: file is not a directory, requested a directory");
         return NULL;
     }
 

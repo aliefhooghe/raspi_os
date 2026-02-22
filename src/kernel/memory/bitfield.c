@@ -1,6 +1,6 @@
 
 #include "bitfield.h"
-#include "hardware/mini_uart.h"
+#include "log/log.h"
 #include "kernel.h"
 
 int32_t bitfield_acquire_first(uint8_t *bitfields, uint32_t bitfield_count)
@@ -25,7 +25,7 @@ int32_t bitfield_acquire_first(uint8_t *bitfields, uint32_t bitfield_count)
         }
     }
 
-    mini_uart_kernel_log("bitfield: failed allocation (bitfield_cound=%u)", bitfield_count);
+    kernel_log("bitfield: failed allocation (bitfield_cound=%u)", bitfield_count);
     return -1;
 }
 

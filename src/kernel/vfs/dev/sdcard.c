@@ -1,7 +1,7 @@
 
 #include <stdint.h>
 
-#include "hardware/mini_uart.h"
+#include "log/log.h"
 #include "hardware/sd_host/sd_host.h"
 #include "kernel.h"
 
@@ -9,7 +9,7 @@
 
 static int _sdcard_disk_read_block(void *private, uint32_t index, void *block)
 {
-    mini_uart_kernel_log("sdcard-block-device: read block @ %u", index);
+    kernel_log("sdcard-block-device: read block @ %u", index);
     (void)private;
     KERNEL_ASSERT(0 == sdhost_read_block(index, block));
     return 1;

@@ -67,20 +67,25 @@
 
 // --------------------------------------------------------------------------------
 // 
-//  AUX_MU: Registers for the mini UART
+//  AUX: Registers for auxiliary peripherals: mini UART + 2 SPI masters
 // 
+#define REG__AUX_IRQ                0x20215000u  // Auxiliary Interrupt status
 #define REG__AUX_ENABLES            0x20215004u  // Enables auxiliary peripherals (SPI1, SPI2, mini UART)
-#define REG__AUX_MU_IO_REG          0x20215040u  // Data register (read/write for mini UART)
-#define REG__AUX_MU_IER_REG         0x20215044u  // Interrupt enable register
-#define REG__AUX_MU_IIR_REG         0x20215048u  // Interrupt identify register
-#define REG__AUX_MU_LCR_REG         0x2021504Cu  // Line control register (data format settings)
-#define REG__AUX_MU_MCR_REG         0x20215050u  // Modem control register (not used here)
-#define REG__AUX_MU_LSR_REG         0x20215054u  // Line status register (transmit/receive state)
-#define REG__AUX_MU_MSR_REG         0x20215058u  // Modem status register (not used here)
+
+// AUX_MU: Mini Uart
+#define REG__AUX_MU_IO              0x20215040u  // Data register (read/write for mini UART)
+#define REG__AUX_MU_IER             0x20215044u  // Interrupt enable register
+#define REG__AUX_MU_IIR             0x20215048u  // Interrupt identify register
+#define REG__AUX_MU_LCR             0x2021504Cu  // Line control register (data format settings)
+#define REG__AUX_MU_MCR             0x20215050u  // Modem control register (not used here)
+#define REG__AUX_MU_LSR             0x20215054u  // Line status register (transmit/receive state)
+#define REG__AUX_MU_MSR             0x20215058u  // Modem status register (not used here)
 #define REG__AUX_MU_SCRATCH         0x2021505Cu  // Scratch register (general-purpose storage, unused)
-#define REG__AUX_MU_CNTL_REG        0x20215060u  // Mini UART control register (enables TX/RX)
-#define REG__AUX_MU_STAT_REG        0x20215064u  // Mini UART status register
-#define REG__AUX_MU_BAUD_REG        0x20215068u  // Baud rate register
+#define REG__AUX_MU_CNTL            0x20215060u  // Mini UART control register (enables TX/RX)
+#define REG__AUX_MU_STAT            0x20215064u  // Mini UART status register
+#define REG__AUX_MU_BAUD            0x20215068u  // Baud rate register
+
+// AUXSPI0-AUXSPI1: TODO
 
 // --------------------------------------------------------------------------------
 // 
